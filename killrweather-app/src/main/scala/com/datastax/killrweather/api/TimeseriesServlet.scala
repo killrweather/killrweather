@@ -2,7 +2,6 @@ package com.datastax.killrweather.api
 
 import javax.servlet.http.HttpServletRequest
 
-import com.datastax.killrweather.api.WeatherServlet
 import org.scalatra._
 import org.joda.time.{DateTimeZone, DateTime}
 import org.json4s.{Formats, DefaultFormats}

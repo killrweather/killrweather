@@ -18,14 +18,14 @@ package com.datastax.killrweather
 import java.util.Properties
 
 import akka.actor.{Actor, ActorLogging, ActorRef}
-import com.datastax.killrweather.KillrWeatherEvents._
-import com.datastax.killrweather.Weather.RawWeatherData
-import com.datastax.spark.connector.embedded.Assertions
 import kafka.producer.{KeyedMessage, Producer, ProducerConfig}
 import kafka.serializer.StringEncoder
 import kafka.server.KafkaConfig
 import org.apache.spark.rdd.RDD
 import org.apache.spark.streaming.StreamingContext
+import com.datastax.killrweather.KillrWeatherEvents._
+import com.datastax.killrweather.Weather.RawWeatherData
+import com.datastax.spark.connector.embedded.Assertions
 
 trait WeatherActor extends Actor with ActorLogging
 
@@ -74,12 +74,13 @@ class HighLowActor(ssc: StreamingContext, settings: WeatherSettings) extends Wea
   import settings._
 
   def receive : Actor.Receive = {
-    case GetHiLow(zip, doy) => compute(zip, doy, sender)
+    case GetTemperatureAggregate(zip, doy) => compute(zip, doy, sender)
   }
 
   /**
    * IMPLEMENT ME - for a given weather station:
-   * Hi-Low temperature average and cumulative rainfall for weather station 
+   * Hi, low and average temperature
+   * annual cumulative precip - or year to date
    */
   def compute(zip: Int, doy: Int, requester: ActorRef): Unit = {
 
@@ -120,7 +121,7 @@ trait KafkaProducer extends WeatherActor {
   def batchSend(topic: String, group: String, batchSize: Int, lines: Seq[String]): Unit =
     if (lines.nonEmpty) {
       val (send, unsent) = lines.toSeq.splitAt(batchSize)
-      val messages = send map { data => KeyedMessage(topic, group, data)}
+      val messages = send map (KeyedMessage(topic, group, _))
       producer.send(messages.toArray: _*)
       log.debug(s"Published messages to kafka topic '$topic'. Batching remaining ${unsent.size}")
       batchSend(topic, group, batchSize, unsent)

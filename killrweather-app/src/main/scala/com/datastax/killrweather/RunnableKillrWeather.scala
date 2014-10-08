@@ -21,10 +21,10 @@ import com.typesafe.config.Config
 import org.apache.spark.streaming.{Seconds, StreamingContext}
 
 /** Runnable: for running WeatherCenter from command line or IDE. */
-object WeatherCenter extends TimeseriesBlueprint
+object RunnableKillrWeather extends KillrWeather
 
-/** Used to run [[WeatherCenter]] and [[com.datastax.killrweather.api.WeatherServletContextListener]] */
-trait TimeseriesBlueprint extends WeatherApp {
+/** Used to run [[RunnableKillrWeather]] and [[com.datastax.killrweather.api.WeatherServletContextListener]] */
+trait KillrWeather extends KillrApp {
 
   override val settings = new WeatherSettings()
 
@@ -42,9 +42,10 @@ trait TimeseriesBlueprint extends WeatherApp {
     guardian ! PoisonPill
   }
 
+  /** The ingest topic. */
   kafka.createTopic(settings.KafkaTopicRaw)
-  kafka.createTopic(settings.KafkaTopicAnalyzed)
 
+  /* The root supervisor Actor of our app. */
   val guardian = system.actorOf(Props(new NodeGuardian(ssc, kafka, settings)), "node-guardian")
 
   ssc.awaitTermination()
@@ -70,7 +71,6 @@ final class WeatherSettings(conf: Option[Config] = None) extends Settings(conf) 
   //val KafkaHosts: immutable.Seq[String] = Util.immutableSeq(timeseries.getStringList("kafka.hosts"))
   val KafkaGroupId = timeseries.getString("kafka.group.id")
   val KafkaTopicRaw = timeseries.getString("kafka.topic.raw")
-  val KafkaTopicAnalyzed = timeseries.getString("kafka.topic.analyzed")
   val KafkaBatchSendSize = timeseries.getInt("kafka.batch.send.size")
 
   val SparkCheckpointDir = timeseries.getString("spark.checkpoint.dir")

@@ -47,12 +47,12 @@ class Settings(conf: Option[Config] = None) extends Logging {
     case _ => ConfigFactory.load
   }
 
-  val blueprints = rootConfig.getConfig("killrweather")
+  val killrweather = rootConfig.getConfig("killrweather")
   protected val spark = rootConfig.getConfig("spark")
   protected val cassandra = rootConfig.getConfig("cassandra")
   protected val akka = rootConfig.getConfig("akka")
 
-  val AppName = blueprints.getString("app-name")
+  val AppName = killrweather.getString("app-name")
 
   val SparkMaster = withFallback[String](Try(spark.getString("master")),
     "spark.master") getOrElse "local[*]"

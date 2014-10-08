@@ -17,8 +17,6 @@
 
 package com.datastax.killrweather.api
 
-import com.datastax.killrweather.TimeseriesBlueprint
-import com.datastax.killrweather.api.WeatherApi.HiLowForecast
 import org.json4s.Extraction._
 import org.json4s._
 import org.json4s.native.JsonMethods._
@@ -26,9 +24,10 @@ import org.json4s.native.JsonParser
 import org.scalatest.WordSpecLike
 import org.scalatra.test.scalatest._
 import com.datastax.killrweather._
+import com.datastax.killrweather.api.WeatherApi.HiLowForecast
 
 class WeatherCenterServletSpec extends ScalatraSuite with WordSpecLike
-  with TimeseriesBlueprint with TimeseriesFixture {
+  with KillrWeather with WeatherFixture {
   import com.datastax.killrweather._
 
   val api = new WeatherDataActorApi(system, guardian)
@@ -37,7 +36,7 @@ class WeatherCenterServletSpec extends ScalatraSuite with WordSpecLike
 
   "WeatherCenterServlet" should {
     "GET v1/high-low with a valid uid" in {
-      get("/v1/weather/climatology/high-low/10023?dayofyear=92", headers = testHeaders) {
+      get("/v1/weather/climatology/high-low/10023?dayofyear=92", headers = weatherStationHeaders) {
         response.status should be(200)
         val alerts = JsonParser.parse(response.body).extract[HiLowForecast]
         println(pretty(render(decompose(alerts))))
@@ -53,15 +52,13 @@ class WeatherCenterServletSpec extends ScalatraSuite with WordSpecLike
 }
 
 // ?perPage=20&size=400
-trait TimeseriesFixture {
+trait WeatherFixture {
 
   val testHeaders = Map("content-type" -> "application/json")
 
-  val userId = "9784dkfu387669eb2936d1b1fdd858a"
+  val wsid = "010010:99999"
 
-  val weatherStationId = "010010:99999"
-
-  val weatherStationHeaders = Map("X-BLUEPRINTS-STATION-ID" -> weatherStationId) ++ testHeaders
+  val weatherStationHeaders = Map("X-KWEATHER-STATION-ID" -> wsid) ++ testHeaders
 
 
 }

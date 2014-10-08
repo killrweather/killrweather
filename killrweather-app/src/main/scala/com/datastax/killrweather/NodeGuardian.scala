@@ -15,19 +15,18 @@
  */
 package com.datastax.killrweather
 
+import scala.concurrent.duration._
 import akka.actor.SupervisorStrategy._
 import akka.actor._
 import akka.pattern.gracefulStop
 import akka.util.Timeout
-import com.datastax.spark.connector.embedded.{Assertions, EmbeddedKafka}
-import com.datastax.spark.connector.streaming._
-import com.datastax.killrweather.api.WeatherApi
 import kafka.serializer.StringDecoder
 import org.apache.spark.storage.StorageLevel
 import org.apache.spark.streaming.StreamingContext
 import org.apache.spark.streaming.kafka.KafkaUtils
-
-import scala.concurrent.duration._
+import com.datastax.spark.connector.embedded.{Assertions, EmbeddedKafka}
+import com.datastax.spark.connector.streaming._
+import com.datastax.killrweather.api.WeatherApi
 
 /**
  * NOTE: if [[NodeGuardian]] is ever put on an Akka router, multiple instances of the stream will
@@ -36,7 +35,7 @@ import scala.concurrent.duration._
 class NodeGuardian(ssc: StreamingContext, kafka: EmbeddedKafka, settings: WeatherSettings)
   extends Actor with Assertions with ActorLogging {
   import com.datastax.killrweather.KillrWeatherEvents._
-  import com.datastax.killrweather.Weather._
+  import WeatherApi._
   import Weather._
   import settings._
 
@@ -61,7 +60,7 @@ class NodeGuardian(ssc: StreamingContext, kafka: EmbeddedKafka, settings: Weathe
 
   def receive: Actor.Receive = {
     case TaskCompleted                => startStreaming()
-    case e: GetHiLow                  => highLow map (_ forward e)
+    case e: GetTemperatureAggregate                  => highLow map (_ forward e)
     case GetWeatherStation(sid)       => weatherStation(sid, sender)
     case GetRawWeatherData            =>
     case GetSkyConditionLookup        =>
@@ -86,7 +85,7 @@ class NodeGuardian(ssc: StreamingContext, kafka: EmbeddedKafka, settings: Weathe
 
     highLow = Some(context.actorOf(Props(new HighLowActor(ssc, settings)), "high-low"))
     // for now call this directly until hooked up:
-    highLow map (_ ! GetHiLow(10024))
+    highLow map (_ ! GetTemperatureAggregate(10024))
   }
 
   /** Fill out the where clause and what needs to be passed in to request one. */

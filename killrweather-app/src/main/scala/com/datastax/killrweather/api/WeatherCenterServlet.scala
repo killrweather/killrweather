@@ -30,13 +30,12 @@ import akka.actor.{ActorRef, ActorSystem}
 import com.datastax.killrweather.api.WeatherApi._
 
 class WeatherCenterServlet(api: WeatherDataActorApi) extends TimeseriesServlet {
-  import com.datastax.killrweather.api._
 
   /** Sample: /v1/weather/climatology/10023?dayofyear=92 */
   get("/v1/weather/climatology/high-low/:zipcode") {
     val zipcode = zipcodeParam(params) getOrElse halt(status = 400, body = "No Zipcode was provided")
     val dayofyear = dayOfYearParam(params)
-    api.hilow(GetHiLow(zipcode, dayofyear)).run.valueOrThrow
+    api.hilow(GetTemperatureAggregate(zipcode, dayofyear)).run.valueOrThrow
   }
 
   /** Sample: /v1/weather/stations/s/010010:99999 */
@@ -48,12 +47,10 @@ class WeatherCenterServlet(api: WeatherDataActorApi) extends TimeseriesServlet {
 
 class WeatherDataActorApi(system: ActorSystem, guardian: ActorRef) {
 
-  import com.datastax.killrweather.Weather
-
   import scala.concurrent.duration._
   import akka.pattern.ask
   import akka.util.Timeout
-  import com.datastax.killrweather.api._
+  import com.datastax.killrweather._
   import Weather._
   import system.dispatcher
 
@@ -63,7 +60,7 @@ class WeatherDataActorApi(system: ActorSystem, guardian: ActorRef) {
     * This includes high and low temperatures, a string text forecast and the conditions.
     * @param hiLow the paramaters for high-low forecast by location
     */
-  def hilow(hiLow: GetHiLow): FutureT[HiLowForecast] =
+  def hilow(hiLow: GetTemperatureAggregate): FutureT[HiLowForecast] =
     (guardian ? hiLow).mapTo[HiLowForecast].eitherT
 
 

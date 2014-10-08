@@ -39,17 +39,30 @@ import scalaz._
    */
   case class SkyConditionLookup(code: Int, condition: String) extends WeatherModel
 
-
   /** Composite of Air Force Datsav3 station number and NCDC WBAN number
     * @param sid uses the composite key format: stationNum:wbanNum
     */
   case class GetWeatherStation(sid: WeatherStationId) extends DataRequest
   case class GetRawWeatherData(perPage: Int) extends DataRequest
   case object GetSkyConditionLookup extends DataRequest
-  case class GetHiLow(zipcode: Int, dayOfYear: Int) extends DataRequest
-  object GetHiLow {
-    def apply(zip: Int, doy: Option[Int] = None): GetHiLow =
-      GetHiLow(zip, doy getOrElse new DateTime(DateTimeZone.UTC).dayOfYear().get())
+  case class GetAnnualPrecipitation()
+  // Time Slice aggregations
+  // weather station row key : year and every cell is a day
+  // 1 - 365
+  // value cumulative number of rain total
+  // as of october 1, yearly rain total is 2 inches
+  // what was the cumulative for the week
+
+
+  // the rest are predictive:
+  // precip - if barometric drops
+  // predictive data
+
+
+  case class GetTemperatureAggregate(zipcode: Int, dayOfYear: Int) extends DataRequest
+  object GetTemperatureAggregate {
+    def apply(zip: Int, doy: Option[Int] = None): GetTemperatureAggregate =
+      GetTemperatureAggregate(zip, doy getOrElse new DateTime(DateTimeZone.UTC).dayOfYear().get())
   }
   /**
    * TODO: what type of data params do we want in order to request this?

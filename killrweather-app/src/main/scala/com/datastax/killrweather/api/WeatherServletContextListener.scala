@@ -2,12 +2,12 @@ package com.datastax.killrweather.api
 
 import javax.servlet.{ServletContextEvent, ServletContextListener}
 
-import com.datastax.killrweather.TimeseriesBlueprint
+import com.datastax.killrweather.KillrWeather
 
 import scala.util.control.NonFatal
 import org.scalatra.servlet.ServletApiImplicits
 
-class WeatherServletContextListener extends ServletContextListener with ServletApiImplicits with TimeseriesBlueprint {
+class WeatherServletContextListener extends ServletContextListener with ServletApiImplicits with KillrWeather {
 
   override def contextInitialized(event: ServletContextEvent): Unit = try {
     //log.info(s"Creating context for ${system.name}")
