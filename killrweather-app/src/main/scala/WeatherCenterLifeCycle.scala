@@ -26,7 +26,7 @@ class WeatherCenterLifeCycle extends WeatherLifeCycle {
   protected def initServer(implicit context: ServletContext): Unit = {
     val guardian = actorSystem.actorOf(Props(new NodeGuardian(ssc, kafka, settings)), "node-guardian")
     val api = new WeatherDataActorApi(actorSystem, guardian)
-    context.mount(new WeatherCenterServlet(api), "/time-series/*")
+    context.mount(new WeatherCenterServlet(api), "/killrweather/*")
   }
 
   protected override def settings(implicit context: ServletContext): WeatherSettings =

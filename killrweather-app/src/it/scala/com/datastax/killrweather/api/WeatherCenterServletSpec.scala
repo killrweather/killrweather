@@ -24,7 +24,6 @@ import org.json4s.native.JsonParser
 import org.scalatest.WordSpecLike
 import org.scalatra.test.scalatest._
 import com.datastax.killrweather._
-import com.datastax.killrweather.api.WeatherApi.HiLowForecast
 
 class WeatherCenterServletSpec extends ScalatraSuite with WordSpecLike
   with KillrWeather with WeatherFixture {
@@ -35,30 +34,28 @@ class WeatherCenterServletSpec extends ScalatraSuite with WordSpecLike
   addServlet(new WeatherCenterServlet(api), "/*")
 
   "WeatherCenterServlet" should {
-    "GET v1/high-low with a valid uid" in {
-      get("/v1/weather/climatology/high-low/10023?dayofyear=92", headers = weatherStationHeaders) {
+    "GET valid /v1/weather/climatology/temperature request" in {
+      get("/v1/weather/climatology/temperature?month=10&year=2005", headers = weatherStationHeaders) {
         response.status should be(200)
-        val alerts = JsonParser.parse(response.body).extract[HiLowForecast]
-        println(pretty(render(decompose(alerts))))
+        val aggregate = JsonParser.parse(response.body).extract[Weather.TemperatureAggregate]
+        println(pretty(render(decompose(aggregate))))
         // TODO validate
       }
     }
-    "response with 400 if no uid is passed in the header" in {
-      get("/v1/high-low") {
+    "response with 400 if no sid is passed in the header" in {
+      get("/v1/weather/climatology/temperature?month=10&year=2005") {
         response.status should be(400)
       }
     }
   }
 }
 
-// ?perPage=20&size=400
 trait WeatherFixture {
 
   val testHeaders = Map("content-type" -> "application/json")
 
   val wsid = "010010:99999"
 
-  val weatherStationHeaders = Map("X-KWEATHER-STATION-ID" -> wsid) ++ testHeaders
-
+  val weatherStationHeaders = Map("X-WEATHER-STATION-ID" -> wsid) ++ testHeaders
 
 }

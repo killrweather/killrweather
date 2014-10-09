@@ -5,13 +5,14 @@ import java.util.UUID
 import org.json4s._
 
 object WeatherCenterJson {
-  import com.datastax.killrweather.api.WeatherApi._
+  import com.datastax.killrweather.WeatherEvents._
+  import com.datastax.killrweather.Weather._
 
   lazy val formats: Formats => Formats =
     _ + uuidSerializer + hints
 
   lazy private val hints = FullTypeHints(List(
-    classOf[HiLowForecast], classOf[HiLowForecast]
+    classOf[GetWeatherStation], classOf[TemperatureAggregate]
   ))
 
   protected object uuidSerializer extends CustomSerializer[UUID](format => (

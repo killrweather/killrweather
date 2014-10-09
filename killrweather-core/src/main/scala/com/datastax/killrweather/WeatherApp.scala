@@ -16,12 +16,12 @@
 
 package com.datastax.killrweather
 
+import org.apache.spark.streaming.{Seconds, StreamingContext}
+import org.apache.spark.{SparkConf, SparkContext}
 import com.datastax.spark.connector.embedded.Assertions
 import com.datastax.spark.connector.util.Logging
-import org.apache.spark.streaming.StreamingContext
-import org.apache.spark.{SparkConf, SparkContext}
 
-trait KillrApp extends App with Assertions with Logging {
+trait WeatherApp extends App with Assertions with Logging {
 
   val settings = new Settings
   import settings._
@@ -43,14 +43,8 @@ trait KillrApp extends App with Assertions with Logging {
 
   lazy val sc = new SparkContext(conf)
 
-  def ssc: StreamingContext
 
-}
+  /** Creates the Spark Streaming context. */
+  lazy val ssc =  new StreamingContext(sc, Seconds(SparkStreamingBatchInterval))
 
-object KillrWeatherEvents {
-  sealed trait BlueprintEvent extends Serializable
-  case object Shutdown extends BlueprintEvent
-  case object TaskCompleted extends BlueprintEvent
-  case class WordCount(word: String, count: Int)
-  case class StreamingWordCount(time: Long, word: String, count: Int)
 }

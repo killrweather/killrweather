@@ -27,21 +27,25 @@ import org.json4s.native.JsonParser
 */
 
 import akka.actor.{ActorRef, ActorSystem}
-import com.datastax.killrweather.api.WeatherApi._
+import org.json4s.Formats
+import com.datastax.killrweather._
 
-class WeatherCenterServlet(api: WeatherDataActorApi) extends TimeseriesServlet {
+class WeatherCenterServlet(api: WeatherDataActorApi) extends WeatherServlet {
 
-  /** Sample: /v1/weather/climatology/10023?dayofyear=92 */
-  get("/v1/weather/climatology/high-low/:zipcode") {
-    val zipcode = zipcodeParam(params) getOrElse halt(status = 400, body = "No Zipcode was provided")
-    val dayofyear = dayOfYearParam(params)
-    api.hilow(GetTemperatureAggregate(zipcode, dayofyear)).run.valueOrThrow
+  import WeatherEvents._
+
+  override def jsonFormats: Formats = apiFormats
+
+  get("/v1/weather/climatology/temperature") {
+    val sid = stationIdOrHalt(request)
+    val month = monthParam(params)
+    val year = yearParam(params)
+    api.temperature(GetTemperature(sid.value, month, year)).run.valueOrThrow
   }
 
-  /** Sample: /v1/weather/stations/s/010010:99999 */
   get("/v1/weather/stations") {
-    val stationId = stationIdOrHalt(request)
-    api.weatherStation(GetWeatherStation(stationId)).run.valueOrThrow
+    val sid = stationIdOrHalt(request)
+    api.weatherStation(GetWeatherStation(sid.value)).run.valueOrThrow
   }
 }
 
@@ -50,7 +54,7 @@ class WeatherDataActorApi(system: ActorSystem, guardian: ActorRef) {
   import scala.concurrent.duration._
   import akka.pattern.ask
   import akka.util.Timeout
-  import com.datastax.killrweather._
+  import WeatherEvents._
   import Weather._
   import system.dispatcher
 
@@ -58,12 +62,12 @@ class WeatherDataActorApi(system: ActorSystem, guardian: ActorRef) {
 
   /** Returns a summary of the weather for the next 3 days.
     * This includes high and low temperatures, a string text forecast and the conditions.
-    * @param hiLow the paramaters for high-low forecast by location
+    * @param param the paramaters for high-low forecast by location
     */
-  def hilow(hiLow: GetTemperatureAggregate): FutureT[HiLowForecast] =
-    (guardian ? hiLow).mapTo[HiLowForecast].eitherT
+  def temperature(param: GetTemperature): FutureT[TemperatureAggregate] =
+    (guardian ? param).mapTo[TemperatureAggregate].eitherT
 
 
-  def weatherStation(station: GetWeatherStation): FutureT[WeatherStation] =
-    (guardian ? station).mapTo[WeatherStation].eitherT
+  def weatherStation(station: GetWeatherStation): FutureT[Seq[WeatherStation]] =
+    (guardian ? station).mapTo[Seq[WeatherStation]].eitherT
 }

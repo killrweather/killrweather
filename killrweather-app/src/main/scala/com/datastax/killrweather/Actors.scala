@@ -15,22 +15,19 @@
  */
 package com.datastax.killrweather
 
-import java.util.Properties
-
-import akka.actor.{Actor, ActorLogging, ActorRef}
-import kafka.producer.{KeyedMessage, Producer, ProducerConfig}
-import kafka.serializer.StringEncoder
-import kafka.server.KafkaConfig
 import org.apache.spark.rdd.RDD
+
+import scala.concurrent.Future
+import akka.pattern.{ pipe, ask }
+import akka.actor.{PoisonPill, Actor, ActorRef}
+import org.apache.spark.SparkContext._
 import org.apache.spark.streaming.StreamingContext
-import com.datastax.killrweather.KillrWeatherEvents._
-import com.datastax.killrweather.Weather.RawWeatherData
-import com.datastax.spark.connector.embedded.Assertions
+import kafka.server.KafkaConfig
+import com.datastax.killrweather.actor.{KafkaProducer, WeatherActor}
 
-trait WeatherActor extends Actor with ActorLogging
-
-
-/** Stores the raw data in Cassandra for multi-purpose data analysis.
+/** Downloads the annual weather .gz files, transforms to line data,
+  * and publishes to Kafka topic.
+  * Stores the raw data in Cassandra for multi-purpose data analysis.
   *
   * This just batches one data file for the demo. But you could do something like this
   * to set up a monitor on a directory, so that when new files arrive, Spark streams
@@ -40,94 +37,88 @@ trait WeatherActor extends Actor with ActorLogging
   *   ssc.textFileStream("dirname")
      .reduceByWindow(_ + _, Seconds(30), Seconds(1))
   * }}}
-  *
-  * Should make this a supervisor which partitions the workload to routees vs doing
-  * all the work itself. But normally this would be done by other strategies anyway.
   */
-class RawDataActor(val kafkaConfig: KafkaConfig, ssc: StreamingContext, settings: WeatherSettings)
+class RawFeedActor(val kafkaConfig: KafkaConfig, ssc: StreamingContext, settings: WeatherSettings)
   extends KafkaProducer {
-
+  import WeatherEvents._
   import settings._
 
+  def receive : Actor.Receive = {
+    case PublishFeed(years) => publish(years, sender)
+  }
+
+  /*
+  http://drive.google.com/a/datastax.com/?tab=mo#folders/0BycxXFtupqQ2ZmUteVE1elhHdlU/2004.csv.gz
+  s3://s3-us-west-2.amazonaws.com/datastax-file-test/2005.csv
+  https://drive.google.com/a/datastax.com/open?id=0BycxXFtupqQ2clMzMUhTZXp6ZzQ
+  FileUtils.copyURLToFile(url, new File("./data/2004-new.csv.gz"), 5000, 5000)
   val lines: RDD[String] = ssc.sparkContext.textFile(RawDataFile).flatMap(_.split("\\n"))
-
-  publish(lines)
-
-  def receive : Actor.Receive = {
-    case e =>
-  }
-
-  // TODO start but don't wait until done. go right back
-  def publish(data: RDD[String]): Unit = {
-    log.info(s"Batch sending raw data to kafka")
-    batchSend(KafkaTopicRaw, KafkaGroupId, KafkaBatchSendSize, lines.toLocalIterator.toSeq)
-    context.parent ! TaskCompleted
-    context stop self
-  }
-}
-
-/** 3. reads raw from kafka stream, processes, stores in cassandra. */
-class HighLowActor(ssc: StreamingContext, settings: WeatherSettings) extends WeatherActor with Assertions {
-
-  import com.datastax.spark.connector.streaming._
-  import com.datastax.killrweather.api.WeatherApi._
-  import settings._
-
-  def receive : Actor.Receive = {
-    case GetTemperatureAggregate(zip, doy) => compute(zip, doy, sender)
-  }
-
-  /**
-   * IMPLEMENT ME - for a given weather station:
-   * Hi, low and average temperature
-   * annual cumulative precip - or year to date
-   */
-  def compute(zip: Int, doy: Int, requester: ActorRef): Unit = {
-
-    /* The iterator will consume as much memory as the largest partition in this RDD */
-    ssc.cassandraTable[RawWeatherData](CassandraKeyspace, CassandraTableRaw)
-      .toLocalIterator.foreach(row => log.info(s"Read from Cassandra [$row]"))
-
-    /*
-    While you're here, try playing around with select and where:
-    ssc.cassandraTable[RawWeatherData](CassandraKeyspace, CassandraTableRaw)
-      .select(...column names)
-      .where("month = ?", 9)
-    */
-
-  }
-}
-
-
-trait KafkaProducer extends WeatherActor {
-
-  def kafkaConfig: KafkaConfig
-
-  private val producer = {
-    val props = new Properties()
-    props.put("metadata.broker.list", kafkaConfig.hostName + ":" + kafkaConfig.port)
-    props.put("serializer.class", classOf[StringEncoder].getName)
-    props.put("partitioner.class", "kafka.producer.DefaultPartitioner")
-    props.put("request.required.acks", "1")
-    props.put("producer.type", "async")
-    props.put("batch.num.messages", "100")
-
-    new Producer[String, String](new ProducerConfig(props))
-  }
-
-  def send(topic : String, key : String, message : String): Unit =
-    producer.send(KeyedMessage(topic, key, message))
-
-  def batchSend(topic: String, group: String, batchSize: Int, lines: Seq[String]): Unit =
-    if (lines.nonEmpty) {
-      val (send, unsent) = lines.toSeq.splitAt(batchSize)
-      val messages = send map (KeyedMessage(topic, group, _))
-      producer.send(messages.toArray: _*)
-      log.debug(s"Published messages to kafka topic '$topic'. Batching remaining ${unsent.size}")
-      batchSend(topic, group, batchSize, unsent)
+  */
+  def publish(years: Range, requestor: ActorRef): Unit =
+    years foreach { n =>
+      val location = s"$DataDirectory/200$n.csv.gz"
+      val lines = ssc.sparkContext.textFile(location).flatMap(_.split("\\n")).toLocalIterator
+      batchSend(KafkaTopicRaw, KafkaGroupId, KafkaBatchSendSize, lines.toSeq)
+      requestor ! TaskCompleted
+    //  self ! PoisonPill
     }
 
-  override def postStop(): Unit =
-    producer.close()
+}
+
+/**
+ * For a given weather station, calculates high, low and average temperature.
+ * For the moment we do just the month interval.
+ */
+class TemperatureActor(ssc: StreamingContext, settings: WeatherSettings) extends WeatherActor {
+  import com.datastax.spark.connector._
+  import Weather._
+  import settings._
+
+  def receive : Actor.Receive = {
+    case WeatherEvents.GetTemperature(sid, month, year) => compute(sid, month, year, sender)
+  }
+
+  /* The iterator will consume as much memory as the largest partition in this RDD */
+  def compute(sid: String, month: Int, year: Int, requester: ActorRef): Unit = Future {
+      val rdd = ssc.sparkContext.cassandraTable(CassandraKeyspace, CassandraTableRaw)
+        .select("weather_station", "year", "month", "day", "hour", "temperature").as(Temperature)
+        .where("month = ? AND year = ?", month, year)
+        .map(_.temperature).map(_.toDouble)
+
+      TemperatureAggregate(sid, rdd)
+  } pipeTo requester
+
+}
+
+/**
+ * For a given weather station, calculates annual cumulative precip - or year to date.
+ */
+class PrecipitationActor(ssc: StreamingContext, settings: WeatherSettings) extends WeatherActor {
+
+  def receive : Actor.Receive = {
+    case WeatherEvents.GetPrecipitation(sid, month, year) => compute(sid, month, year, sender)
+  }
+
+  def compute(sid: String, month: Int, year: Int, requester: ActorRef): Unit = ???
+
+}
+
+/** For a given weather station id, retrieves the full station data. */
+class WeatherStationActor(ssc: StreamingContext, settings: WeatherSettings) extends WeatherActor {
+  import com.datastax.spark.connector._
+  import settings._
+
+  def receive : Actor.Receive = {
+    case WeatherEvents.GetWeatherStation(sid) => weatherStation(sid, sender)
+  }
+
+  /** Fill out the where clause and what needs to be passed in to request one. */
+  def weatherStation(sid: String, requester: ActorRef): Unit =
+    for {
+      stations <- ssc.sparkContext.cassandraTable[Weather.WeatherStation](CassandraKeyspace, CassandraTableStations)
+                  .where("id = ?", sid)
+                  .collectAsync
+      station <- stations.headOption
+    } requester ! station
 
 }

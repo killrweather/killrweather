@@ -1,13 +1,30 @@
+/*
+ * Licensed to the Apache Software Foundation (ASF) under one or more
+ * contributor license agreements.  See the NOTICE file distributed with
+ * this work for additional information regarding copyright ownership.
+ * The ASF licenses this file to You under the Apache License, Version 2.0
+ * (the "License"); you may not use this file except in compliance with
+ * the License.  You may obtain a copy of the License at
+ *    http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 package com.datastax.killrweather
 
-/**
- * Created by helena on 10/7/14.
- */
+import org.apache.spark.rdd.RDD
+import org.apache.spark.SparkContext._
+import org.joda.time.DateTime
+
 object Weather {
+
   /** Base marker trait. */
   sealed trait WeatherDataMarker extends Serializable
-
   trait DataRequest extends WeatherDataMarker
+  trait DataResponse extends WeatherDataMarker
 
   /** Keeping as flat as possible for now, for simplicity. May modify later when time. */
   trait WeatherModel extends WeatherDataMarker
@@ -81,5 +98,15 @@ object Weather {
         oneHourPrecip = array(11).toFloat,
         sixHourPrecip = Option(array(12).toFloat).getOrElse(0))
     }
+  }
+
+
+  case class Temperature(sid: String, year: Int, month: Int, day: Int, hour: Int, temperature: Float) extends WeatherModel
+
+  case class TemperatureAggregate(sid: String, high: Double, low: Double, mean: Double, variance: Double, stdev: Double) extends WeatherModel
+  object TemperatureAggregate {
+    def apply(id: String, rdd: RDD[Double]): TemperatureAggregate =
+      TemperatureAggregate(
+        sid = id, high = rdd.max, low = rdd.min, mean = rdd.mean, variance = rdd.variance, stdev = rdd.stdev)
   }
 }

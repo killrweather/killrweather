@@ -23,25 +23,30 @@ import scala.util.control.NonFatal
 import akka.pattern.AskTimeoutException
 import akka.util.Timeout
 import org.json4s.{DefaultFormats, Formats}
+import org.joda.time.{DateTimeZone, DateTime}
 import org.scalatra._
 import org.scalatra.json.NativeJsonSupport
 import com.datastax.spark.connector.util.Logging
 
 class WeatherServlet extends ScalatraServlet with FutureSupport with NativeJsonSupport with UrlGeneratorSupport with Logging {
-  import com.datastax.killrweather.api.ApiData._
+  import WeatherApi.WeatherStationId
 
   protected implicit def timeout: Timeout = 5.seconds
   protected implicit def apiFormats: Formats = DefaultFormats
   protected implicit def executor: ExecutionContext = ExecutionContext.global
   override def jsonFormats: Formats = apiFormats
 
-  protected def blueprintId(request: HttpServletRequest): Option[String] =
-    for {
-      validated <- UID(request)
-      id <- validated.toOption
-    } yield id.value
+  protected def stationIdOrHalt(request: HttpServletRequest, errorBody: => String => Any = identity): WeatherStationId = {
+    WeatherStationId(request) getOrElse halt(status = 400, body = errorBody("Invalid Station ID")) valueOr (fail => halt(status = 400, body = errorBody(fail)))
+  }
 
-  def perPageParam(params: Params): Int = params.get("perPage").map(_.toInt) getOrElse 30
+  protected def dayOfYearParam(params: Params): Int = params.get("dayOfYear").map(_.toInt) getOrElse currentDayOfYear
+
+  protected def monthParam(params: Params): Int = params.get("month").map(_.toInt) getOrElse currentMonth
+
+  protected def yearParam(params: Params): Int = params.get("year").map(_.toInt) getOrElse currentYear
+
+  protected def perPageParam(params: Params): Int = params.get("perPage").map(_.toInt) getOrElse 30
 
   // Only show necessary.
   notFound {
@@ -58,4 +63,9 @@ class WeatherServlet extends ScalatraServlet with FutureSupport with NativeJsonS
       logError(s"""Ask timed out, returning status code 504. Request path = '$requestPath', requester: '${request.getRemoteHost}'. $e""")
       GatewayTimeout()
   }
+
+  private def currentDayOfYear: Int = now.getDayOfYear
+  private def currentMonth: Int = now.getMonthOfYear
+  private def currentYear: Int = now.getYear
+  private def now: DateTime = new DateTime(DateTimeZone.UTC)
 }

@@ -28,7 +28,6 @@ object KillrWeatherBuild extends Build {
     aggregate = Seq(core, api, app)
   )
 
-  /** Blueprint core setup and Basic samples. */
   lazy val core = Project(
     id = "core",
     base = file("./killrweather-core"),
@@ -40,17 +39,15 @@ object KillrWeatherBuild extends Build {
     base = file("./killrweather-api"),
     dependencies = Seq(core),
     settings = defaultSettings ++ withContainer ++ Seq(libraryDependencies ++= Dependencies.api)
-  ) configs (IntegrationTest) configs(config("container"))
+  ) configs IntegrationTest configs config("container")
 
-  /** Timeseries apps: WeatherCenter, Campaign. */
   lazy val app = Project(
     id = "app",
     base = file("./killrweather-app"),
     dependencies = Seq(core, api),
     settings = defaultSettings ++ withContainer ++ Seq(libraryDependencies ++= Dependencies.app)
-  ) configs (IntegrationTest) configs(config("container"))
+  ) configs IntegrationTest configs config("container")
 
-  /** More sample apps coming, using ML and Spark SQL. */
 }
 
 /** To use the connector, the only dependency required is:
@@ -62,10 +59,10 @@ object Dependencies {
 
   object Compile {
     val akkaActor         = "com.typesafe.akka"   %% "akka-actor"                         % Akka    force() // ApacheV2
-    val akkaCluster       = "com.typesafe.akka"   %% "akka-cluster"                       % Akka            // ApacheV2
-    val akkaContrib       = "com.typesafe.akka"   %% "akka-contrib"                       % Akka            // ApacheV2
-    val akkaRemote        = "com.typesafe.akka"   %% "akka-remote"                        % Akka            // ApacheV2
-    val akkaSlf4j         = "com.typesafe.akka"   %% "akka-slf4j"                         % Akka            // ApacheV2
+    val akkaCluster       = "com.typesafe.akka"   %% "akka-cluster"                       % Akka    force()        // ApacheV2
+    val akkaContrib       = "com.typesafe.akka"   %% "akka-contrib"                       % Akka    force()        // ApacheV2
+    val akkaRemote        = "com.typesafe.akka"   %% "akka-remote"                        % Akka    force()        // ApacheV2
+    val akkaSlf4j         = "com.typesafe.akka"   %% "akka-slf4j"                         % Akka    force()        // ApacheV2
     val jodaTime          = "joda-time"           % "joda-time"                           % JodaTime        // ApacheV2
     val jodaConvert       = "org.joda"            % "joda-convert"                        % JodaConvert     // ApacheV2
     val json4sCore        = "org.json4s"          %% "json4s-core"                        % Json4s          // ApacheV2

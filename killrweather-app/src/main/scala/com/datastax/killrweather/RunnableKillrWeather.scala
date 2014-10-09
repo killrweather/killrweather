@@ -16,23 +16,19 @@
 package com.datastax.killrweather
 
 import akka.actor.{ActorSystem, PoisonPill, Props}
-import com.datastax.spark.connector.embedded.EmbeddedKafka
 import com.typesafe.config.Config
-import org.apache.spark.streaming.{Seconds, StreamingContext}
+import com.datastax.spark.connector.embedded.EmbeddedKafka
 
 /** Runnable: for running WeatherCenter from command line or IDE. */
 object RunnableKillrWeather extends KillrWeather
 
 /** Used to run [[RunnableKillrWeather]] and [[com.datastax.killrweather.api.WeatherServletContextListener]] */
-trait KillrWeather extends KillrApp {
+trait KillrWeather extends WeatherApp {
 
   override val settings = new WeatherSettings()
 
   /** Starts the Kafka broker and Zookeeper. */
   lazy val kafka = new EmbeddedKafka
-
-  /** Creates the Spark Streaming context. */
-  val ssc =  new StreamingContext(sc, Seconds(2))
 
   /** Creates the ActorSystem. */
   val system = ActorSystem(settings.AppName)
@@ -42,14 +38,13 @@ trait KillrWeather extends KillrApp {
     guardian ! PoisonPill
   }
 
-  /** The ingest topic. */
+  /** Creates the raw data topic. */
   kafka.createTopic(settings.KafkaTopicRaw)
 
   /* The root supervisor Actor of our app. */
   val guardian = system.actorOf(Props(new NodeGuardian(ssc, kafka, settings)), "node-guardian")
 
   ssc.awaitTermination()
-
 }
 
 /**
@@ -60,19 +55,17 @@ trait KillrWeather extends KillrApp {
  */
 final class WeatherSettings(conf: Option[Config] = None) extends Settings(conf) {
 
-  protected val timeseries = rootConfig.getConfig("killrweather")
-
-  val CassandraKeyspace = timeseries.getString("cassandra.keyspace")
-  val CassandraTableRaw = timeseries.getString("cassandra.table.raw")
-  val CassandraTableHighLow = timeseries.getString("cassandra.table.highlow")
-  val CassandraTableSky = timeseries.getString("cassandra.table.sky")
-  val CassandraTableStations = timeseries.getString("cassandra.table.stations")
+  val CassandraKeyspace = killrweather.getString("cassandra.keyspace")
+  val CassandraTableRaw = killrweather.getString("cassandra.table.raw")
+  val CassandraTableHighLow = killrweather.getString("cassandra.table.highlow")
+  val CassandraTableSky = killrweather.getString("cassandra.table.sky")
+  val CassandraTableStations = killrweather.getString("cassandra.table.stations")
 
   //val KafkaHosts: immutable.Seq[String] = Util.immutableSeq(timeseries.getStringList("kafka.hosts"))
-  val KafkaGroupId = timeseries.getString("kafka.group.id")
-  val KafkaTopicRaw = timeseries.getString("kafka.topic.raw")
-  val KafkaBatchSendSize = timeseries.getInt("kafka.batch.send.size")
+  val KafkaGroupId = killrweather.getString("kafka.group.id")
+  val KafkaTopicRaw = killrweather.getString("kafka.topic.raw")
+  val KafkaBatchSendSize = killrweather.getInt("kafka.batch.send.size")
 
-  val SparkCheckpointDir = timeseries.getString("spark.checkpoint.dir")
-  val RawDataFile = timeseries.getString("raw.data.file")
+  val SparkCheckpointDir = killrweather.getString("spark.checkpoint.dir")
+  val DataDirectory = killrweather.getString("data.dir")
 }

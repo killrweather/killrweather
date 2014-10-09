@@ -13,31 +13,20 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.datastax
+package com.datastax.killrweather.actor
 
-import org.json4s._
+import scala.concurrent.duration._
+import akka.actor.{ActorRef, ActorLogging, Actor}
+import akka.util.Timeout
+import org.joda.time.{DateTimeZone, DateTime}
 
-import com.datastax.killrweather.api.WeatherCenterJson
+/** Just a base actor for a mixin. */
+trait WeatherActor extends Actor with ActorLogging {
 
-package object killrweather {
-  import scala.concurrent._
-  import scalaz._
+  implicit val timeout = Timeout(5.seconds)
 
-  implicit val formats: Formats = WeatherCenterJson.formats(DefaultFormats)
+  implicit val ctx = context.dispatcher
 
-
-  type FutureT[+A] = EitherT[Future, Throwable, A]
-
-  type Id = String
-
-  implicit class ScalaFutureOps[A](future: Future[A])(implicit context: ExecutionContext) {
-    def eitherT: EitherT[Future, Throwable, A] =
-      EitherT.eitherT(
-        future
-          .map(\/.right)
-          .recover { case e: Throwable => \/.left(e) })
-
-    def valueOrThrow[B](implicit ev: A <:< \/[Throwable, B]): Future[B] =
-      future map (_ valueOr (throw _))
-  }
+  def timestampOf(month: Int, year: Int): DateTime = new DateTime(DateTimeZone.UTC)
+    .withYear(year).withMonthOfYear(month)
 }
