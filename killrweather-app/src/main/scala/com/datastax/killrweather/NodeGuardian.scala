@@ -49,7 +49,7 @@ class NodeGuardian(ssc: StreamingContext, kafka: EmbeddedKafka, settings: Weathe
     }
 
   /** Reads the 2014 data file and publish the raw data to Kafka for streaming. */
-  context.actorOf(Props(new RawFeedActor(kafka.kafkaConfig, ssc, settings))) ! PublishFeed(5 to 5)
+  context.actorOf(Props(new RawFeedActor(kafka.kafkaConfig, ssc, settings))) ! PublishFeed(DataYearRange)
 
   /** Defines the work to be done on the raw data topic stream. */
   val rawInputStream = KafkaUtils.createStream[String, String, StringDecoder, StringDecoder](
@@ -62,12 +62,15 @@ class NodeGuardian(ssc: StreamingContext, kafka: EmbeddedKafka, settings: Weathe
     .map (RawWeatherData(_))
     .saveToCassandra(CassandraKeyspace, CassandraTableRaw)
 
+  /** Creates the worker actors. */
   val temperature = context.actorOf(Props(new TemperatureActor(ssc, settings)), "temperature")
 
   val station = context.actorOf(Props(new WeatherStationActor(ssc, settings)), "weather-station")
 
+  val precipitation = context.actorOf(Props(new PrecipitationActor(ssc, settings)), "precipitation")
+
   ssc.start()
-  val tmp = context.actorOf(Props(new TemporaryReceiver(temperature, station))) // temporary
+  val tmp = context.actorOf(Props(new TemporaryReceiver(temperature, precipitation, station))) // temporary
   tmp ! StartValidation
 
   override def postStop(): Unit = {
@@ -93,20 +96,21 @@ class NodeGuardian(ssc: StreamingContext, kafka: EmbeddedKafka, settings: Weathe
 }
 
 // manual kickoff for today, hooking up REST calls
-class TemporaryReceiver(temperature: ActorRef, weatherStation: ActorRef) extends Actor with ActorLogging with Assertions {
+class TemporaryReceiver(temperature: ActorRef, precipitation: ActorRef, weatherStation: ActorRef)
+  extends Actor with ActorLogging {
   import com.datastax.killrweather.WeatherEvents._
 
   var received = 0
-  val expected = 2
+  val expected = 3
 
   def receive: Actor.Receive = {
     case StartValidation =>
-      temperature ! GetTemperature("010000:99999", 10, 2005)
+      temperature ! GetTemperature("010010:99999", 10, 2005)
+      precipitation ! GetPrecipitation("010000:99999", 2005)
       weatherStation ! GetWeatherStation("13280:99999")
 
-    case e: Weather.TemperatureAggregate =>
+    case e: Weather.WeatherAggregate =>
       log.info(s"\n\nReceived $e"); received +=1; test()
-
     case e: Weather.WeatherStation =>
       log.info(s"\n\nReceived $e"); received +=1; test()
   }

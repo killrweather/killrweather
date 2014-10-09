@@ -100,13 +100,18 @@ object Weather {
     }
   }
 
+  trait WeatherAggregate extends WeatherModel
 
   case class Temperature(sid: String, year: Int, month: Int, day: Int, hour: Int, temperature: Float) extends WeatherModel
 
-  case class TemperatureAggregate(sid: String, high: Double, low: Double, mean: Double, variance: Double, stdev: Double) extends WeatherModel
+  case class TemperatureAggregate(sid: String, high: Double, low: Double, mean: Double, variance: Double, stdev: Double) extends WeatherAggregate
   object TemperatureAggregate {
     def apply(id: String, rdd: RDD[Double]): TemperatureAggregate =
       TemperatureAggregate(
         sid = id, high = rdd.max, low = rdd.min, mean = rdd.mean, variance = rdd.variance, stdev = rdd.stdev)
   }
+
+  case class Precipitation(sid: String, year: Int, month: Int, day: Int, hour: Int, oneHourPrecip: Float) extends WeatherModel
+
+  case class PrecipitationAggregate(sid: String, annual: Double) extends WeatherAggregate
 }

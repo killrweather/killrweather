@@ -41,22 +41,8 @@ object WeatherEvents {
   case class GetWeatherStation(sid: String) extends DataRequest
   case class GetRawWeatherData(perPage: Int) extends DataRequest
   case class GetSkyConditionLookup(code: Int) extends DataRequest
-  case class GetAnnualPrecipitation(id: String)
-  // Time Slice aggregations
-  // weather station row key : year and every cell is a day
-  // 1 - 365
-  // value cumulative number of rain total
-  // as of october 1, yearly rain total is 2 inches
-  // what was the cumulative for the week
-
-
-  // the rest are predictive:
-  // precip - if barometric drops
-  // predictive data
-
-
   case class GetTemperature(sid: String, month: Int, year: Int) extends DataRequest
-  case class GetPrecipitation(sid: String, month: Int, year: Int) extends DataRequest
+  case class GetPrecipitation(sid: String, year: Int) extends DataRequest
 
 }
 

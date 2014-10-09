@@ -68,4 +68,9 @@ final class WeatherSettings(conf: Option[Config] = None) extends Settings(conf) 
 
   val SparkCheckpointDir = killrweather.getString("spark.checkpoint.dir")
   val DataDirectory = killrweather.getString("data.dir")
+  val DataYearRange: Range = {
+    val s = killrweather.getInt("raw.data.year.start")
+    val e = killrweather.getInt("raw.data.year.end")
+    s to e
+  }
 }

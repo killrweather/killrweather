@@ -16,7 +16,7 @@
 package com.datastax.killrweather.actor
 
 import scala.concurrent.duration._
-import akka.actor.{ActorRef, ActorLogging, Actor}
+import akka.actor.{ActorLogging, Actor}
 import akka.util.Timeout
 import org.joda.time.{DateTimeZone, DateTime}
 

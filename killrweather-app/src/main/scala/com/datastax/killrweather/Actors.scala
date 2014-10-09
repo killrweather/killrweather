@@ -15,11 +15,9 @@
  */
 package com.datastax.killrweather
 
-import org.apache.spark.rdd.RDD
-
 import scala.concurrent.Future
 import akka.pattern.{ pipe, ask }
-import akka.actor.{PoisonPill, Actor, ActorRef}
+import akka.actor.{Actor, ActorRef}
 import org.apache.spark.SparkContext._
 import org.apache.spark.streaming.StreamingContext
 import kafka.server.KafkaConfig
@@ -34,7 +32,7 @@ import com.datastax.killrweather.actor.{KafkaProducer, WeatherActor}
   * them in. New files are read as text files with 'textFileStream' (using key as LongWritable,
   * value as Text and input format as TextInputFormat)
   * {{{
-  *   ssc.textFileStream("dirname")
+  *   ssc.textFileStream(dir)
      .reduceByWindow(_ + _, Seconds(30), Seconds(1))
   * }}}
   */
@@ -47,20 +45,13 @@ class RawFeedActor(val kafkaConfig: KafkaConfig, ssc: StreamingContext, settings
     case PublishFeed(years) => publish(years, sender)
   }
 
-  /*
-  http://drive.google.com/a/datastax.com/?tab=mo#folders/0BycxXFtupqQ2ZmUteVE1elhHdlU/2004.csv.gz
-  s3://s3-us-west-2.amazonaws.com/datastax-file-test/2005.csv
-  https://drive.google.com/a/datastax.com/open?id=0BycxXFtupqQ2clMzMUhTZXp6ZzQ
-  FileUtils.copyURLToFile(url, new File("./data/2004-new.csv.gz"), 5000, 5000)
-  val lines: RDD[String] = ssc.sparkContext.textFile(RawDataFile).flatMap(_.split("\\n"))
-  */
+  /** TODO from s3 */
   def publish(years: Range, requestor: ActorRef): Unit =
     years foreach { n =>
       val location = s"$DataDirectory/200$n.csv.gz"
       val lines = ssc.sparkContext.textFile(location).flatMap(_.split("\\n")).toLocalIterator
       batchSend(KafkaTopicRaw, KafkaGroupId, KafkaBatchSendSize, lines.toSeq)
       requestor ! TaskCompleted
-    //  self ! PoisonPill
     }
 
 }
@@ -82,7 +73,7 @@ class TemperatureActor(ssc: StreamingContext, settings: WeatherSettings) extends
   def compute(sid: String, month: Int, year: Int, requester: ActorRef): Unit = Future {
       val rdd = ssc.sparkContext.cassandraTable(CassandraKeyspace, CassandraTableRaw)
         .select("weather_station", "year", "month", "day", "hour", "temperature").as(Temperature)
-        .where("month = ? AND year = ?", month, year)
+        .where("weather_station = ? AND month = ? AND year = ?", sid, month, year)
         .map(_.temperature).map(_.toDouble)
 
       TemperatureAggregate(sid, rdd)
@@ -94,12 +85,22 @@ class TemperatureActor(ssc: StreamingContext, settings: WeatherSettings) extends
  * For a given weather station, calculates annual cumulative precip - or year to date.
  */
 class PrecipitationActor(ssc: StreamingContext, settings: WeatherSettings) extends WeatherActor {
+  import com.datastax.spark.connector._
+  import Weather._
+  import settings._
 
   def receive : Actor.Receive = {
-    case WeatherEvents.GetPrecipitation(sid, month, year) => compute(sid, month, year, sender)
+    case WeatherEvents.GetPrecipitation(sid, year) => compute(sid, year, sender)
   }
 
-  def compute(sid: String, month: Int, year: Int, requester: ActorRef): Unit = ???
+  def compute(sid: String, year: Int, requester: ActorRef): Unit = Future {
+    val rdd = ssc.sparkContext.cassandraTable(CassandraKeyspace, CassandraTableRaw)
+      .select("weather_station", "year", "month", "day", "hour", "oneHourPrecip").as(Precipitation)
+      .where("id = ? AND year = ?", sid, year)
+      .map(_.oneHourPrecip).map(_.toDouble)
+
+    PrecipitationAggregate(sid, rdd.sum)
+  } pipeTo requester
 
 }
 
