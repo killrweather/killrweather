@@ -32,7 +32,7 @@ import com.datastax.killrweather._
 
 class WeatherCenterServlet(api: WeatherDataActorApi) extends WeatherServlet {
 
-  import WeatherEvents._
+  import WeatherEvent._
 
   override def jsonFormats: Formats = apiFormats
 
@@ -54,7 +54,7 @@ class WeatherDataActorApi(system: ActorSystem, guardian: ActorRef) {
   import scala.concurrent.duration._
   import akka.pattern.ask
   import akka.util.Timeout
-  import WeatherEvents._
+  import WeatherEvent._
   import Weather._
   import system.dispatcher
 
@@ -64,8 +64,8 @@ class WeatherDataActorApi(system: ActorSystem, guardian: ActorRef) {
     * This includes high and low temperatures, a string text forecast and the conditions.
     * @param param the paramaters for high-low forecast by location
     */
-  def temperature(param: GetTemperature): FutureT[TemperatureAggregate] =
-    (guardian ? param).mapTo[TemperatureAggregate].eitherT
+  def temperature(param: GetTemperature): FutureT[Temperature] =
+    (guardian ? param).mapTo[Temperature].eitherT
 
 
   def weatherStation(station: GetWeatherStation): FutureT[Seq[WeatherStation]] =

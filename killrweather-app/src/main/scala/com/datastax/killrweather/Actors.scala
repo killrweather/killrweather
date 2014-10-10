@@ -38,7 +38,7 @@ import com.datastax.killrweather.actor.{KafkaProducer, WeatherActor}
   */
 class RawFeedActor(val kafkaConfig: KafkaConfig, ssc: StreamingContext, settings: WeatherSettings)
   extends KafkaProducer {
-  import WeatherEvents._
+  import WeatherEvent._
   import settings._
 
   def receive : Actor.Receive = {
@@ -51,7 +51,6 @@ class RawFeedActor(val kafkaConfig: KafkaConfig, ssc: StreamingContext, settings
       val location = s"$DataDirectory/200$n.csv.gz"
       val lines = ssc.sparkContext.textFile(location).flatMap(_.split("\\n")).toLocalIterator
       batchSend(KafkaTopicRaw, KafkaGroupId, KafkaBatchSendSize, lines.toSeq)
-      requestor ! TaskCompleted
     }
 
 }
@@ -62,21 +61,20 @@ class RawFeedActor(val kafkaConfig: KafkaConfig, ssc: StreamingContext, settings
  */
 class TemperatureActor(ssc: StreamingContext, settings: WeatherSettings) extends WeatherActor {
   import com.datastax.spark.connector._
-  import Weather._
+  import WeatherEvent._
   import settings._
 
   def receive : Actor.Receive = {
-    case WeatherEvents.GetTemperature(sid, month, year) => compute(sid, month, year, sender)
+    case WeatherEvent.GetTemperature(sid, month, year) => compute(sid, month, year, sender)
   }
 
   /* The iterator will consume as much memory as the largest partition in this RDD */
   def compute(sid: String, month: Int, year: Int, requester: ActorRef): Unit = Future {
-      val rdd = ssc.sparkContext.cassandraTable(CassandraKeyspace, CassandraTableRaw)
-        .select("weather_station", "year", "month", "day", "hour", "temperature").as(Temperature)
-        .where("weather_station = ? AND month = ? AND year = ?", sid, month, year)
-        .map(_.temperature).map(_.toDouble)
+      val rdd = ssc.sparkContext.cassandraTable[Double](CassandraKeyspace, CassandraTableRaw)
+                .select("temperature")
+                .where("weather_station = ? AND month = ? AND year = ?", sid, month, year)
 
-      TemperatureAggregate(sid, rdd)
+      Temperature(sid, rdd)
   } pipeTo requester
 
 }
@@ -86,20 +84,19 @@ class TemperatureActor(ssc: StreamingContext, settings: WeatherSettings) extends
  */
 class PrecipitationActor(ssc: StreamingContext, settings: WeatherSettings) extends WeatherActor {
   import com.datastax.spark.connector._
-  import Weather._
+  import WeatherEvent._
   import settings._
 
   def receive : Actor.Receive = {
-    case WeatherEvents.GetPrecipitation(sid, year) => compute(sid, year, sender)
+    case WeatherEvent.GetPrecipitation(sid, year) => compute(sid, year, sender)
   }
 
   def compute(sid: String, year: Int, requester: ActorRef): Unit = Future {
-    val rdd = ssc.sparkContext.cassandraTable(CassandraKeyspace, CassandraTableRaw)
-      .select("weather_station", "year", "month", "day", "hour", "oneHourPrecip").as(Precipitation)
-      .where("id = ? AND year = ?", sid, year)
-      .map(_.oneHourPrecip).map(_.toDouble)
+    val rdd = ssc.sparkContext.cassandraTable[Double](CassandraKeyspace, CassandraTableRaw)
+              .select("oneHourPrecip")
+              .where("id = ? AND year = ?", sid, year)
 
-    PrecipitationAggregate(sid, rdd.sum)
+    Precipitation(sid, rdd)
   } pipeTo requester
 
 }
@@ -110,10 +107,15 @@ class WeatherStationActor(ssc: StreamingContext, settings: WeatherSettings) exte
   import settings._
 
   def receive : Actor.Receive = {
-    case WeatherEvents.GetWeatherStation(sid) => weatherStation(sid, sender)
+    case WeatherEvent.GetWeatherStation(sid) => weatherStation(sid, sender)
   }
 
-  /** Fill out the where clause and what needs to be passed in to request one. */
+  /** Fill out the where clause and what needs to be passed in to request one.
+    *
+    * The reason we can not allow a `LIMIT 1` in the `where` function is that
+    * the query is executed on each node, so the limit would applied in each
+    * query invocation. You would probably receive about partitions_number * limit results.
+    */
   def weatherStation(sid: String, requester: ActorRef): Unit =
     for {
       stations <- ssc.sparkContext.cassandraTable[Weather.WeatherStation](CassandraKeyspace, CassandraTableStations)

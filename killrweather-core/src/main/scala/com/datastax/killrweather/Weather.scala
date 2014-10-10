@@ -15,19 +15,11 @@
  */
 package com.datastax.killrweather
 
-import org.apache.spark.rdd.RDD
-import org.apache.spark.SparkContext._
-import org.joda.time.DateTime
-
 object Weather {
 
   /** Base marker trait. */
-  sealed trait WeatherDataMarker extends Serializable
-  trait DataRequest extends WeatherDataMarker
-  trait DataResponse extends WeatherDataMarker
-
-  /** Keeping as flat as possible for now, for simplicity. May modify later when time. */
-  trait WeatherModel extends WeatherDataMarker
+  @SerialVersionUID(1L)
+  sealed trait WeatherModel extends Serializable
 
   /**
    * @param id Composite of Air Force Datsav3 station number and NCDC WBAN number
@@ -99,19 +91,4 @@ object Weather {
         sixHourPrecip = Option(array(12).toFloat).getOrElse(0))
     }
   }
-
-  trait WeatherAggregate extends WeatherModel
-
-  case class Temperature(sid: String, year: Int, month: Int, day: Int, hour: Int, temperature: Float) extends WeatherModel
-
-  case class TemperatureAggregate(sid: String, high: Double, low: Double, mean: Double, variance: Double, stdev: Double) extends WeatherAggregate
-  object TemperatureAggregate {
-    def apply(id: String, rdd: RDD[Double]): TemperatureAggregate =
-      TemperatureAggregate(
-        sid = id, high = rdd.max, low = rdd.min, mean = rdd.mean, variance = rdd.variance, stdev = rdd.stdev)
-  }
-
-  case class Precipitation(sid: String, year: Int, month: Int, day: Int, hour: Int, oneHourPrecip: Float) extends WeatherModel
-
-  case class PrecipitationAggregate(sid: String, annual: Double) extends WeatherAggregate
 }

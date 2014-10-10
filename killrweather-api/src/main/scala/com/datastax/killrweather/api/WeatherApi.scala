@@ -14,14 +14,8 @@
  * limitations under the License.
  */
 package com.datastax.killrweather.api
-
-import com.datastax.killrweather.Weather
-import org.joda.time.DateTime
-
+ 
 object WeatherApi {
-  import Weather._
-
-  sealed trait Aggregate extends DataResponse
 
   class WeatherStationId private (val value: String) extends AnyVal {
     override def toString: String = s"$value"

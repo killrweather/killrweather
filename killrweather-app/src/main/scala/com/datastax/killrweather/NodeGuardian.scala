@@ -26,7 +26,6 @@ import org.apache.spark.streaming.kafka.KafkaUtils
 import kafka.serializer.StringDecoder
 import com.datastax.spark.connector.embedded.{Assertions, EmbeddedKafka}
 import com.datastax.spark.connector.streaming._
-import com.datastax.killrweather.api.WeatherApi
 
 /**
  * NOTE: if [[NodeGuardian]] is ever put on an Akka router, multiple instances of the stream will
@@ -34,7 +33,7 @@ import com.datastax.killrweather.api.WeatherApi
  */
 class NodeGuardian(ssc: StreamingContext, kafka: EmbeddedKafka, settings: WeatherSettings)
   extends Actor with Assertions with ActorLogging {
-  import com.datastax.killrweather.WeatherEvents._
+  import com.datastax.killrweather.WeatherEvent._
   import Weather._
   import settings._
 
@@ -79,12 +78,11 @@ class NodeGuardian(ssc: StreamingContext, kafka: EmbeddedKafka, settings: Weathe
   }
 
   def receive: Actor.Receive = {
-    case TaskCompleted         =>
     case ValidationCompleted   => context stop tmp
     case e: GetTemperature     => temperature forward e
     case e: GetWeatherStation  => station forward e
     case e: GetSkyConditionLookup =>
-    case e: TemperatureAggregate => log.info(s"Received $e")
+    case e: Temperature => log.info(s"Received $e")
     case PoisonPill            => gracefulShutdown()
   }
 
@@ -98,7 +96,7 @@ class NodeGuardian(ssc: StreamingContext, kafka: EmbeddedKafka, settings: Weathe
 // manual kickoff for today, hooking up REST calls
 class TemporaryReceiver(temperature: ActorRef, precipitation: ActorRef, weatherStation: ActorRef)
   extends Actor with ActorLogging {
-  import com.datastax.killrweather.WeatherEvents._
+  import com.datastax.killrweather.WeatherEvent._
 
   var received = 0
   val expected = 3
