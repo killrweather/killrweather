@@ -56,3 +56,36 @@ CREATE TABLE sky_condition_lookup (
     code int PRIMARY KEY,
     condition text
 );
+
+CREATE TABLE daily_aggregate_temperature (
+   weather_station text,
+   year int,
+   month int,
+   day int,
+   high float,
+   low float,
+   mean float,
+   variance float,
+   stdev float,
+   PRIMARY KEY ((weather_station), year, month, day)
+) WITH CLUSTERING ORDER BY (year DESC, month DESC, day DESC);
+
+/*
+  Sum of all one_hour_preip for one day and one weather station
+*/
+CREATE TABLE daily_aggregate_precip (
+   weather_station text,
+   year int,
+   month int,
+   day int,
+   precipitation float,
+   PRIMARY KEY ((weather_station), year, month, day)
+) WITH CLUSTERING ORDER BY (year DESC, month DESC, day DESC);
+
+
+CREATE TABLE year_cumulative_precip (
+   weather_station text,
+   year int,
+   precipitation float,
+   PRIMARY KEY ((weather_station), year)
+) WITH CLUSTERING ORDER BY (year DESC);
