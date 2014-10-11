@@ -44,7 +44,9 @@ object WeatherEvent {
    * See http://en.wikipedia.org/wiki/Okta
    */
   case class GetSkyConditionLookup(code: Int) extends WeatherRequest
-  case class GetTemperature(sid: String, month: Int, year: Int) extends WeatherRequest
+  case class GetTemperature(sid: String, doy: Int, year: Int) extends WeatherRequest
+  case class GetDailyTemperature(sid: String, doy: Int, year: Int) extends WeatherRequest
+  case class GetMonthlyTemperature(sid: String, doy: Int, year: Int) extends WeatherRequest
   case class GetPrecipitation(sid: String, year: Int) extends WeatherRequest
 
   case class Temperature(sid: String, high: Double, low: Double, mean: Double, variance: Double, stdev: Double) extends WeatherAggregate
@@ -55,9 +57,9 @@ object WeatherEvent {
   }
 
   case class Precipitation(sid: String, annual: Double) extends WeatherAggregate
-  object Precipitation {
+  /*object Precipitation {
     def apply(sid: String, rdd: RDD[Double]): Precipitation =
       Precipitation(sid, rdd.sum)
-  }
+  }*/
 }
 

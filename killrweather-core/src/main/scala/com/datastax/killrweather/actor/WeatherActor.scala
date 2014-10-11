@@ -20,13 +20,24 @@ import akka.actor.{ActorLogging, Actor}
 import akka.util.Timeout
 import org.joda.time.{DateTimeZone, DateTime}
 
-/** Just a base actor for a mixin. */
+/** A base actor for weather data computation. */
 trait WeatherActor extends Actor with ActorLogging {
 
   implicit val timeout = Timeout(5.seconds)
 
   implicit val ctx = context.dispatcher
 
-  def timestampOf(month: Int, year: Int): DateTime = new DateTime(DateTimeZone.UTC)
+  /** Creates a timestamp for the current date time in UTC. */
+  def now: DateTime = new DateTime(DateTimeZone.UTC)
+
+  /** Creates a lazy date stream, where elements are only evaluated when they are needed. */
+  def allDays(from: DateTime): Stream[DateTime] = from #:: allDays(from.plusDays(1))
+
+  /** Creates timestamp for a given year and day of year. */
+  def dayOfYearForYear(doy: Int, year: Int): DateTime = new DateTime(DateTimeZone.UTC)
+    .withYear(year).withDayOfYear(doy)
+
+  /** Creates timestamp for a given year and day of year. */
+  def monthAndYear(month: Int, year: Int): DateTime = new DateTime(DateTimeZone.UTC)
     .withYear(year).withMonthOfYear(month)
 }

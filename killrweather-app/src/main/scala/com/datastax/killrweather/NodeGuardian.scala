@@ -47,22 +47,16 @@ class NodeGuardian(ssc: StreamingContext, kafka: EmbeddedKafka, settings: Weathe
       case _: Exception                => Escalate
     }
 
-  /** Reads the 2014 data file and publish the raw data to Kafka for streaming. */
+  /* Reads raw data and publishes to Kafka topic - this would normally stream in. */
   context.actorOf(Props(new RawFeedActor(kafka.kafkaConfig, ssc, settings))) ! PublishFeed(DataYearRange)
 
-  /** Defines the work to be done on the raw data topic stream. */
-  val rawInputStream = KafkaUtils.createStream[String, String, StringDecoder, StringDecoder](
-    ssc, kafka.kafkaParams, Map(KafkaTopicRaw -> 1), StorageLevel.MEMORY_ONLY)
+  /* Streams raw data from the Kafka topic to Cassandra. */
+  val publisher = context.actorOf(Props(new RawDataPublisher(kafka, ssc, settings)), "")
 
   ssc.checkpoint(SparkCheckpointDir)
 
-  /** Streams in the raw data, converts to a type, saves to cassandra table. */
-  rawInputStream.map { case (_,d) => d.split(",")}
-    .map (RawWeatherData(_))
-    .saveToCassandra(CassandraKeyspace, CassandraTableRaw)
-
   /** Creates the worker actors. */
-  val temperature = context.actorOf(Props(new TemperatureActor(ssc, settings)), "temperature")
+  val temperature = context.actorOf(Props(new DailyTemperatureActor(ssc, settings)), "temperature")
 
   val station = context.actorOf(Props(new WeatherStationActor(ssc, settings)), "weather-station")
 
@@ -107,7 +101,7 @@ class TemporaryReceiver(temperature: ActorRef, precipitation: ActorRef, weatherS
       precipitation ! GetPrecipitation("010000:99999", 2005)
       weatherStation ! GetWeatherStation("13280:99999")
 
-    case e: Weather.WeatherAggregate =>
+    case e: WeatherEvent.WeatherAggregate =>
       log.info(s"\n\nReceived $e"); received +=1; test()
     case e: Weather.WeatherStation =>
       log.info(s"\n\nReceived $e"); received +=1; test()

@@ -33,5 +33,5 @@ object Versions {
   val ScalazStream   = "0.1"
   val Slf4j          = "1.7.7"
   val Spark          = "1.1.0"
-  val SparkCassandra = "1.1.0-alpha2"
+  val SparkCassandra = "1.1.0-alpha3"
 }
