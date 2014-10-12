@@ -16,6 +16,7 @@
 
 import sbt._
 import sbt.Keys._
+import net.virtualvoid.sbt.graph.Plugin.graphSettings
 import com.earldouglas.xsbtwebplugin.WebPlugin
 
 import scala.language.postfixOps
@@ -23,7 +24,7 @@ import scala.language.postfixOps
 object Settings extends Build {
 
   lazy val buildSettings = Seq(
-    name := "Blueprints",
+    name := "KillrWeather.com",
     normalizedName := "killrweather",
     organization := "com.datastax.killrweather",
     organizationHomepage := Some(url("http://www.github.com/killrweather/killrweather")),
@@ -39,15 +40,19 @@ object Settings extends Build {
     publish := {}
   )
 
-  lazy val defaultSettings = Seq(
+  lazy val defaultSettings = graphSettings ++ Seq(
     autoCompilerPlugins := true,
     libraryDependencies <+= scalaVersion { v => compilerPlugin("org.scala-lang.plugins" % "continuations" % v) },
     scalacOptions in (Compile, doc) ++= Seq("-implicits","-doc-root-content", "rootdoc.txt"),
-    scalacOptions ++= Seq("-encoding", "UTF-8", s"-target:jvm-${Versions.JDK}", "-deprecation", "-feature", "-language:_", "-unchecked", "-Xlint"),
-    javacOptions in Compile ++= Seq("-encoding", "UTF-8", "-source", Versions.JDK, "-target", Versions.JDK, "-Xlint:unchecked", "-Xlint:deprecation"),
+    scalacOptions ++= Seq("-encoding", "UTF-8", s"-target:jvm-${Versions.JDK}", "-feature", "-language:_", "-deprecation", "-unchecked", "-Xlint"),
+    javacOptions in Compile ++= Seq("-encoding", "UTF-8", "-source", Versions.JDK, "-target", Versions.JDK, "-Xlint:deprecation", "-Xlint:unchecked"),
     ivyLoggingLevel in ThisBuild := UpdateLogging.Quiet,
     parallelExecution in ThisBuild := false,
     parallelExecution in Global := false
+    // have to force override of old from spark
+    /*ivyXML := <dependencies>
+      <exclude org="com.typesafe" module="config-1.0.2"/>
+    </dependencies>*/
   )
 
   val tests = inConfig(Test)(Defaults.testTasks) ++ inConfig(IntegrationTest)(Defaults.itSettings)

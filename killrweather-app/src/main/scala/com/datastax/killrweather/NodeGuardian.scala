@@ -17,102 +17,75 @@ package com.datastax.killrweather
 
 import scala.concurrent.duration._
 import akka.actor._
-import akka.actor.SupervisorStrategy._
 import akka.pattern.gracefulStop
 import akka.util.Timeout
-import org.apache.spark.storage.StorageLevel
 import org.apache.spark.streaming.StreamingContext
-import org.apache.spark.streaming.kafka.KafkaUtils
-import kafka.serializer.StringDecoder
 import com.datastax.spark.connector.embedded.{Assertions, EmbeddedKafka}
-import com.datastax.spark.connector.streaming._
 
 /**
- * NOTE: if [[NodeGuardian]] is ever put on an Akka router, multiple instances of the stream will
+ * The `NodeGuardian` is the root of the primary KillrWeather deployed application.
+ * It manages the worker actors and is Akka Cluster aware by extending [[ClusterAwareActor]].
+ *
+ * NOTE: if `NodeGuardian` is ever put on an Akka router, multiple instances of the stream will
  * exist on the node. Might want to call 'union' on the streams in that case.
  */
 class NodeGuardian(ssc: StreamingContext, kafka: EmbeddedKafka, settings: WeatherSettings)
-  extends Actor with Assertions with ActorLogging {
-  import com.datastax.killrweather.WeatherEvent._
-  import Weather._
+  extends ClusterAwareActor with Assertions with ActorLogging {
+  import WeatherEvent._
   import settings._
 
   implicit val timeout = Timeout(3.seconds)
 
-  override val supervisorStrategy =
-    OneForOneStrategy(maxNrOfRetries = 10, withinTimeRange = 1 minute) {
-      case _: AssertionError           => Resume
-      case _: NullPointerException     => Restart
-      case _: IllegalArgumentException => Stop
-      case _: Exception                => Escalate
-    }
+  /** Create the worker actors: */
+  val station = context.actorOf(Props(new WeatherStationActor(ssc, settings)), "weather-station")
 
-  /** Reads the 2014 data file and publish the raw data to Kafka for streaming. */
-  context.actorOf(Props(new RawFeedActor(kafka.kafkaConfig, ssc, settings))) ! PublishFeed(DataYearRange)
+  /* Reads raw data and publishes to Kafka topic - this would normally stream in. */
+  val publisher = context.actorOf(Props(new RawDataPublisher(kafka.kafkaConfig, ssc, settings)))
 
-  /** Defines the work to be done on the raw data topic stream. */
-  val rawInputStream = KafkaUtils.createStream[String, String, StringDecoder, StringDecoder](
-    ssc, kafka.kafkaParams, Map(KafkaTopicRaw -> 1), StorageLevel.MEMORY_ONLY)
+  /* Streams raw data from the Kafka topic to Cassandra. */
+  context.actorOf(Props(new KafkaStreamActor(kafka, ssc, settings)), "kafka-stream")
 
   ssc.checkpoint(SparkCheckpointDir)
 
-  /** Streams in the raw data, converts to a type, saves to cassandra table. */
-  rawInputStream.map { case (_,d) => d.split(",")}
-    .map (RawWeatherData(_))
-    .saveToCassandra(CassandraKeyspace, CassandraTableRaw)
-
-  /** Creates the worker actors. */
-  val temperature = context.actorOf(Props(new TemperatureActor(ssc, settings)), "temperature")
-
-  val station = context.actorOf(Props(new WeatherStationActor(ssc, settings)), "weather-station")
+  val temperature = context.actorOf(Props(new TemperatureSupervisor(2005, ssc, settings)), "temperature")
 
   val precipitation = context.actorOf(Props(new PrecipitationActor(ssc, settings)), "precipitation")
 
   ssc.start()
-  val tmp = context.actorOf(Props(new TemporaryReceiver(temperature, precipitation, station))) // temporary
-  tmp ! StartValidation
+
+  /* The first things we do. Retrieves the set of weather station Ids
+  to hand to the daily background computation workers. */
+  override def preStart(): Unit = {
+    station ! GetWeatherStationIds
+    publisher ! PublishFeed(DataYearRange)
+  }
 
   override def postStop(): Unit = {
     log.info("Shutting down.")
     ssc.stop(stopSparkContext = true, stopGracefully = true)
   }
 
-  def receive: Actor.Receive = {
-    case ValidationCompleted   => context stop tmp
-    case e: GetTemperature     => temperature forward e
-    case e: GetWeatherStation  => station forward e
+  /** On startup, actor is in an uninitialized state. */
+  override def receive = uninitialized orElse super.receive
+
+  /** Once it receives weather station ids, the guardian actor becomes initialized. */
+  def uninitialized: Actor.Receive = {
+    case e: WeatherStationIds =>
+      temperature ! e
+      precipitation ! e
+      context become initialized
+  }
+
+  def initialized: Actor.Receive = {
+    case e: GetTemperature        => temperature forward e
+    case e: GetWeatherStation     => station forward e
     case e: GetSkyConditionLookup =>
-    case e: Temperature => log.info(s"Received $e")
-    case PoisonPill            => gracefulShutdown()
+    case PoisonPill               => gracefulShutdown()
   }
 
   def gracefulShutdown(): Unit = {
-    context.children foreach (c => awaitCond(gracefulStop(c, timeout.duration).isCompleted, timeout.duration))
+    context.children foreach (c => awaitCond(gracefulStop(c, timeout.duration).isCompleted))
     log.info(s"Graceful stop completed.")
   }
 
-}
-
-// manual kickoff for today, hooking up REST calls
-class TemporaryReceiver(temperature: ActorRef, precipitation: ActorRef, weatherStation: ActorRef)
-  extends Actor with ActorLogging {
-  import com.datastax.killrweather.WeatherEvent._
-
-  var received = 0
-  val expected = 3
-
-  def receive: Actor.Receive = {
-    case StartValidation =>
-      temperature ! GetTemperature("010010:99999", 10, 2005)
-      precipitation ! GetPrecipitation("010000:99999", 2005)
-      weatherStation ! GetWeatherStation("13280:99999")
-
-    case e: Weather.WeatherAggregate =>
-      log.info(s"\n\nReceived $e"); received +=1; test()
-    case e: Weather.WeatherStation =>
-      log.info(s"\n\nReceived $e"); received +=1; test()
-  }
-
-  def test(): Unit =
-    if(received == expected) context.parent ! ValidationCompleted
 }

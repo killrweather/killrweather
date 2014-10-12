@@ -14,7 +14,9 @@
  * limitations under the License.
  */
 package com.datastax.killrweather
-  
+
+import org.apache.spark.util.StatCounter
+
 object WeatherEvent {
   import org.apache.spark.rdd.RDD
   import org.apache.spark.SparkContext._
@@ -39,25 +41,38 @@ object WeatherEvent {
     */
   case class GetWeatherStation(sid: String) extends WeatherRequest
   case class GetRawWeatherData(perPage: Int) extends WeatherRequest
+
+  case object GetWeatherStationIds extends WeatherRequest
+  case object StreamWeatherStationIds extends WeatherRequest
+  case class WeatherStationIds(sids: String*) extends WeatherResponse  
+
+  case class ComputeDailyTemperature(sid: String, year: Int) extends WeatherRequest
+  case class GetTemperature(sid: String, doy: Int, year: Int) extends WeatherRequest
+  case class GetMonthlyTemperature(sid: String, doy: Int, year: Int) extends WeatherRequest
+  case class Temperature(sid: String, high: Double, low: Double, mean: Double, variance: Double, stdev: Double) extends WeatherAggregate
+  object Temperature {
+    def apply(id: String, values: Seq[Double]): Temperature = {
+      val s = StatCounter(values)
+      Temperature(sid = id, high = s.max, low = s.min, mean = s.mean, variance = s.variance, stdev = s.stdev)
+    }
+  }
+
+  case class GetPrecipitation(sid: String, year: Int) extends WeatherRequest
+  case class Precipitation(sid: String, annual: Double) extends WeatherAggregate
+   object Precipitation {
+    def apply(sid: String, values: Seq[Double]): Precipitation = {
+      val s = StatCounter(values)
+      Precipitation(sid, s.sum)
+    }
+  }
+  case class GetTopKPrecipitation(year: Int) extends WeatherRequest
+  case class TopKPrecipitation(seq: Seq[(String, Double)]) extends WeatherAggregate
+
   /**
    * Quick access lookup table for sky_condition. Useful for potential analytics.
    * See http://en.wikipedia.org/wiki/Okta
    */
   case class GetSkyConditionLookup(code: Int) extends WeatherRequest
-  case class GetTemperature(sid: String, month: Int, year: Int) extends WeatherRequest
-  case class GetPrecipitation(sid: String, year: Int) extends WeatherRequest
 
-  case class Temperature(sid: String, high: Double, low: Double, mean: Double, variance: Double, stdev: Double) extends WeatherAggregate
-  object Temperature {
-    def apply(id: String, rdd: RDD[Double]): Temperature =
-      Temperature(
-        sid = id, high = rdd.max, low = rdd.min, mean = rdd.mean, variance = rdd.variance, stdev = rdd.stdev)
-  }
-
-  case class Precipitation(sid: String, annual: Double) extends WeatherAggregate
-  object Precipitation {
-    def apply(sid: String, rdd: RDD[Double]): Precipitation =
-      Precipitation(sid, rdd.sum)
-  }
 }
 

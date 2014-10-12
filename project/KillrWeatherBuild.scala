@@ -59,10 +59,11 @@ object Dependencies {
 
   object Compile {
     val akkaActor         = "com.typesafe.akka"   %% "akka-actor"                         % Akka    force() // ApacheV2
-    val akkaCluster       = "com.typesafe.akka"   %% "akka-cluster"                       % Akka    force()        // ApacheV2
-    val akkaContrib       = "com.typesafe.akka"   %% "akka-contrib"                       % Akka    force()        // ApacheV2
-    val akkaRemote        = "com.typesafe.akka"   %% "akka-remote"                        % Akka    force()        // ApacheV2
-    val akkaSlf4j         = "com.typesafe.akka"   %% "akka-slf4j"                         % Akka    force()        // ApacheV2
+    val akkaCluster       = "com.typesafe.akka"   %% "akka-cluster"                       % Akka    force() // ApacheV2
+    val akkaContrib       = "com.typesafe.akka"   %% "akka-contrib"                       % Akka    force() // ApacheV2
+    val akkaRemote        = "com.typesafe.akka"   %% "akka-remote"                        % Akka    force() // ApacheV2
+    val akkaSlf4j         = "com.typesafe.akka"   %% "akka-slf4j"                         % Akka    force() // ApacheV2
+    // can't use latest: spark :( val config            = "com.typesafe"        % "config"                              % Config  force() // ApacheV2
     val jodaTime          = "joda-time"           % "joda-time"                           % JodaTime        // ApacheV2
     val jodaConvert       = "org.joda"            % "joda-convert"                        % JodaConvert     // ApacheV2
     val json4sCore        = "org.json4s"          %% "json4s-core"                        % Json4s          // ApacheV2
@@ -71,14 +72,14 @@ object Dependencies {
     val kafka             = "org.apache.kafka"    %% "kafka"                              % Kafka           // ApacheV2
     val scalazContrib     = "org.typelevel"       %% "scalaz-contrib-210"                 % ScalazContrib   // MIT
     val scalazContribVal  = "org.typelevel"       %% "scalaz-contrib-validation"          % ScalazContrib   // MIT
-    val scalazContribUndo ="org.typelevel"        %% "scalaz-contrib-undo"                % ScalazContrib   // MIT
+    val scalazContribUndo = "org.typelevel"       %% "scalaz-contrib-undo"                % ScalazContrib   // MIT
     val scalazNst         = "org.typelevel"       %% "scalaz-nscala-time"                 % ScalazContrib   // MIT
     val scalazSpire       = "org.typelevel"       %% "scalaz-spire"                       % ScalazContrib   // MIT
     val scalazStream      = "org.scalaz.stream"   %% "scalaz-stream"                      % ScalazStream    // MIT
     val slf4jApi          = "org.slf4j"           % "slf4j-api"                           % Slf4j           // MIT
-    val sparkML           = "org.apache.spark"    %% "spark-mllib"                        % Spark           // ApacheV2
-    val sparkCassandra    = "com.datastax.spark"  %% "spark-cassandra-connector"          % SparkCassandra  // ApacheV2
-    val sparkCassandraEmb = "com.datastax.spark"  %% "spark-cassandra-connector-embedded" % SparkCassandra  // ApacheV2
+    val sparkML           = "org.apache.spark"    %% "spark-mllib"                        % Spark
+    val sparkCassandra    = "com.datastax.spark"  %% "spark-cassandra-connector"          % SparkCassandra
+    val sparkCassandraEmb = "com.datastax.spark"  %% "spark-cassandra-connector-embedded" % SparkCassandra
 
   }
 
@@ -92,9 +93,10 @@ object Dependencies {
   /* TBD if i'll keep these or not, it's just for running the API without deploying to tomcat
   - ease of use during Presentations, so we can just run in IDE or SBT command line. */
   object Test {
-    val akkaTestKit     = "com.typesafe.akka"     %% "akka-testkit"                       % Akka        % "test,it"
-    val scalatest       = "org.scalatest"         %% "scalatest"                          % "2.2.1"     % "test,it"
-    val scalatraTest    = "org.scalatra"          %% "scalatra-scalatest"                 % "2.2.2"     % "test,it"
+    val akkaTestKit     = "com.typesafe.akka"     %% "akka-testkit"                       % Akka         % "test,it" // ApacheV2
+    val scalatest       = "org.scalatest"         %% "scalatest"                          % ScalaTest    % "test,it"
+    val scalatraTest    = "org.scalatra"          %% "scalatra-scalatest"                 % ScalatraTest % "test,it"
+    val sigar           = "org.fusesource"        % "sigar"                               % Sigar
   }
 
   import Compile._
@@ -113,7 +115,7 @@ object Dependencies {
 
   val time = Seq(jodaConvert, jodaTime)
 
-  val test = Seq(Test.akkaTestKit, Test.scalatest, Test.scalatraTest)
+  val test = Seq(Test.akkaTestKit, Test.scalatest, Test.scalatraTest,  Test.sigar)
 
   /** Module deps */
   val core = connector ++ scalaz

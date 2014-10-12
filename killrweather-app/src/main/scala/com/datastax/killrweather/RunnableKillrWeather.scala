@@ -15,12 +15,17 @@
  */
 package com.datastax.killrweather
 
+import java.util.concurrent.TimeUnit
+
 import akka.actor.{ActorSystem, PoisonPill, Props}
+import com.datastax.killrweather.WeatherEvent.GetWeatherStationIds
 import com.typesafe.config.Config
 import com.datastax.spark.connector.embedded.EmbeddedKafka
 
+import scala.concurrent.duration.Duration
+
 /** Runnable: for running WeatherCenter from command line or IDE. */
-object RunnableKillrWeather extends KillrWeather
+object RunnableKillrWeather extends App with KillrWeather
 
 /** Used to run [[RunnableKillrWeather]] and [[com.datastax.killrweather.api.WeatherServletContextListener]] */
 trait KillrWeather extends WeatherApp {
@@ -43,6 +48,7 @@ trait KillrWeather extends WeatherApp {
 
   /* The root supervisor Actor of our app. */
   val guardian = system.actorOf(Props(new NodeGuardian(ssc, kafka, settings)), "node-guardian")
+  guardian ! GetWeatherStationIds
 
   ssc.awaitTermination()
 }
@@ -57,7 +63,8 @@ final class WeatherSettings(conf: Option[Config] = None) extends Settings(conf) 
 
   val CassandraKeyspace = killrweather.getString("cassandra.keyspace")
   val CassandraTableRaw = killrweather.getString("cassandra.table.raw")
-  val CassandraTableHighLow = killrweather.getString("cassandra.table.highlow")
+  val CassandraTableDailyTemp = killrweather.getString("cassandra.table.daily.temperature")
+  val CassandraTableDailyPrecip = killrweather.getString("cassandra.table.daily.precipitation")
   val CassandraTableSky = killrweather.getString("cassandra.table.sky")
   val CassandraTableStations = killrweather.getString("cassandra.table.stations")
 
@@ -67,10 +74,18 @@ final class WeatherSettings(conf: Option[Config] = None) extends Settings(conf) 
   val KafkaBatchSendSize = killrweather.getInt("kafka.batch.send.size")
 
   val SparkCheckpointDir = killrweather.getString("spark.checkpoint.dir")
-  val DataDirectory = killrweather.getString("data.dir")
+
+  // can't upgrade config until spark does :( could not get around that in the build
+  val DailyTemperatureTaskInterval = Duration(killrweather.getLong("data.daily.temperature-task-interval-min"), TimeUnit.MILLISECONDS)
+  val DataFormat = killrweather.getString("data.raw.type")
+  val DataLocation = {
+    val path = killrweather.getString("data.raw.path")
+    val prefix = killrweather.getInt("data.raw.year.prefix")
+    s"$path/$prefix"
+  }
   val DataYearRange: Range = {
-    val s = killrweather.getInt("raw.data.year.start")
-    val e = killrweather.getInt("raw.data.year.end")
+    val s = killrweather.getInt("data.raw.year.start")
+    val e = killrweather.getInt("data.raw.year.end")
     s to e
   }
 }

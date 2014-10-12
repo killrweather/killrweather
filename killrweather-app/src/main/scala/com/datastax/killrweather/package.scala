@@ -15,29 +15,7 @@
  */
 package com.datastax
 
-import org.json4s._
-
-import com.datastax.killrweather.api.WeatherCenterJson
-
 package object killrweather {
-  import scala.concurrent._
-  import scalaz._
-
-  implicit val formats: Formats = WeatherCenterJson.formats(DefaultFormats)
 
 
-  type FutureT[+A] = EitherT[Future, Throwable, A]
-
-  type Id = String
-
-  implicit class ScalaFutureOps[A](future: Future[A])(implicit context: ExecutionContext) {
-    def eitherT: EitherT[Future, Throwable, A] =
-      EitherT.eitherT(
-        future
-          .map(\/.right)
-          .recover { case e: Throwable => \/.left(e) })
-
-    def valueOrThrow[B](implicit ev: A <:< \/[Throwable, B]): Future[B] =
-      future map (_ valueOr (throw _))
-  }
 }

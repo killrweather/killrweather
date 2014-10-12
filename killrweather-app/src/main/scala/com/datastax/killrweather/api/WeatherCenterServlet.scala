@@ -15,23 +15,13 @@
  */
 package com.datastax.killrweather.api
 
-/* not using yet
-import scalaz.contrib.std.scalaFuture._
-import scalaz.std.list._
-import scalaz.syntax.traverse._
-import scalaz.syntax.monad._
-import scalaz._
-import akka.pattern.ask
-import org.json4s._
-import org.json4s.native.JsonParser
-*/
-
 import akka.actor.{ActorRef, ActorSystem}
 import org.json4s.Formats
 import com.datastax.killrweather._
+import com.datastax.killrweather.syntax.future._
+import com.datastax.killrweather.syntax.json._
 
 class WeatherCenterServlet(api: WeatherDataActorApi) extends WeatherServlet {
-
   import WeatherEvent._
 
   override def jsonFormats: Formats = apiFormats
@@ -50,7 +40,6 @@ class WeatherCenterServlet(api: WeatherDataActorApi) extends WeatherServlet {
 }
 
 class WeatherDataActorApi(system: ActorSystem, guardian: ActorRef) {
-
   import scala.concurrent.duration._
   import akka.pattern.ask
   import akka.util.Timeout
