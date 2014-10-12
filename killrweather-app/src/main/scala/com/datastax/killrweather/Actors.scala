@@ -15,8 +15,6 @@
  */
 package com.datastax.killrweather
 
-import org.joda.time.DateTime
-
 import scala.concurrent.Future
 import akka.pattern.{ pipe, ask }
 import akka.actor.{Actor, ActorRef}
@@ -26,10 +24,50 @@ import kafka.server.KafkaConfig
 import kafka.serializer.StringDecoder
 import org.apache.spark.storage.StorageLevel
 import org.apache.spark.streaming.kafka.KafkaUtils
+import com.datastax.spark.connector.streaming._
 import com.datastax.spark.connector.embedded.EmbeddedKafka
 import com.datastax.killrweather.actor.{KafkaProducer, WeatherActor}
+import WeatherEvent._
+import Weather._
 
-/** 1. Transforms annual weather .gz files to line data and publishes to a Kafka topic.
+/** For a given weather station id, retrieves the full station data. */
+class WeatherStationActor(ssc: StreamingContext, settings: WeatherSettings) extends WeatherActor {
+  import settings.{CassandraKeyspace => keyspace}
+  import settings.{CassandraTableStations => weatherstations}
+
+  def receive : Actor.Receive = {
+    case GetWeatherStation(sid)  => weatherStation(sid, sender)
+    case StreamWeatherStationIds => streamWeatherStationIds(sender)
+    case GetWeatherStationIds    => weatherStationIds(sender)
+  }
+
+  /** 1. Streams weather station Ids to the daily computation actors.
+    * Requires less heap memory and system load, but is slower than collectAsync below. */
+  def streamWeatherStationIds(requester: ActorRef): Unit =
+    ssc.cassandraTable[String](keyspace, weatherstations).select("id")
+      .toLocalIterator foreach (id => requester ! WeatherStationIds(id))
+
+  /** 1. Collects weather station Ids async, to the daily computation actors.
+    * Requires more heap memory and system load, but is faster than toLocalIterator above. */
+  def weatherStationIds(requester: ActorRef): Unit =
+    for (stations <- ssc.cassandraTable[String](keyspace, weatherstations).select("id").collectAsync)
+    yield requester ! WeatherStationIds(stations: _*)
+
+  /** The reason we can not allow a `LIMIT 1` in the `where` function is that
+    * the query is executed on each node, so the limit would applied in each
+    * query invocation. You would probably receive about partitions_number * limit results.
+    */
+  def weatherStation(sid: String, requester: ActorRef): Unit =
+    for {
+      stations <- ssc.cassandraTable[Weather.WeatherStation](keyspace, weatherstations)
+        .where("id = ?", sid)
+        .collectAsync
+      station <- stations.headOption
+    } requester ! station
+
+}
+
+/** 2. The RawDataPublisher transforms annual weather .gz files to line data and publishes to a Kafka topic.
   *
   * This just batches one data file for the demo. But you could do something like this
   * to set up a monitor on an S3 bucket, so that when new files arrive, Spark streams
@@ -40,40 +78,36 @@ import com.datastax.killrweather.actor.{KafkaProducer, WeatherActor}
        .reduceByWindow(_ + _, Seconds(30), Seconds(1))
   * }}}
   */
-class RawFeedActor(val kafkaConfig: KafkaConfig, ssc: StreamingContext, settings: WeatherSettings)
-  extends KafkaProducer {
-
-  import WeatherEvent._
+class RawDataPublisher(val config: KafkaConfig, ssc: StreamingContext, settings: WeatherSettings) extends KafkaProducer {
   import settings._
 
   def receive : Actor.Receive = {
     case PublishFeed(years) => publish(years, sender)
   }
 
- /** 1. Transforms then publishes the raw data to a Kafka topic. */
   def publish(years: Range, requester: ActorRef): Unit =
     years foreach { n =>
       val location = s"$DataLocation$n.$DataFormat"
 
       /* The iterator will consume as much memory as the largest partition in this RDD */
       val lines = ssc.sparkContext.textFile(location).flatMap(_.split("\\n")).toLocalIterator
+      println(s"\n\n*** lines has ${lines.size}")
       batchSend(KafkaTopicRaw, KafkaGroupId, KafkaBatchSendSize, lines.toSeq)
     }
 }
 
-/** 2. Creates the Kafka stream which streams the raw data, transforms it, and saves it to Cassandra. */
-class RawDataPublisher(kafka: EmbeddedKafka, ssc: StreamingContext, settings: WeatherSettings) extends WeatherActor {
-  import com.datastax.spark.connector.streaming._
-
-  import Weather.RawWeatherData
+/** 3. The KafkaStreamActor elegantly creates a streaming pipeline from Kafka to Cassandra via Spark.
+  * It creates the Kafka stream which streams the raw data, transforms it, to
+  * a column entry for a specific weather station[[com.datastax.killrweather.Weather.RawWeatherData]],
+  * and saves the new data to the cassandra table as it arrives.
+  */
+class KafkaStreamActor(kafka: EmbeddedKafka, ssc: StreamingContext, settings: WeatherSettings) extends WeatherActor {
   import settings._
 
-  /* Creates the stream which streams in the raw data. */
+  /* Creates the Kafka stream and defines the work to be done. */
   val stream = KafkaUtils.createStream[String, String, StringDecoder, StringDecoder](
     ssc, kafka.kafkaParams, Map(KafkaTopicRaw -> 1), StorageLevel.MEMORY_ONLY)
 
-  /* Defines the work to be done on the raw data topic stream.
-     Converts to a [[com.datastax.killrweather.Weather.RawWeatherData]], saves to cassandra table. */
   stream.map { case (_,d) => d.split(",")}
     .map (RawWeatherData(_))
     .saveToCassandra(CassandraKeyspace, CassandraTableRaw)
@@ -83,129 +117,38 @@ class RawDataPublisher(kafka: EmbeddedKafka, ssc: StreamingContext, settings: We
   }
 }
 
-/** 3. Reads the raw data from Cassandra,
-  * For a given weather station, in a given `year`, calculates temperature statistics.
-  * For the moment we do just the month interval.
-  */
-class DailyTemperatureActor(year: Int, ssc: StreamingContext, settings: WeatherSettings) extends WeatherActor {
-  import com.datastax.spark.connector.streaming._
-  import scala.concurrent.duration._
-  import WeatherEvent._
-  import settings._
-
-  /* Hourly background task that computes and persists daily temperature by weather station. */
-  final val d = dayOfYearForYear(1, year)
-
-  allDays(d).filter(_.year == d.year).filter(_ isBeforeNow).map {
-    dt =>
-      context.system.scheduler.scheduleOnce(DailyTemperatureTaskInterval) {
-        self ! GetDailyTemperature("", dt.getDayOfYear, dt.getYear)
-      }
-      0.
-1  }
-
-  def receive : Actor.Receive = {
-    case GetDailyTemperature(sid, doy) => compute(sid, doy, year, sender)
-  }
-
-  /* Reads from the table can contain new data from the kafka stream in step 2. */
-  def compute(sid: String, doy: Int, year: Int, requester: ActorRef): Unit = Future {
-    val dt = dayOfYearForYear(doy, year)
-    val rdd = ssc.cassandraTable[Double](CassandraKeyspace, CassandraTableRaw)
-      .select("temperature")
-      .where("weather_station = ? AND year = ? AND month = ? AND day = ?",
-        sid, dt.year, dt.monthOfYear, dt.dayOfYear)
-
-    Temperature(sid, rdd)
-  } pipeTo requester
-
-}
-
-/** 3. Reads the raw data from Cassandra,
- * For a given weather station, calculates high, low and average temperature.
- * For the moment we do just the month interval.
- */
-class TemperatureActor(ssc: StreamingContext, settings: WeatherSettings) extends WeatherActor {
-  import com.datastax.spark.connector.streaming._
-  import scala.concurrent.duration._
-  import WeatherEvent._
-  import settings._
-
-  /* Background task that computes and persists daily temperature by weather station. */
-  val dailyTask = context.system.scheduler.schedule(initialDelay = 60.minutes, interval = 60.minutes) {
-    /* def publish(years: Range, requester: ActorRef): Unit =
-    years foreach { n =>
-      val location = s"$DataLocation$n.$DataFormat"
-  */
-     self ! GetDailyTemperature("", 1, 2)
-  }
-
-  def receive : Actor.Receive = {
-    case GetDailyTemperature(sid, doy, year) => compute(sid, doy, year, sender)
-    case GetMonthlyTemperature(sid, doy, year) => compute(sid, doy, year, sender)
-  }
-
-  def compute(sid: String, doy: Int, year: Int, requester: ActorRef): Unit = Future {
-     val dt = dayOfYearForYear(doy, year)
-     val rdd = ssc.cassandraTable[Double](CassandraKeyspace, CassandraTableRaw)
-                .select("temperature")
-                .where("weather_station = ? AND year = ? AND month = ? AND day = ?",
-                  sid, dt.year, dt.monthOfYear, dt.dayOfYear)
-
-
-      Temperature(sid, rdd)
-  } pipeTo requester
-
-}
-
-/** For a given weather station, calculates annual cumulative precip - or year to date. */
+/** 5. For a given weather station, calculates annual cumulative precip - or year to date. */
 class PrecipitationActor(ssc: StreamingContext, settings: WeatherSettings) extends WeatherActor {
-  import com.datastax.spark.connector.streaming._
-  import WeatherEvent._
-  import settings._
+  import settings.{CassandraKeyspace => keyspace}
+  import settings.{CassandraTableDailyPrecip => dailytable}
+
+  implicit def ordering: Ordering[(String,Double)] = Ordering.by(_._2)
 
   def receive : Actor.Receive = {
-    case WeatherEvent.GetPrecipitation(sid, year) => compute(sid, year, sender)
+    case GetPrecipitation(sid, year) => compute(sid, year, sender)
+    case GetTopKPrecipitation(year) => topk(year, sender)
   }
 
-  def compute(sid: String, year: Int, requester: ActorRef): Unit = Future {
-    // in the background: do daily to cassandra, then
-    val rdd = ssc.cassandraTable[Double](CassandraKeyspace, CassandraTableRaw)
-              .select("oneHourPrecip")// everything on that day up to the hour you have (up to 23)
-              .where("id = ? AND year = ?", sid, year)//.collectAsync()
-    // map over the previous value and add the next
-    // rained 25 mm, next 35mm, cumulative 55
-    // 1 hour is delta from the previous
-    // persist to table temperature_by_station
-    Precipitation(sid, rdd.sum) // rdd
-
-
-
+  /** Returns a future value to the `requester` actor.
+    * Precip values are 1 hour deltas from the previous. */
+  def compute(sid: String, year: Int, requester: ActorRef): Unit = {
+    val dt = timestamp.withYear(year)
+    for {
+      precip <- ssc.cassandraTable[Double](keyspace, dailytable)
+        .select("oneHourPrecip") // TODO change field name
+        .where("id = ? AND year = ?", sid, year)
+        .collectAsync
+    } yield Precipitation(sid, precip) // at most 365 values if available
   } pipeTo requester
 
-}
+  /** Returns the 10 highest temps for any station in the `year`. */
+  def topk(year: Int, requester: ActorRef): Unit = Future {
+    val top = ssc.cassandraTable[(String,Double)](keyspace, dailytable)
+      .select("id","precip") // TODO change field name
+      .where("year = ?", year)
+      .top(10)
 
-/** For a given weather station id, retrieves the full station data. */
-class WeatherStationActor(ssc: StreamingContext, settings: WeatherSettings) extends WeatherActor {
-  import com.datastax.spark.connector.streaming._
-  import settings._
-
-  def receive : Actor.Receive = {
-    case WeatherEvent.GetWeatherStation(sid) => weatherStation(sid, sender)
-  }
-
-  /** Fill out the where clause and what needs to be passed in to request one.
-    *
-    * The reason we can not allow a `LIMIT 1` in the `where` function is that
-    * the query is executed on each node, so the limit would applied in each
-    * query invocation. You would probably receive about partitions_number * limit results.
-    */
-  def weatherStation(sid: String, requester: ActorRef): Unit =
-    for {
-      stations <- ssc.cassandraTable[Weather.WeatherStation](CassandraKeyspace, CassandraTableStations)
-                  .where("id = ?", sid)
-                  .collectAsync
-      station <- stations.headOption
-    } requester ! station
+    TopKPrecipitation(top)
+  } pipeTo requester
 
 }

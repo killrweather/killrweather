@@ -16,41 +16,112 @@
 
 package com.datastax.killrweather
 
-import akka.util.Timeout
-
-import scala.concurrent.duration._
-import akka.actor.{ActorLogging, ActorSystem}
-import akka.testkit.{ImplicitSender, TestKit}
-import org.scalatest.{Matchers, BeforeAndAfterAll, WordSpec}
-import com.datastax.spark.connector.embedded.Assertions
+import akka.cluster.Cluster
+import akka.actor.{Actor, ActorLogging, Props, ActorSystem}
+import akka.testkit.{DefaultTimeout, ImplicitSender, TestKit}
+import org.scalatest._
+import org.apache.spark.{SparkContext, SparkConf}
+import org.apache.spark.storage.StorageLevel
+import org.apache.spark.streaming.{Seconds, StreamingContext}
+import com.datastax.spark.connector.cql.CassandraConnector
+import com.datastax.spark.connector.streaming.StreamingEvent._
 import com.datastax.spark.connector.streaming.TypedStreamingActor
 
 /** A very basic Akka actor which streams `String` event data to spark on receive. */
-class TestStreamingActor extends TypedStreamingActor[String] with ActorLogging {
+class TestStreamingActor extends TypedStreamingActor[String] {
+
+  override def preStart(): Unit =
+    context.system.eventStream.publish(ReceiverStarted(self))
 
   override def push(e: String): Unit = {
     super.push(e)
     // TODO
   }
 }
- //with SharedEmbeddedCassandra
-abstract class AkkaSpec extends TestKit(ActorSystem()) with ImplicitSender with AbstractSpec {
 
-  implicit val timeout = Timeout(3.seconds)
+abstract class ActorSparkSpec extends AkkaSpec with AbstractSpec {
+  import org.apache.spark.streaming.StreamingContext.toPairDStreamFunctions
+  import com.datastax.spark.connector.streaming._
+  import settings.{CassandraKeyspace => keyspace}
+  import settings._
+
+  val conf = new SparkConf().setAppName(getClass.getSimpleName).setMaster(SparkMaster)
+    .set("spark.cassandra.connection.host", CassandraHosts)
+    .set("spark.cleaner.ttl", SparkCleanerTtl.toString)
+
+  val sc = new SparkContext(conf)
+
+  val ssc =  new StreamingContext(sc, Seconds(120))
+
+  // to run streaming, at least one output
+  CassandraConnector(conf).withSessionDo { session =>
+    session.execute(s"CREATE TABLE IF NOT EXISTS $keyspace.words (word TEXT PRIMARY KEY, count COUNTER)")
+    session.execute(s"TRUNCATE $keyspace.words")
+  }
+  ssc.actorStream[String](Props[TestStreamingActor], "stream", StorageLevel.MEMORY_AND_DISK)
+    .flatMap(_.split("\\s+"))
+    .map(x => (x, 1))
+    .reduceByKey(_ + _)
+    .saveToCassandra(keyspace, "words")
+
+  ssc.start()
 
   override def afterAll() {
+    ssc.stop(true, false)
+    super.afterAll()
+  }
+}
+
+ //with SharedEmbeddedCassandra
+abstract class AkkaSpec extends TestKit(ActorSystem()) with AbstractSpec with ImplicitSender with DefaultTimeout {
+
+   val settings = new WeatherSettings()
+
+   protected val cluster = Cluster(system)
+
+   system.actorOf(Props(new MetricsListener(cluster)))
+
+   protected val log = akka.event.Logging(system, system.name)
+
+   override def afterAll() {
     system.shutdown()
     awaitCond(system.isTerminated)
+    super.afterAll()
   }
 }
 
-trait SparkSpec extends WeatherApp with AbstractSpec {
 
-  override val settings = new WeatherSettings()
+class MetricsListener(cluster: Cluster) extends Actor with ActorLogging {
+  import akka.cluster.ClusterEvent.ClusterMetricsChanged
+  import akka.cluster.ClusterEvent.CurrentClusterState
+  import akka.cluster.NodeMetrics
+  import akka.cluster.StandardMetrics.HeapMemory
+  import akka.cluster.StandardMetrics.Cpu
 
-  override def afterAll() {
+  val selfAddress = cluster.selfAddress
 
+  override def preStart(): Unit = cluster.subscribe(self, classOf[ClusterMetricsChanged])
+  override def postStop(): Unit = cluster.unsubscribe(self)
+
+  def receive = {
+    case ClusterMetricsChanged(clusterMetrics) =>
+      clusterMetrics.filter(_.address == selfAddress) foreach { nodeMetrics =>
+       logHeap(nodeMetrics)
+       logCpu(nodeMetrics)
+      }
+    case state: CurrentClusterState => // ignore
+  }
+
+  def logHeap(nodeMetrics: NodeMetrics): Unit = nodeMetrics match {
+    case HeapMemory(address, timestamp, used, committed, max) =>
+      log.info("Heap Memory: {} MB", used.doubleValue / 1024 / 1024)
+    case _ => // no heap info
+  }
+
+  def logCpu(nodeMetrics: NodeMetrics): Unit = nodeMetrics match {
+    case Cpu(address, timestamp, Some(systemLoadAverage), cpuCombined, processors) =>
+      log.info("System Load Avg: {} ({} processors)", systemLoadAverage, processors)
+    case _ => // no cpu info
   }
 }
-
-trait AbstractSpec extends WordSpec with Matchers with BeforeAndAfterAll with Assertions
+trait AbstractSpec extends Suite with WordSpecLike with Matchers with BeforeAndAfterAll

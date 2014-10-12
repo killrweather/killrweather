@@ -27,7 +27,8 @@ import com.datastax.killrweather._
 
 class WeatherCenterServletSpec extends ScalatraSuite with WordSpecLike
   with KillrWeather with WeatherFixture {
-  import com.datastax.killrweather._
+  import com.datastax.killrweather.syntax.json._
+  import WeatherEvent._
 
   val api = new WeatherDataActorApi(system, guardian)
   
@@ -37,7 +38,7 @@ class WeatherCenterServletSpec extends ScalatraSuite with WordSpecLike
     "GET valid /v1/weather/climatology/temperature request" in {
       get("/v1/weather/climatology/temperature?month=10&year=2005", headers = weatherStationHeaders) {
         response.status should be(200)
-        val aggregate = JsonParser.parse(response.body).extract[Weather.TemperatureAggregate]
+        val aggregate = JsonParser.parse(response.body).extract[Temperature]
         println(pretty(render(decompose(aggregate))))
         // TODO validate
       }

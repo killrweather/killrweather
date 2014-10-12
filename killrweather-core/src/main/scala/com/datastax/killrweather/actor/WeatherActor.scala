@@ -15,8 +15,11 @@
  */
 package com.datastax.killrweather.actor
 
+import java.util.concurrent.TimeoutException
+
 import scala.concurrent.duration._
-import akka.actor.{ActorLogging, Actor}
+import akka.actor.SupervisorStrategy._
+import akka.actor._
 import akka.util.Timeout
 import org.joda.time.{DateTimeZone, DateTime}
 
@@ -27,8 +30,18 @@ trait WeatherActor extends Actor with ActorLogging {
 
   implicit val ctx = context.dispatcher
 
+  override val supervisorStrategy =
+    OneForOneStrategy(maxNrOfRetries = 10, withinTimeRange = 1 minute) {
+      case _: ActorInitializationException => Stop
+      case _: IllegalArgumentException => Stop
+      case _: NullPointerException     => Restart
+      case _: IllegalStateException    => Restart
+      case _: TimeoutException         => Escalate
+      case _: Exception                => Escalate
+    }
+
   /** Creates a timestamp for the current date time in UTC. */
-  def now: DateTime = new DateTime(DateTimeZone.UTC)
+  def timestamp: DateTime = new DateTime(DateTimeZone.UTC)
 
   /** Creates a lazy date stream, where elements are only evaluated when they are needed. */
   def allDays(from: DateTime): Stream[DateTime] = from #:: allDays(from.plusDays(1))
@@ -40,4 +53,11 @@ trait WeatherActor extends Actor with ActorLogging {
   /** Creates timestamp for a given year and day of year. */
   def monthAndYear(month: Int, year: Int): DateTime = new DateTime(DateTimeZone.UTC)
     .withYear(year).withMonthOfYear(month)
+}
+
+trait DailyWeatherActor extends WeatherActor {
+
+  def year: Int
+
+  def weatherStationActor: ActorRef
 }

@@ -18,10 +18,9 @@ package com.datastax.killrweather
 
 import org.apache.spark.streaming.{Seconds, StreamingContext}
 import org.apache.spark.{SparkConf, SparkContext}
-import com.datastax.spark.connector.embedded.Assertions
 import com.datastax.spark.connector.util.Logging
 
-trait WeatherApp extends Assertions with Logging {
+trait WeatherApp extends Logging {
 
   val settings = new Settings
   import settings._

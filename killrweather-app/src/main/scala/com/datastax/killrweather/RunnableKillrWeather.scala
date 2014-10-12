@@ -18,6 +18,7 @@ package com.datastax.killrweather
 import java.util.concurrent.TimeUnit
 
 import akka.actor.{ActorSystem, PoisonPill, Props}
+import com.datastax.killrweather.WeatherEvent.GetWeatherStationIds
 import com.typesafe.config.Config
 import com.datastax.spark.connector.embedded.EmbeddedKafka
 
@@ -47,6 +48,7 @@ trait KillrWeather extends WeatherApp {
 
   /* The root supervisor Actor of our app. */
   val guardian = system.actorOf(Props(new NodeGuardian(ssc, kafka, settings)), "node-guardian")
+  guardian ! GetWeatherStationIds
 
   ssc.awaitTermination()
 }
@@ -61,8 +63,8 @@ final class WeatherSettings(conf: Option[Config] = None) extends Settings(conf) 
 
   val CassandraKeyspace = killrweather.getString("cassandra.keyspace")
   val CassandraTableRaw = killrweather.getString("cassandra.table.raw")
-  val CassandraTableDailyTemp = killrweather.getString("table.daily.temperature")
-  val CassandraTableDailyPrecip = killrweather.getString("table.daily.precipitation")
+  val CassandraTableDailyTemp = killrweather.getString("cassandra.table.daily.temperature")
+  val CassandraTableDailyPrecip = killrweather.getString("cassandra.table.daily.precipitation")
   val CassandraTableSky = killrweather.getString("cassandra.table.sky")
   val CassandraTableStations = killrweather.getString("cassandra.table.stations")
 
@@ -73,7 +75,8 @@ final class WeatherSettings(conf: Option[Config] = None) extends Settings(conf) 
 
   val SparkCheckpointDir = killrweather.getString("spark.checkpoint.dir")
 
-  val DailyTemperatureTaskInterval = Duration(killrweather.getMilliseconds("temperature-task-interval"), TimeUnit.MILLISECONDS)
+  // can't upgrade config until spark does :( could not get around that in the build
+  val DailyTemperatureTaskInterval = Duration(killrweather.getLong("data.daily.temperature-task-interval-min"), TimeUnit.MILLISECONDS)
   val DataFormat = killrweather.getString("data.raw.type")
   val DataLocation = {
     val path = killrweather.getString("data.raw.path")

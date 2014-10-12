@@ -23,11 +23,11 @@ import kafka.server.KafkaConfig
 
 trait KafkaProducer extends WeatherActor {
 
-  def kafkaConfig: KafkaConfig
+  def config: KafkaConfig
 
   private val producer = {
     val props = new Properties()
-    props.put("metadata.broker.list", kafkaConfig.hostName + ":" + kafkaConfig.port)
+    props.put("metadata.broker.list", config.hostName + ":" + config.port)
     /** Just using String Encoder to keep things simple for now. */
     props.put("serializer.class", classOf[StringEncoder].getName)
     props.put("partitioner.class", "kafka.producer.DefaultPartitioner")
