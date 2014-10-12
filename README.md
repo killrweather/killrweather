@@ -1,7 +1,6 @@
 KillrWeather
 ============
 
-<<<<<<< HEAD
 The killrweather.com app. Powerd by DataStax. An example application web site to highlight integration between Apache Spark and Apache Cassandra.
 
 ## Data Model
@@ -23,5 +22,4 @@ which is used as a primary dependency for easy integration of [Apache  Spark](ht
 in a [Scala](http://www.scala-lang.org) or Java application. 
 
 Please see the [KillrWeather Wiki](https://github.com/killrweather/killrweather/wiki) for full setup instructions and documentation.
- 
->>>>>>> a38e876bf2f16feda1a4207e75ae7c6dabe1f0ae
+
