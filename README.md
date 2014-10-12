@@ -10,4 +10,4 @@ You can find any schema creation scripts [here](https://github.com/killrweather/
 ####create-timeseries.cql
 Basic schema for creation of Cassandra keyspace and tables for storing raw weather data from ISD-lite hourly files.
 
- - weather_station: Lookup table for weather station by code. For this data file, we combine two fields in the format xxxxxx:yyyyy
+ - weather_station: Lookup table for weather station by code. For this data file, we combine two fields in the format xxxxxx:yyyyy xxxxx is the 
