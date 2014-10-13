@@ -58,7 +58,6 @@ class DailyTemperatureActorSpec extends TemperatureSpec {
   }
 }
 
-
 class TemperatureActorSpec extends TemperatureSpec {
   import WeatherEvent._
 

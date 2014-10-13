@@ -22,6 +22,8 @@ import akka.cluster.Cluster
 import akka.actor.{Actor, ActorLogging, Props, ActorSystem}
 import akka.testkit.{DefaultTimeout, ImplicitSender, TestKit}
 import com.datastax.killrweather.Weather.RawWeatherData
+import com.datastax.spark.connector.cql.CassandraConnector
+import org.apache.spark.storage.StorageLevel
 import org.joda.time.{DateTimeZone, DateTime}
 import org.scalatest._
 import org.apache.spark.{SparkContext, SparkConf}
@@ -33,6 +35,8 @@ trait AbstractSpec extends Suite with WordSpecLike with Matchers with BeforeAndA
 
 abstract class ActorSparkSpec extends AkkaSpec with AbstractSpec {
   import com.datastax.spark.connector.streaming._
+  import com.datastax.spark.connector._
+  import StreamingContext._
   import settings._
 
   val conf = new SparkConf().setAppName(getClass.getSimpleName).setMaster(SparkMaster)
@@ -44,14 +48,26 @@ abstract class ActorSparkSpec extends AkkaSpec with AbstractSpec {
   val ssc =  new StreamingContext(sc, Seconds(SparkStreamingBatchInterval)) // 1s
 
   /* Declare a required output stream. */
-  val stream = ssc.textFileStream(DataLoadPath)
+
+  /* Initialize data only if necessary. */
+  // to run streaming, at least one output
+  CassandraConnector(conf).withSessionDo { session =>
+    session.execute(s"CREATE TABLE IF NOT EXISTS $CassandraKeyspace.words (word TEXT PRIMARY KEY, count COUNTER)")
+    session.execute(s"TRUNCATE $CassandraKeyspace.words")
+  }
+  ssc.actorStream[String](Props[TestStreamingActor], "stream", StorageLevel.MEMORY_AND_DISK)
+    .flatMap(_.split("\\s+"))
+    .map(x => (x, 1))
+    .reduceByKey(_ + _)
+    .saveToCassandra(CassandraKeyspace, "words")
+
+  val lines = ssc.sparkContext.textFile(s"$DataLoadPath/2005.csv.gz")
     .flatMap(_.split("\\n"))
     .map { case d => d.split(",")}
     .map(RawWeatherData(_))
 
-  /* Initialize data only if necessary. */
   if (notInitialized)
-    stream.saveToCassandra(CassandraKeyspace, CassandraTableRaw)
+    lines.saveToCassandra(CassandraKeyspace, CassandraTableRaw)
   else {
     ssc.textFileStream("./data/test-output").saveAsTextFiles(getClass.getSimpleName, "test.out")
     system.registerOnTermination(deleteOnExit())
