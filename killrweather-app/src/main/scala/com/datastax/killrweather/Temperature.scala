@@ -15,6 +15,9 @@
  */
 package com.datastax.killrweather
 
+import org.apache.spark.rdd.RDD
+
+import scala.collection.immutable.HashSet.HashTrieSet
 import scala.concurrent.Future
 import scala.concurrent.duration._
 import akka.pattern.{ pipe, ask }
@@ -28,7 +31,7 @@ import com.datastax.spark.connector.streaming._
 import com.datastax.killrweather.api.WeatherApi
 import com.datastax.killrweather.actor.WeatherActor
 
-import WeatherEvent._
+import com.datastax.killrweather.WeatherEvent._
 
 /** Supervisor for a given `year`. */
 class TemperatureSupervisor(year: Int, ssc: StreamingContext, settings: WeatherSettings) extends WeatherActor {
@@ -65,32 +68,36 @@ class DailyTemperatureActor(ssc: StreamingContext, settings: WeatherSettings) ex
   import settings.{CassandraTableDailyTemp => dailytable}
 
   def receive : Actor.Receive = {
-    case ComputeDailyTemperature(sid, year) => compute(sid, year)
+    case ComputeDailyTemperature(sid, year, month) => compute(sid, year, month)
   }
 
   /* Compute aggregate for the given year, starting January 1, and store in daily rollup table. */
-  def compute(sid: String, year: Int): Unit =
-    for (aggregate <- computeYear(sid, dayOfYearForYear(1, year))) yield {
-      ssc.sparkContext.parallelize(aggregate).saveToCassandra(keyspace, dailytable)
-      context stop self
-    }
+  def compute(sid: String, year: Int, month: Option[Int]): Unit =
+    computeYear(sid, start = dayMonthYear(1, month, year))
 
   /* Streams only the valid days for the given year. */
-  def computeYear(sid: String, start: DateTime): Future[Seq[Temperature]] =
-    Future.sequence(for {
-      day  <- allDays(start).filter(_.getYear == start.getYear).filter(_ isBeforeNow)//.toList
-    } yield computeDay(day, sid).run.valueOrThrow)
+  def computeYear(sid: String, start: DateTime): Unit =
+    for (a <- allDays(start).filter(_.getYear == start.getYear).filter(_ isBeforeNow))
+    yield computeDay(a, sid)
 
   /** For the given day of the year, aggregates all the temp values to statistics: high, low, mean, std, etc.
     * Persists to Cassandra daily temperature table by weather station. */
-  def computeDay(dt: DateTime, sid: String): FutureT[Temperature] =
-    (for {
-      values <- ssc.cassandraTable[Double](keyspace, rawtable)
+  def computeDay(dt: DateTime, sid: String): Unit =
+    for {
+      aggregate <- ssc.cassandraTable[Double](keyspace, rawtable)
                 .select("temperature")
                 .where("weather_station = ? AND year = ? AND month = ? AND day = ?",
-                  sid, dt.getYear, dt.getMonthOfYear, dt.getDayOfYear)
-                .collectAsync
-    } yield Temperature(sid, values)).eitherT
+                    sid, dt.getYear, dt.getMonthOfYear, dt.getDayOfYear)
+                .collectAsync().map { c =>
+                  // fix cases: DailyTemperature(010010:99999,2005,12,347,-Infinity,Infinity,0.0,NaN,NaN)
+                  DailyTemperature(sid, dt.getYear, dt.getMonthOfYear, dt.getDayOfYear, c) }
+
+    } yield {
+      log.info(s"\nsaveToCassandra aggregate: $aggregate")
+      ssc.sparkContext.parallelize(Seq(aggregate))
+        .saveToCassandra(keyspace, dailytable)
+    }
+
 }
 
 /** 5. The TemperatureActor reads the daily temperature rollup data from Cassandra,

@@ -44,11 +44,22 @@ object WeatherEvent {
 
   case object GetWeatherStationIds extends WeatherRequest
   case object StreamWeatherStationIds extends WeatherRequest
-  case class WeatherStationIds(sids: String*) extends WeatherResponse  
+  case class WeatherStationIds(sids: String*) extends WeatherResponse
 
-  case class ComputeDailyTemperature(sid: String, year: Int) extends WeatherRequest
+  case class ComputeDailyTemperature(sid: String, year: Int, month: Option[Int] = None) extends WeatherRequest
   case class GetTemperature(sid: String, doy: Int, year: Int) extends WeatherRequest
   case class GetMonthlyTemperature(sid: String, doy: Int, year: Int) extends WeatherRequest
+  case class DailyTemperature(
+    weather_station: String, year: Int, month: Int, day: Int,
+    high: Double, low: Double, mean: Double, variance: Double, stdev: Double) extends WeatherAggregate
+  object DailyTemperature {
+    def apply(id: String, _year: Int, _month: Int, _day: Int, values: Seq[Double]): DailyTemperature = {
+      val s = StatCounter(values)
+      DailyTemperature(weather_station = id, year = _year, month = _month, _day,
+        high = s.max, low = s.min, mean = s.mean, variance = s.variance, stdev = s.stdev)
+    }
+  }
+
   case class Temperature(sid: String, high: Double, low: Double, mean: Double, variance: Double, stdev: Double) extends WeatherAggregate
   object Temperature {
     def apply(id: String, values: Seq[Double]): Temperature = {

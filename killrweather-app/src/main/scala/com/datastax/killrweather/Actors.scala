@@ -91,7 +91,6 @@ class RawDataPublisher(val config: KafkaConfig, ssc: StreamingContext, settings:
 
       /* The iterator will consume as much memory as the largest partition in this RDD */
       val lines = ssc.sparkContext.textFile(location).flatMap(_.split("\\n")).toLocalIterator
-      println(s"\n\n*** lines has ${lines.size}")
       batchSend(KafkaTopicRaw, KafkaGroupId, KafkaBatchSendSize, lines.toSeq)
     }
 }
@@ -111,6 +110,8 @@ class KafkaStreamActor(kafka: EmbeddedKafka, ssc: StreamingContext, settings: We
   stream.map { case (_,d) => d.split(",")}
     .map (RawWeatherData(_))
     .saveToCassandra(CassandraKeyspace, CassandraTableRaw)
+
+  ssc.start()
 
   def receive : Actor.Receive = {
     case _ =>

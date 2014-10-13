@@ -51,8 +51,12 @@ trait WeatherActor extends Actor with ActorLogging {
     .withYear(year).withDayOfYear(doy)
 
   /** Creates timestamp for a given year and day of year. */
-  def monthAndYear(month: Int, year: Int): DateTime = new DateTime(DateTimeZone.UTC)
-    .withYear(year).withMonthOfYear(month)
+  def dayMonthYear(doy: Int, month: Option[Int], year: Int): DateTime =
+    month match {
+      case Some(m) => dayOfYearForYear(doy, year).withMonthOfYear(m)
+      case None => dayOfYearForYear(doy, year)
+    }
+
 }
 
 trait DailyWeatherActor extends WeatherActor {

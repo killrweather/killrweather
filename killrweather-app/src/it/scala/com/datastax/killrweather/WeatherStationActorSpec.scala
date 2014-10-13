@@ -19,7 +19,6 @@ import scala.concurrent.duration._
 import akka.actor.Props
 
 class WeatherStationActorSpec extends ActorSparkSpec {
-
   import WeatherEvent._
 
   val sid = "252860:99999"

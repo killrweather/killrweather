@@ -45,13 +45,15 @@ abstract class ActorSparkSpec extends AkkaSpec with AbstractSpec {
   import settings.{CassandraKeyspace => keyspace}
   import settings._
 
+  val window: Int = 120
+
   val conf = new SparkConf().setAppName(getClass.getSimpleName).setMaster(SparkMaster)
     .set("spark.cassandra.connection.host", CassandraHosts)
     .set("spark.cleaner.ttl", SparkCleanerTtl.toString)
 
   val sc = new SparkContext(conf)
 
-  val ssc =  new StreamingContext(sc, Seconds(120))
+  val ssc =  new StreamingContext(sc, Seconds(window))
 
   // to run streaming, at least one output
   CassandraConnector(conf).withSessionDo { session =>

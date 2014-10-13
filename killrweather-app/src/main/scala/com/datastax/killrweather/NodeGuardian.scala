@@ -36,14 +36,14 @@ class NodeGuardian(ssc: StreamingContext, kafka: EmbeddedKafka, settings: Weathe
 
   implicit val timeout = Timeout(3.seconds)
 
-  /** Create the worker actors: */
-  val station = context.actorOf(Props(new WeatherStationActor(ssc, settings)), "weather-station")
+  /* Streams raw data from the Kafka topic to Cassandra. */
+  context.actorOf(Props(new KafkaStreamActor(kafka, ssc, settings)), "kafka-stream")
 
   /* Reads raw data and publishes to Kafka topic - this would normally stream in. */
   val publisher = context.actorOf(Props(new RawDataPublisher(kafka.kafkaConfig, ssc, settings)))
 
-  /* Streams raw data from the Kafka topic to Cassandra. */
-  context.actorOf(Props(new KafkaStreamActor(kafka, ssc, settings)), "kafka-stream")
+  /** Create the worker actors: */
+  val station = context.actorOf(Props(new WeatherStationActor(ssc, settings)), "weather-station")
 
   ssc.checkpoint(SparkCheckpointDir)
 
@@ -51,13 +51,13 @@ class NodeGuardian(ssc: StreamingContext, kafka: EmbeddedKafka, settings: Weathe
 
   val precipitation = context.actorOf(Props(new PrecipitationActor(ssc, settings)), "precipitation")
 
-  ssc.start()
+ // ssc.start()
 
   /* The first things we do. Retrieves the set of weather station Ids
   to hand to the daily background computation workers. */
   override def preStart(): Unit = {
-    station ! GetWeatherStationIds
     publisher ! PublishFeed(DataYearRange)
+    station ! GetWeatherStationIds
   }
 
   override def postStop(): Unit = {

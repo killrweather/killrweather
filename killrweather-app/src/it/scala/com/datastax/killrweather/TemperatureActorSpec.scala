@@ -17,46 +17,45 @@ package com.datastax.killrweather
 
 import akka.actor.{ActorLogging, Actor, ActorRef, Props}
 import com.datastax.spark.connector.streaming._
-import com.datastax.spark.connector.embedded.EmbeddedKafka
 
 class TemperatureActorSpec extends ActorSparkSpec {
 
   import WeatherEvent._
   import settings._
 
+  override val window: Int = 1
+
   val year = 2005
 
-  val sid = "252860:99999"
+  val sid = "010010:99999"
 
   val expected = 19703 // the total count stations
 
-  lazy val kafka = new EmbeddedKafka
-  Thread.sleep(1000)
-  kafka.createTopic(settings.KafkaTopicRaw)
-  ssc.checkpoint(SparkCheckpointDir)
-
   var wsids: Set[String] = Set.empty
 
-  // transforms raw data from files and publishes to kafka topic
-  // system.actorOf(Props(new RawDataPublisher(kafka.kafkaConfig, ssc, settings))) ! PublishFeed(DataYearRange)
-
-  // reads from kafka stream, writes raw data to cassandra
-  //system.actorOf(Props(new KafkaStreamActor(kafka, ssc, settings)))
-
   override def beforeAll() {
+    /*ssc.cassandraTable(CassandraKeyspace, CassandraTableRaw).toLocalIterator.take(5) foreach println*/
+
+/*
     val wsa = system.actorOf(Props(new WeatherStationActor(ssc, settings)))
     wsa ! GetWeatherStationIds
     expectMsgPF() { case e: WeatherStationIds => wsids = e.sids.toSet}
     system stop wsa
+*/
+
+  }
+  override def afterAll() {
+    super.afterAll()
   }
 
   "DailyTemperatureActor" must {
     "transform raw data from cassandra to daily temperatures and persist in new daily temp table" in {
-      val dailyTemperatures = system.actorOf(Props(new DailyTemperatureActor(ssc, settings)))
-      dailyTemperatures ! ComputeDailyTemperature(sid, year)
+     val dailyTemperatures = system.actorOf(Props(new DailyTemperatureActor(ssc, settings)))
+     dailyTemperatures ! ComputeDailyTemperature(sid, year, Some(12))
 
-      ssc.cassandraTable[Temperature](CassandraKeyspace, CassandraTableDailyTemp)
-        .toLocalIterator foreach println
+     Thread.sleep(10000)
+     ssc.cassandraTable(CassandraKeyspace, CassandraTableDailyTemp)
+       .where("weather_station = ?", sid).toLocalIterator foreach (t => log.info(s"** found $t"))
     }
   }
   /*
