@@ -18,9 +18,9 @@ CREATE TABLE weather_station (
     country_code text,    // 2 letter ISO Country ID
     state_code text,      // 2 letter state code for US stations
     call_sign text,       // International station call sign
-    lat float,            // Latitude in decimal degrees
-    long float,           // Longitude in decimal degrees
-    elevation float       // Elevation in meters
+    lat double,            // Latitude in decimal degrees
+    long double,           // Longitude in decimal degrees
+    elevation double       // Elevation in meters
 );
 
 /*
@@ -34,15 +34,15 @@ CREATE TABLE raw_weather_data (
    month int,               // Month collected
    day int,                 // Day collected
    hour int,                // Hour collected
-   temperature float,       // Air temperature (degrees Celsius)
-   dewpoint float,          // Dew point temperature (degrees Celsius)
-   pressure float,          // Sea level pressure (hectopascals)
+   temperature double,       // Air temperature (degrees Celsius)
+   dewpoint double,          // Dew point temperature (degrees Celsius)
+   pressure double,          // Sea level pressure (hectopascals)
    wind_direction int,      // Wind direction in degrees. 0-359
-   wind_speed float,        // Wind speed (meters per second)
+   wind_speed double,        // Wind speed (meters per second)
    sky_condition int,       // Total cloud cover (coded, see format documentation)
    sky_condition_text text, // Non-coded sky conditions
-   one_hour_precip float,   // One-hour accumulated liquid precipitation (millimeters)
-   six_hour_precip float,   // Six-hour accumulated liquid precipitation (millimeters)
+   one_hour_precip double,   // One-hour accumulated liquid precipitation (millimeters)
+   six_hour_precip double,   // Six-hour accumulated liquid precipitation (millimeters)
    PRIMARY KEY ((weather_station), year, month, day, hour)
 ) WITH CLUSTERING ORDER BY (year DESC, month DESC, day DESC, hour DESC);
 
@@ -62,11 +62,11 @@ CREATE TABLE daily_aggregate_temperature (
    year int,
    month int,
    day int,
-   high float,
-   low float,
-   mean float,
-   variance float,
-   stdev float,
+   high double,
+   low double,
+   mean double,
+   variance double,
+   stdev double,
    PRIMARY KEY ((weather_station), year, month, day)
 ) WITH CLUSTERING ORDER BY (year DESC, month DESC, day DESC);
 
@@ -78,7 +78,7 @@ CREATE TABLE daily_aggregate_precip (
    year int,
    month int,
    day int,
-   precipitation float,
+   precipitation double,
    PRIMARY KEY ((weather_station), year, month, day)
 ) WITH CLUSTERING ORDER BY (year DESC, month DESC, day DESC);
 
@@ -86,6 +86,6 @@ CREATE TABLE daily_aggregate_precip (
 CREATE TABLE year_cumulative_precip (
    weather_station text,
    year int,
-   precipitation float,
+   precipitation double,
    PRIMARY KEY ((weather_station), year)
 ) WITH CLUSTERING ORDER BY (year DESC);
