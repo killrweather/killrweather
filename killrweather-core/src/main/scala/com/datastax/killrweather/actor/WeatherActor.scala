@@ -21,6 +21,7 @@ import scala.concurrent.duration._
 import akka.actor.SupervisorStrategy._
 import akka.actor._
 import akka.util.Timeout
+import org.apache.spark.util.StatCounter
 import org.joda.time.{DateTimeZone, DateTime}
 import org.joda.time.format.DateTimeFormat
 
@@ -41,6 +42,8 @@ trait WeatherActor extends Actor with ActorLogging {
       case _: Exception                => Escalate
     }
 
+  def toStatCounter(values: Seq[Double]): StatCounter = StatCounter(values)
+
   /** Creates a timestamp for the current date time in UTC. */
   def timestamp: DateTime = new DateTime(DateTimeZone.UTC)
 
@@ -53,6 +56,10 @@ trait WeatherActor extends Actor with ActorLogging {
   /** Creates timestamp for a given year and day of year. */
   def dayOfYearForYear(doy: Int, year: Int): DateTime =
     timestamp.withYear(year).withDayOfYear(doy)
+
+  /** Creates timestamp for a given year and day of year. */
+  def monthOfYearForYear(month: Int, year: Int): DateTime =
+    timestamp.withYear(year).withMonthOfYear(month)
 
   def toDateFormat(dt: DateTime): String = DateTimeFormat.forPattern("EEEE, MMMM dd, yyyy").print(dt)
 

@@ -13,13 +13,14 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.datastax.killrweather
+package com.datastax.killrweather.compute
 
 import scala.concurrent.duration._
-import akka.actor.Props
+import akka.actor._
+import com.datastax.killrweather._
 
 class WeatherStationActorSpec extends ActorSparkSpec {
-  import WeatherEvent._
+  import com.datastax.killrweather.WeatherEvent._
 
   val sid = "252860:99999"
 

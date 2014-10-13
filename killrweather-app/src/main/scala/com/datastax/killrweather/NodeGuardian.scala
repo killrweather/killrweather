@@ -15,12 +15,15 @@
  */
 package com.datastax.killrweather
 
+
+
 import scala.concurrent.duration._
 import akka.actor._
 import akka.pattern.gracefulStop
 import akka.util.Timeout
 import org.apache.spark.streaming.StreamingContext
 import com.datastax.spark.connector.embedded.{Assertions, EmbeddedKafka}
+import com.datastax.killrweather.compute._
 
 /**
  * The `NodeGuardian` is the root of the primary KillrWeather deployed application.

@@ -13,18 +13,17 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.datastax.killrweather
+package com.datastax.killrweather.compute
 
-import org.joda.time.{DateTimeZone, DateTime}
+import com.datastax.killrweather.WeatherEvent.GetMonthlyTemperature
 
 import scala.concurrent.duration._
 import akka.actor._
+import org.joda.time.{DateTime, DateTimeZone}
 import com.datastax.spark.connector.streaming._
+import com.datastax.killrweather._
 
-class TemperatureActorSpec extends ActorSparkSpec {
-
-  import WeatherEvent._
-  import settings._
+trait TemperatureSpec extends ActorSparkSpec {
 
   val year = 2005
 
@@ -33,8 +32,11 @@ class TemperatureActorSpec extends ActorSparkSpec {
   val expected = 19703 // the total count stations
 
   val startAt = new DateTime(DateTimeZone.UTC).withMonthOfYear(12).withDayOfMonth(1).getDayOfYear
+}
 
-  override def beforeAll() {  }
+class DailyTemperatureActorSpec extends TemperatureSpec {
+  import WeatherEvent._
+  import settings._
 
   "DailyTemperatureActor" must {
     "transform raw data from cassandra to daily temperatures and persist in new daily temp table" in {
@@ -54,27 +56,33 @@ class TemperatureActorSpec extends ActorSparkSpec {
       }
     }
   }
-  /*
-  "TemperatureActor" must {
-    //val precipitation = system.actorOf(Props(new PrecipitationActor(ssc, settings)), "precipitation")
-
-     "compute daily temperature rollups per weather station to monthly statistics." in {
-       val temperature = system.actorOf(Props(new DailyTemperatureActor(ssc, settings)), "temperature")
-         temperature ! GetTemperature(sid, 10, 2005)
-           expectMsgPF(timeout.duration) {
-             case Temperature(id, temp) =>
-               id should be (sid)
-           }
-        }
-     }
-  }
- */
 }
+
+
+class TemperatureActorSpec extends TemperatureSpec {
+  import WeatherEvent._
+  
+  "TemperatureActor" must {
+    "compute daily temperature rollups per weather station to monthly statistics." in {
+      val temperature = system.actorOf(Props(new TemperatureActor(ssc, settings)))
+      temperature ! GetMonthlyTemperature(sid, 12, year)
+      expectMsgPF(timeout.duration) {
+        case e =>
+          val temps = e.asInstanceOf[Seq[Temperature]]
+          temps.forall(t => t.month == 12 && t.year == year && t.weather_station == sid)
+          temps.map(_.day).min should be (1)
+          temps.map(_.day).max should be (31)
+          temps foreach println
+      }
+    }//temperature ! GetTemperature(sid, 10, 2005)
+  }
+}
+
 
 class TemporaryReceiver(year: Int, temperature: ActorRef, precipitation: ActorRef, weatherStation: ActorRef)
   extends Actor with ActorLogging {
-
-  import com.datastax.killrweather.WeatherEvent._
+  import com.datastax.killrweather.Weather
+  import WeatherEvent._
 
   var received = 0
   val expected = 3
@@ -94,3 +102,4 @@ class TemporaryReceiver(year: Int, temperature: ActorRef, precipitation: ActorRe
   def test(): Unit =
     if (received == expected) context.parent ! ValidationCompleted
 }
+

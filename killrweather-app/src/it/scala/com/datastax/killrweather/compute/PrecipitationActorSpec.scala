@@ -13,12 +13,23 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.datastax
+package com.datastax.killrweather.compute
 
-import com.datastax.killrweather.api.WeatherCenterJson
-import org.json4s.{DefaultFormats, Formats}
+import scala.concurrent.duration._
+import akka.actor._
+import org.joda.time.{DateTime, DateTimeZone}
+import com.datastax.spark.connector.streaming._
+import com.datastax.killrweather._
 
-package object killrweather {
+trait PrecipitationSpec extends ActorSparkSpec {
 
-  implicit val formats: Formats = WeatherCenterJson.formats(DefaultFormats)
+}
+
+class DailyPrecipitationActorSpec extends PrecipitationSpec {
+
+}
+
+class PrecipitationActorSpec extends PrecipitationSpec {
+  //val precipitation = system.actorOf(Props(new PrecipitationActor(ssc, settings)), "precipitation")
+
 }

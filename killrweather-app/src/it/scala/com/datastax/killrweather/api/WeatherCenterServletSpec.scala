@@ -27,7 +27,6 @@ import com.datastax.killrweather._
 
 class WeatherCenterServletSpec extends ScalatraSuite with WordSpecLike
   with KillrWeather with WeatherFixture {
-  import com.datastax.killrweather.syntax.json._
   import WeatherEvent._
 
   val api = new WeatherDataActorApi(system, guardian)

@@ -111,39 +111,3 @@ class KafkaStreamActor(kafka: EmbeddedKafka, ssc: StreamingContext, settings: We
     case _ =>
   }
 }
-
-/** 5. For a given weather station, calculates annual cumulative precip - or year to date. */
-class PrecipitationActor(ssc: StreamingContext, settings: WeatherSettings) extends WeatherActor {
-  import settings.{CassandraKeyspace => keyspace}
-  import settings.{CassandraTableDailyPrecip => dailytable}
-
-  implicit def ordering: Ordering[(String,Double)] = Ordering.by(_._2)
-
-  def receive : Actor.Receive = {
-    case GetPrecipitation(sid, year) => compute(sid, year, sender)
-    case GetTopKPrecipitation(year)  => topK(year, sender)
-  }
-
-  /** Returns a future value to the `requester` actor.
-    * Precipitation values are 1 hour deltas from the previous. */
-  def compute(sid: String, year: Int, requester: ActorRef): Unit = {
-    val dt = timestamp.withYear(year)
-    for {
-      precip <- ssc.cassandraTable[Double](keyspace, dailytable)
-        .select("precipitation")
-        .where("weather_station = ? AND year = ?", sid, year)
-        .collectAsync
-    } yield Precipitation(sid, precip) // at most 365 values if available
-  } pipeTo requester
-
-  /** Returns the 10 highest temps for any station in the `year`. */
-  def topK(year: Int, requester: ActorRef): Unit = Future {
-    val top = ssc.cassandraTable[(String,Double)](keyspace, dailytable)
-      .select("weather_station","precipitation")
-      .where("year = ?", year)
-      .top(10)
-
-    TopKPrecipitation(top)
-  } pipeTo requester
-
-}

@@ -19,7 +19,6 @@ import akka.actor.{ActorRef, ActorSystem}
 import org.json4s.Formats
 import com.datastax.killrweather._
 import com.datastax.killrweather.syntax.future._
-import com.datastax.killrweather.syntax.json._
 
 class WeatherCenterServlet(api: WeatherDataActorApi) extends WeatherServlet {
   import WeatherEvent._

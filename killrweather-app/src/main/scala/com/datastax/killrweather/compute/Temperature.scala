@@ -13,21 +13,22 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.datastax.killrweather
+package com.datastax.killrweather.compute
 
-import akka.pattern.{ pipe, ask }
-import akka.actor.{Props, Actor, ActorRef}
+import akka.actor.{Actor, ActorRef, Props}
+import akka.pattern.pipe
 import akka.routing.RoundRobinRouter
 import org.apache.spark.SparkContext._
 import org.apache.spark.streaming.StreamingContext
 import org.joda.time.DateTime
+import com.datastax.killrweather.WeatherSettings
+import com.datastax.killrweather.actor.WeatherActor
 import com.datastax.spark.connector._
 import com.datastax.spark.connector.streaming._
-import com.datastax.killrweather.actor.WeatherActor
 
 /** Supervisor for a given `year`. */
 class TemperatureSupervisor(year: Int, ssc: StreamingContext, settings: WeatherSettings) extends WeatherActor {
-  import WeatherEvent._
+  import com.datastax.killrweather.WeatherEvent._
 
   /** Creates the daily temperature router, with `sids`.size / 2 number of [[DailyTemperatureActor]] instances. */
   val dailyTemperatures = context.actorOf(Props(
@@ -54,10 +55,8 @@ class TemperatureSupervisor(year: Int, ssc: StreamingContext, settings: WeatherS
   * the daily temp rollup table in Cassandra for later computation.
   */
 class DailyTemperatureActor(ssc: StreamingContext, settings: WeatherSettings) extends WeatherActor {
-  import WeatherEvent._
-  import settings.{CassandraKeyspace => keyspace}
-  import settings.{CassandraTableRaw => rawtable}
-  import settings.{CassandraTableDailyTemp => dailytable}
+  import com.datastax.killrweather.WeatherEvent._
+  import settings.{CassandraKeyspace => keyspace, CassandraTableDailyTemp => dailytable, CassandraTableRaw => rawtable}
 
   def receive : Actor.Receive = {
     case ComputeDailyTemperature(sid, year, cst) => compute(sid, year)(cst)
@@ -81,14 +80,21 @@ class DailyTemperatureActor(ssc: StreamingContext, settings: WeatherSettings) ex
     * Persists to Cassandra daily temperature table by weather station.
     */
   def computeDay(dt: DateTime, wsid: String): Unit = {
+    def toDailyTemperature(values: Seq[Double]): DailyTemperature = {
+      val s = toStatCounter(values)
+      DailyTemperature(weather_station = wsid, year = dt.getYear, month = dt.getMonthOfYear, day = dt.getDayOfMonth,
+        high = s.max, low = s.min, mean = s.mean, variance = s.variance, stdev = s.stdev)
+    }
+
     log.debug(s"Computing ${toDateFormat(dt)}")
+
     for {
       aggregate <- ssc.cassandraTable[Double](keyspace, rawtable)
                     .select("temperature")
                     .where("weather_station = ? AND year = ? AND month = ? AND day = ?",
                       wsid, dt.getYear, dt.getMonthOfYear, dt.getDayOfMonth)
                     .collectAsync()
-                    .map(DailyTemperature(wsid, dt, _))
+                    .map(toDailyTemperature)
     } yield {
       ssc.sparkContext.parallelize(Seq(aggregate)).saveToCassandra(keyspace, dailytable)
       if (dt.getDayOfYear >= 365) publishStatus(dt.getYear)
@@ -103,23 +109,25 @@ class DailyTemperatureActor(ssc: StreamingContext, settings: WeatherSettings) ex
   * and for a given weather station, computes temperature statistics by month for a given year.
   */
 class TemperatureActor(ssc: StreamingContext, settings: WeatherSettings) extends WeatherActor {
-  import WeatherEvent._
-  import settings.{CassandraKeyspace => keyspace}
-  import settings.{CassandraTableDailyTemp => dailytable}
+  import com.datastax.killrweather.WeatherEvent._
+  import settings.{CassandraKeyspace => keyspace, CassandraTableDailyTemp => dailytable}
 
   def receive : Actor.Receive = {
-    case GetMonthlyTemperature(sid, doy, year) => compute(sid, doy, year, sender)
+    case GetMonthlyTemperature(wsid, month, year) => monthly(wsid, month, year, sender)
+    case GetTemperature(wsid, doy, year) => ???
   }
 
   /** Returns a future value to the `requester` actor. */
-  def compute(sid: String, doy: Int, year: Int, requester: ActorRef): Unit = {
-    val dt = dayOfYearForYear(doy, year)
+  def monthly(wsid: String, month: Int, year: Int, requester: ActorRef): Unit = {
+    val dt = monthOfYearForYear(month, year)
+
     for {
-      temps <- ssc.cassandraTable[Double](keyspace, dailytable)
-        .select("temperature")
-        .where("weather_station = ? AND year = ? AND month = ? AND day = ?",sid, dt.year, dt.monthOfYear, dt.dayOfYear)
-        .collectAsync
-    } yield Temperature(sid, temps)
+      temps <- ssc.cassandraTable[Temperature](keyspace, dailytable)
+                .where("weather_station = ? AND year = ? AND month = ?",
+                  wsid, dt.getYear, dt.getMonthOfYear)
+                .collectAsync
+
+    } yield temps
   } pipeTo requester
 
 }

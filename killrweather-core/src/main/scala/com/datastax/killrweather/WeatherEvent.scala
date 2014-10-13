@@ -50,36 +50,18 @@ object WeatherEvent {
   case class WeatherStationIds(sids: String*) extends WeatherResponse
 
   /** @param constraint allows testing a subsection vs doing full year */
-  case class ComputeDailyTemperature(sid: String, year: Int, constraint: Option[Int] = None) extends WeatherRequest
-  case class GetTemperature(sid: String, doy: Int, year: Int) extends WeatherRequest
-  case class GetMonthlyTemperature(sid: String, doy: Int, year: Int) extends WeatherRequest
-  case class DailyTemperature(
-    weather_station: String, year: Int, month: Int, day: Int,
+  case class ComputeDailyTemperature(wsid: String, year: Int, constraint: Option[Int] = None) extends WeatherRequest
+  case class GetTemperature(wsid: String, doy: Int, year: Int) extends WeatherRequest
+  case class GetMonthlyTemperature(weather_station: String, month: Int, year: Int) extends WeatherRequest
+  case class DailyTemperature(weather_station: String, year: Int, month: Int, day: Int,
     high: Double, low: Double, mean: Double, variance: Double, stdev: Double) extends WeatherAggregate
-  object DailyTemperature {
-    def apply(sid: String, dt: DateTime, values: Seq[Double]): DailyTemperature = {
-      val s = StatCounter(values)
-      DailyTemperature(weather_station = sid, year = dt.getYear, month = dt.getMonthOfYear, day = dt.getDayOfMonth,
-        high = s.max, low = s.min, mean = s.mean, variance = s.variance, stdev = s.stdev)
-    }
-  }
 
-  case class Temperature(sid: String, high: Double, low: Double, mean: Double, variance: Double, stdev: Double) extends WeatherAggregate
-  object Temperature {
-    def apply(id: String, values: Seq[Double]): Temperature = {
-      val s = StatCounter(values)
-      Temperature(sid = id, high = s.max, low = s.min, mean = s.mean, variance = s.variance, stdev = s.stdev)
-    }
-  }
+  case class Temperature(weather_station: String, year: Int, month: Int, day: Int,
+    high: Double, low: Double, mean: Double, variance: Double, stdev: Double) extends WeatherAggregate
 
   case class GetPrecipitation(sid: String, year: Int) extends WeatherRequest
   case class Precipitation(sid: String, annual: Double) extends WeatherAggregate
-   object Precipitation {
-    def apply(sid: String, values: Seq[Double]): Precipitation = {
-      val s = StatCounter(values)
-      Precipitation(sid, s.sum)
-    }
-  }
+
   case class GetTopKPrecipitation(year: Int) extends WeatherRequest
   case class TopKPrecipitation(seq: Seq[(String, Double)]) extends WeatherAggregate
 
