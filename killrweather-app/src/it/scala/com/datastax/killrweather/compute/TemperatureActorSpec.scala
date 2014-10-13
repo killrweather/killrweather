@@ -43,7 +43,7 @@ class DailyTemperatureActorSpec extends TemperatureSpec {
       system.eventStream.subscribe(self, classOf[DailyTemperatureTaskCompleted]) // for test purposes
 
       val dailyTemperatures = system.actorOf(Props(new DailyTemperatureActor(ssc, settings)))
-      dailyTemperatures ! ComputeDailyTemperature(sid, year, constraint = Some(startAt))
+      dailyTemperatures ! ComputeDailyTemperature(sid, year) // , constraint = Some(startAt)
 
       expectMsgPF(3.minutes) {
         case DailyTemperatureTaskCompleted(actor, yr) =>
