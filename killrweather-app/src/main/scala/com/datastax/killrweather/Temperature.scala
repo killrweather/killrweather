@@ -53,7 +53,7 @@ class TemperatureSupervisor(year: Int, ssc: StreamingContext, settings: WeatherS
   * temperature statistics by weather station for a given year, and stores in
   * the daily temp rollup table in Cassandra for later computation.
   */
-class DailyTemperatureActor(ssc: StreamingContext, settings: WeatherSettings) extends WeatherActor { 
+class DailyTemperatureActor(ssc: StreamingContext, settings: WeatherSettings) extends WeatherActor {
   import WeatherEvent._
   import settings.{CassandraKeyspace => keyspace}
   import settings.{CassandraTableRaw => rawtable}

@@ -53,7 +53,7 @@ abstract class ActorSparkSpec extends AkkaSpec with AbstractSpec {
   if (notInitialized)
     stream.saveToCassandra(CassandraKeyspace, CassandraTableRaw)
   else {
-    ssc.textFileStream(testOutput).saveAsTextFiles(getClass.getSimpleName, "test.out")
+    ssc.textFileStream("./data/test-output").saveAsTextFiles(getClass.getSimpleName, "test.out")
     system.registerOnTermination(deleteOnExit())
   }
 
@@ -87,8 +87,6 @@ abstract class ActorSparkSpec extends AkkaSpec with AbstractSpec {
 abstract class AkkaSpec extends TestKit(ActorSystem()) with AbstractSpec with ImplicitSender with DefaultTimeout {
 
    val settings = new WeatherSettings()
-
-   val testOutput = settings.rootConfig.getString("killrweather.data.test.output")
 
    protected val cluster = Cluster(system)
 
