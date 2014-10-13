@@ -56,7 +56,7 @@ class DailyPrecipitationActor (ssc: StreamingContext, settings: WeatherSettings)
   import com.datastax.killrweather.WeatherEvent._
 
   def receive : Actor.Receive = {
-    case ComputeDailyPrecipitation(sid, year, cst) => compute(sid, year)(cst)
+    case ComputeDailyPrecipitation(sid, year, cst) => //compute(sid, year)(cst)
   }
 
 }
