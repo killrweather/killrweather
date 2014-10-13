@@ -15,7 +15,10 @@
  */
 package com.datastax.killrweather
 
-import akka.actor.{ActorLogging, Actor, ActorRef, Props}
+import org.joda.time.{DateTimeZone, DateTime}
+
+import scala.concurrent.duration._
+import akka.actor._
 import com.datastax.spark.connector.streaming._
 
 class TemperatureActorSpec extends ActorSparkSpec {
@@ -23,35 +26,32 @@ class TemperatureActorSpec extends ActorSparkSpec {
   import WeatherEvent._
   import settings._
 
-  override val window: Int = 1
-
   val year = 2005
 
   val sid = "010010:99999"
 
   val expected = 19703 // the total count stations
 
-  var wsids: Set[String] = Set.empty
+  val startAt = new DateTime(DateTimeZone.UTC).withMonthOfYear(12).withDayOfMonth(1).getDayOfYear
 
-  override def beforeAll() {
-   /*
-    val wsa = system.actorOf(Props(new WeatherStationActor(ssc, settings)))
-    wsa ! GetWeatherStationIds
-    expectMsgPF() { case e: WeatherStationIds => wsids = e.sids.toSet}
-    system stop wsa
-   */
-  }
+  override def beforeAll() {  }
 
   "DailyTemperatureActor" must {
     "transform raw data from cassandra to daily temperatures and persist in new daily temp table" in {
-     val dailyTemperatures = system.actorOf(Props(new DailyTemperatureActor(ssc, settings)))
-     dailyTemperatures ! ComputeDailyTemperature(sid, year, Some(12))
+      system.eventStream.subscribe(self, classOf[DailyTemperatureTaskCompleted]) // for test purposes
 
-     Thread.sleep(10000)
-     val result = ssc.cassandraTable[DailyTemperature](CassandraKeyspace, CassandraTableDailyTemp)
-       .where("weather_station = ?", sid).collect
+      val dailyTemperatures = system.actorOf(Props(new DailyTemperatureActor(ssc, settings)))
+      dailyTemperatures ! ComputeDailyTemperature(sid, year, constraint = Some(startAt))
 
-     result.size should be > 0
+      expectMsgPF(3.minutes) {
+        case DailyTemperatureTaskCompleted(actor, yr) =>
+          actor.path should be (dailyTemperatures.path)
+          yr should be (year)
+          val rows = ssc.cassandraTable(CassandraKeyspace, CassandraTableDailyTemp)
+            .where("weather_station = ?", sid).collect
+          rows.size should be > 0
+          rows foreach println
+      }
     }
   }
   /*
@@ -86,9 +86,9 @@ class TemporaryReceiver(year: Int, temperature: ActorRef, precipitation: ActorRe
       weatherStation ! GetWeatherStation("13280:99999")
 
     case e: WeatherEvent.WeatherAggregate =>
-      log.info(s"\n\nReceived $e"); received += 1; test()
+      log.info(s"Received $e"); received += 1; test()
     case e: Weather.WeatherStation =>
-      log.info(s"\n\nReceived $e"); received += 1; test()
+      log.info(s"Received $e"); received += 1; test()
   }
 
   def test(): Unit =

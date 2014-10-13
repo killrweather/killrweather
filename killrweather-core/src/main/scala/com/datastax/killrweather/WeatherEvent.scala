@@ -15,7 +15,9 @@
  */
 package com.datastax.killrweather
 
+import akka.actor.ActorRef
 import org.apache.spark.util.StatCounter
+import org.joda.time.DateTime
 
 object WeatherEvent {
   import org.apache.spark.rdd.RDD
@@ -26,9 +28,10 @@ object WeatherEvent {
   sealed trait WeatherEvent extends Serializable
 
   sealed trait LifeCycleEvent extends WeatherEvent
-  case class PublishFeed(years: Range) extends LifeCycleEvent
+  case object PublishFeed extends LifeCycleEvent
   case object Shutdown extends LifeCycleEvent
   case object TaskCompleted extends LifeCycleEvent
+  case class DailyTemperatureTaskCompleted(by: ActorRef, year: Int) extends LifeCycleEvent
   case object StartValidation extends LifeCycleEvent
   case object ValidationCompleted extends LifeCycleEvent
 
@@ -46,16 +49,17 @@ object WeatherEvent {
   case object StreamWeatherStationIds extends WeatherRequest
   case class WeatherStationIds(sids: String*) extends WeatherResponse
 
-  case class ComputeDailyTemperature(sid: String, year: Int, month: Option[Int] = None) extends WeatherRequest
+  /** @param constraint allows testing a subsection vs doing full year */
+  case class ComputeDailyTemperature(sid: String, year: Int, constraint: Option[Int] = None) extends WeatherRequest
   case class GetTemperature(sid: String, doy: Int, year: Int) extends WeatherRequest
   case class GetMonthlyTemperature(sid: String, doy: Int, year: Int) extends WeatherRequest
   case class DailyTemperature(
     weather_station: String, year: Int, month: Int, day: Int,
     high: Double, low: Double, mean: Double, variance: Double, stdev: Double) extends WeatherAggregate
   object DailyTemperature {
-    def apply(id: String, _year: Int, _month: Int, _day: Int, values: Seq[Double]): DailyTemperature = {
+    def apply(sid: String, dt: DateTime, values: Seq[Double]): DailyTemperature = {
       val s = StatCounter(values)
-      DailyTemperature(weather_station = id, year = _year, month = _month, _day,
+      DailyTemperature(weather_station = sid, year = dt.getYear, month = dt.getMonthOfYear, day = dt.getDayOfMonth,
         high = s.max, low = s.min, mean = s.mean, variance = s.variance, stdev = s.stdev)
     }
   }

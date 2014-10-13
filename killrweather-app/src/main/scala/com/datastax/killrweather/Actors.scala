@@ -42,7 +42,8 @@ class WeatherStationActor(ssc: StreamingContext, settings: WeatherSettings) exte
   }
 
   /** 1. Streams weather station Ids to the daily computation actors.
-    * Requires less heap memory and system load, but is slower than collectAsync below. */
+    * Requires less heap memory and system load, but is slower than collectAsync below.
+    * The iterator will consume as much memory as the largest partition in this RDD. */
   def streamWeatherStationIds(requester: ActorRef): Unit =
     ssc.cassandraTable[String](keyspace, weatherstations).select("id")
       .toLocalIterator foreach (id => requester ! WeatherStationIds(id))
@@ -82,17 +83,10 @@ class RawDataPublisher(val config: KafkaConfig, ssc: StreamingContext, settings:
   import settings._
 
   def receive : Actor.Receive = {
-    case PublishFeed(years) => publish(years, sender)
+    case PublishFeed =>
+      ssc.textFileStream(DataLoadPath).flatMap(_.split("\\n"))
+        .map(send(KafkaTopicRaw, KafkaGroupId, _))
   }
-
-  def publish(years: Range, requester: ActorRef): Unit =
-    years foreach { n =>
-      val location = s"$DataLocation$n.$DataFormat"
-
-      /* The iterator will consume as much memory as the largest partition in this RDD */
-      val lines = ssc.sparkContext.textFile(location).flatMap(_.split("\\n")).toLocalIterator
-      batchSend(KafkaTopicRaw, KafkaGroupId, KafkaBatchSendSize, lines.toSeq)
-    }
 }
 
 /** 3. The KafkaStreamActor elegantly creates a streaming pipeline from Kafka to Cassandra via Spark.
@@ -127,25 +121,25 @@ class PrecipitationActor(ssc: StreamingContext, settings: WeatherSettings) exten
 
   def receive : Actor.Receive = {
     case GetPrecipitation(sid, year) => compute(sid, year, sender)
-    case GetTopKPrecipitation(year) => topk(year, sender)
+    case GetTopKPrecipitation(year)  => topK(year, sender)
   }
 
   /** Returns a future value to the `requester` actor.
-    * Precip values are 1 hour deltas from the previous. */
+    * Precipitation values are 1 hour deltas from the previous. */
   def compute(sid: String, year: Int, requester: ActorRef): Unit = {
     val dt = timestamp.withYear(year)
     for {
       precip <- ssc.cassandraTable[Double](keyspace, dailytable)
-        .select("oneHourPrecip") // TODO change field name
-        .where("id = ? AND year = ?", sid, year)
+        .select("precipitation")
+        .where("weather_station = ? AND year = ?", sid, year)
         .collectAsync
     } yield Precipitation(sid, precip) // at most 365 values if available
   } pipeTo requester
 
   /** Returns the 10 highest temps for any station in the `year`. */
-  def topk(year: Int, requester: ActorRef): Unit = Future {
+  def topK(year: Int, requester: ActorRef): Unit = Future {
     val top = ssc.cassandraTable[(String,Double)](keyspace, dailytable)
-      .select("id","precip") // TODO change field name
+      .select("weather_station","precipitation")
       .where("year = ?", year)
       .top(10)
 

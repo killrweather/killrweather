@@ -22,6 +22,7 @@ import akka.actor.SupervisorStrategy._
 import akka.actor._
 import akka.util.Timeout
 import org.joda.time.{DateTimeZone, DateTime}
+import org.joda.time.format.DateTimeFormat
 
 /** A base actor for weather data computation. */
 trait WeatherActor extends Actor with ActorLogging {
@@ -34,7 +35,7 @@ trait WeatherActor extends Actor with ActorLogging {
     OneForOneStrategy(maxNrOfRetries = 10, withinTimeRange = 1 minute) {
       case _: ActorInitializationException => Stop
       case _: IllegalArgumentException => Stop
-      case _: NullPointerException     => Restart
+      case _: NullPointerException     => Resume
       case _: IllegalStateException    => Restart
       case _: TimeoutException         => Escalate
       case _: Exception                => Escalate
@@ -44,18 +45,16 @@ trait WeatherActor extends Actor with ActorLogging {
   def timestamp: DateTime = new DateTime(DateTimeZone.UTC)
 
   /** Creates a lazy date stream, where elements are only evaluated when they are needed. */
-  def allDays(from: DateTime): Stream[DateTime] = from #:: allDays(from.plusDays(1))
+  def streamDays(from: DateTime): Stream[DateTime] = from #:: streamDays(from.plusDays(1))
+
+  def isValid(current: DateTime, start: DateTime): Boolean =
+    current.getYear == start.getYear && current.isBeforeNow
 
   /** Creates timestamp for a given year and day of year. */
-  def dayOfYearForYear(doy: Int, year: Int): DateTime = new DateTime(DateTimeZone.UTC)
-    .withYear(year).withDayOfYear(doy)
+  def dayOfYearForYear(doy: Int, year: Int): DateTime =
+    timestamp.withYear(year).withDayOfYear(doy)
 
-  /** Creates timestamp for a given year and day of year. */
-  def dayMonthYear(doy: Int, month: Option[Int], year: Int): DateTime =
-    month match {
-      case Some(m) => dayOfYearForYear(doy, year).withMonthOfYear(m)
-      case None => dayOfYearForYear(doy, year)
-    }
+  def toDateFormat(dt: DateTime): String = DateTimeFormat.forPattern("EEEE, MMMM dd, yyyy").print(dt)
 
 }
 

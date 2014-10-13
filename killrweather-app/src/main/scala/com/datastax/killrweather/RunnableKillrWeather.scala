@@ -18,17 +18,15 @@ package com.datastax.killrweather
 import java.util.concurrent.TimeUnit
 
 import akka.actor.{ActorSystem, PoisonPill, Props}
-import com.datastax.killrweather.WeatherEvent.GetWeatherStationIds
 import com.typesafe.config.Config
 import com.datastax.spark.connector.embedded.EmbeddedKafka
-
-import scala.concurrent.duration.Duration
 
 /** Runnable: for running WeatherCenter from command line or IDE. */
 object RunnableKillrWeather extends App with KillrWeather
 
 /** Used to run [[RunnableKillrWeather]] and [[com.datastax.killrweather.api.WeatherServletContextListener]] */
 trait KillrWeather extends WeatherApp {
+  import WeatherEvent._
 
   override val settings = new WeatherSettings()
 
@@ -60,6 +58,7 @@ trait KillrWeather extends WeatherApp {
  * @param conf Optional config for test
  */
 final class WeatherSettings(conf: Option[Config] = None) extends Settings(conf) {
+  import scala.concurrent.duration.Duration
 
   val CassandraKeyspace = killrweather.getString("cassandra.keyspace")
   val CassandraTableRaw = killrweather.getString("cassandra.table.raw")
@@ -77,12 +76,9 @@ final class WeatherSettings(conf: Option[Config] = None) extends Settings(conf) 
 
   // can't upgrade config until spark does :( could not get around that in the build
   val DailyTemperatureTaskInterval = Duration(killrweather.getLong("data.daily.temperature-task-interval-min"), TimeUnit.MILLISECONDS)
-  val DataFormat = killrweather.getString("data.raw.type")
-  val DataLocation = {
-    val path = killrweather.getString("data.raw.path")
-    val prefix = killrweather.getInt("data.raw.year.prefix")
-    s"$path/$prefix"
-  }
+
+  val DataLoadPath = killrweather.getString("data.load.path")
+
   val DataYearRange: Range = {
     val s = killrweather.getInt("data.raw.year.start")
     val e = killrweather.getInt("data.raw.year.end")

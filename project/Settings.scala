@@ -75,6 +75,10 @@ object Settings extends Build {
 
   lazy val withContainer = WebPlugin.webSettings ++ testSettings
 
+  lazy val withSigar = Seq(
+    javaOptions in run ++= Seq("-Djava.library.path=./sigar", "-Xms128m", "-Xmx1024m")
+  )
+
 }
 
 /**

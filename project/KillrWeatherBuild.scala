@@ -45,7 +45,8 @@ object KillrWeatherBuild extends Build {
     id = "app",
     base = file("./killrweather-app"),
     dependencies = Seq(core, api),
-    settings = defaultSettings ++ withContainer ++ Seq(libraryDependencies ++= Dependencies.app)
+    settings = defaultSettings ++ withContainer ++ withSigar ++
+      Seq(libraryDependencies ++= Dependencies.app)
   ) configs IntegrationTest configs config("container")
 
 }
@@ -82,6 +83,7 @@ object Dependencies {
     val sparkCassandraEmb = "com.datastax.spark"  %% "spark-cassandra-connector-embedded" % SparkCassandra
 
   }
+  /*blob/master/file/src/samples/scala/create-and-delete-files-and-directories.scala*/
 
   object Runtime {
     val jettyWebapp       = "org.eclipse.jetty"   % "jetty-webapp"                        % JettyWebapp  % "container"
@@ -96,7 +98,7 @@ object Dependencies {
     val akkaTestKit     = "com.typesafe.akka"     %% "akka-testkit"                       % Akka         % "test,it" // ApacheV2
     val scalatest       = "org.scalatest"         %% "scalatest"                          % ScalaTest    % "test,it"
     val scalatraTest    = "org.scalatra"          %% "scalatra-scalatest"                 % ScalatraTest % "test,it"
-    val sigar           = "org.fusesource"        % "sigar"                               % Sigar
+    val sigar           = "org.fusesource"        % "sigar"                               % Sigar        % "test,it"
   }
 
   import Compile._

@@ -56,7 +56,7 @@ class NodeGuardian(ssc: StreamingContext, kafka: EmbeddedKafka, settings: Weathe
   /* The first things we do. Retrieves the set of weather station Ids
   to hand to the daily background computation workers. */
   override def preStart(): Unit = {
-    publisher ! PublishFeed(DataYearRange)
+    publisher ! PublishFeed
     station ! GetWeatherStationIds
   }
 

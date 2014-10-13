@@ -15,11 +15,6 @@
  */
 package com.datastax.killrweather
 
-import org.apache.spark.rdd.RDD
-
-import scala.collection.immutable.HashSet.HashTrieSet
-import scala.concurrent.Future
-import scala.concurrent.duration._
 import akka.pattern.{ pipe, ask }
 import akka.actor.{Props, Actor, ActorRef}
 import akka.routing.RoundRobinRouter
@@ -28,14 +23,11 @@ import org.apache.spark.streaming.StreamingContext
 import org.joda.time.DateTime
 import com.datastax.spark.connector._
 import com.datastax.spark.connector.streaming._
-import com.datastax.killrweather.api.WeatherApi
 import com.datastax.killrweather.actor.WeatherActor
-
-import com.datastax.killrweather.WeatherEvent._
 
 /** Supervisor for a given `year`. */
 class TemperatureSupervisor(year: Int, ssc: StreamingContext, settings: WeatherSettings) extends WeatherActor {
-  import WeatherApi.WeatherStationId
+  import WeatherEvent._
 
   /** Creates the daily temperature router, with `sids`.size / 2 number of [[DailyTemperatureActor]] instances. */
   val dailyTemperatures = context.actorOf(Props(
@@ -61,49 +53,57 @@ class TemperatureSupervisor(year: Int, ssc: StreamingContext, settings: WeatherS
   * temperature statistics by weather station for a given year, and stores in
   * the daily temp rollup table in Cassandra for later computation.
   */
-class DailyTemperatureActor(ssc: StreamingContext, settings: WeatherSettings) extends WeatherActor {
-  import com.datastax.killrweather.syntax.future._
+class DailyTemperatureActor(ssc: StreamingContext, settings: WeatherSettings) extends WeatherActor { 
+  import WeatherEvent._
   import settings.{CassandraKeyspace => keyspace}
   import settings.{CassandraTableRaw => rawtable}
   import settings.{CassandraTableDailyTemp => dailytable}
 
   def receive : Actor.Receive = {
-    case ComputeDailyTemperature(sid, year, month) => compute(sid, year, month)
+    case ComputeDailyTemperature(sid, year, cst) => compute(sid, year)(cst)
   }
 
-  /* Compute aggregate for the given year, starting January 1, and store in daily rollup table. */
-  def compute(sid: String, year: Int, month: Option[Int]): Unit =
-    computeYear(sid, start = dayMonthYear(1, month, year))
+  /** Compute aggregate for the given year, starting January 1, and store in daily rollup table.
+    * @param sid the weather station id
+    * @param year the year for annual computation
+    * @param constraint an optional constraint for testing. If it is not set,
+    *                   computation starts at the default: January 1 of `year`.
+    */
+  def compute(sid: String, year: Int)(constraint: Option[Int]): Unit =
+    computeYear(sid, start = dayOfYearForYear(constraint.getOrElse(1), year))
 
-  /* Streams only the valid days for the given year. */
+  /* Streams only the valid days for the given year, including a leap year. */
   def computeYear(sid: String, start: DateTime): Unit =
-    for (a <- allDays(start).filter(_.getYear == start.getYear).filter(_ isBeforeNow))
-    yield computeDay(a, sid)
+    streamDays(start).take(366).filter(isValid(_, start))
+      .toList.map(computeDay(_, sid))
 
   /** For the given day of the year, aggregates all the temp values to statistics: high, low, mean, std, etc.
-    * Persists to Cassandra daily temperature table by weather station. */
-  def computeDay(dt: DateTime, sid: String): Unit =
+    * Persists to Cassandra daily temperature table by weather station.
+    */
+  def computeDay(dt: DateTime, wsid: String): Unit = {
+    log.debug(s"Computing ${toDateFormat(dt)}")
     for {
       aggregate <- ssc.cassandraTable[Double](keyspace, rawtable)
-                .select("temperature")
-                .where("weather_station = ? AND year = ? AND month = ? AND day = ?",
-                    sid, dt.getYear, dt.getMonthOfYear, dt.getDayOfYear)
-                .collectAsync().map { c =>
-                  // fix cases: DailyTemperature(010010:99999,2005,12,347,-Infinity,Infinity,0.0,NaN,NaN)
-                  DailyTemperature(sid, dt.getYear, dt.getMonthOfYear, dt.getDayOfYear, c) }
-
+                    .select("temperature")
+                    .where("weather_station = ? AND year = ? AND month = ? AND day = ?",
+                      wsid, dt.getYear, dt.getMonthOfYear, dt.getDayOfMonth)
+                    .collectAsync()
+                    .map(DailyTemperature(wsid, dt, _))
     } yield {
-      log.info(s"\nsaveToCassandra aggregate: $aggregate")
-      ssc.sparkContext.parallelize(Seq(aggregate))
-        .saveToCassandra(keyspace, dailytable)
+      ssc.sparkContext.parallelize(Seq(aggregate)).saveToCassandra(keyspace, dailytable)
+      if (dt.getDayOfYear >= 365) publishStatus(dt.getYear)
     }
+  }
 
+  def publishStatus(year: Int): Unit =
+    context.system.eventStream.publish(DailyTemperatureTaskCompleted(self, year))
 }
 
 /** 5. The TemperatureActor reads the daily temperature rollup data from Cassandra,
   * and for a given weather station, computes temperature statistics by month for a given year.
   */
 class TemperatureActor(ssc: StreamingContext, settings: WeatherSettings) extends WeatherActor {
+  import WeatherEvent._
   import settings.{CassandraKeyspace => keyspace}
   import settings.{CassandraTableDailyTemp => dailytable}
 
