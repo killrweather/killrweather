@@ -16,14 +16,50 @@
 package com.datastax.killrweather.compute
 
 import scala.concurrent.Future
-import akka.actor.{Actor, ActorRef}
+import akka.actor.{Props, Actor, ActorRef}
 import akka.pattern.pipe
+import akka.routing.RoundRobinRouter
 import org.apache.spark.SparkContext._
 import org.apache.spark.streaming.StreamingContext
 import com.datastax.spark.connector.streaming._
 import com.datastax.killrweather.WeatherEvent._
 import com.datastax.killrweather.WeatherSettings
 import com.datastax.killrweather.actor.WeatherActor
+
+/** Supervisor for a given `year`. */
+class PrecipitationSupervisor(year: Int, ssc: StreamingContext, settings: WeatherSettings) extends WeatherActor {
+  import com.datastax.killrweather.WeatherEvent._
+
+  /** Creates the daily precip router, with `sids`.size / 2 number of [[DailyTemperatureActor]] instances. */
+  val dailyPrecipitation = context.actorOf(Props(
+    new DailyPrecipitationActor(ssc, settings))
+    .withRouter(RoundRobinRouter(nrOfInstances = 1, // TODO weatherStationIds.size / 2
+    routerDispatcher = "killrweather.dispatchers.temperature")))
+
+  val precipitation = context.actorOf(Props(new PrecipitationActor(ssc, settings)))
+
+  def receive : Actor.Receive = {
+    case e: WeatherStationIds    => runTask(e.sids: _*)
+    case e: GetPrecipitation     => precipitation forward e
+    case e: GetTopKPrecipitation => precipitation forward e
+  }
+
+  /** Sends a [[ComputeDailyTemperature]] command, round robin, to the daily
+    * temperature actors to compute for the given weather station id and year. */
+  def runTask(sids: String*): Unit =
+    sids.foreach(dailyPrecipitation ! ComputeDailyPrecipitation(_, year))
+
+}
+
+class DailyPrecipitationActor (ssc: StreamingContext, settings: WeatherSettings) extends WeatherActor {
+  import settings.{CassandraKeyspace => keyspace, CassandraTableDailyPrecip => dailytable, CassandraTableRaw => rawtable}
+  import com.datastax.killrweather.WeatherEvent._
+
+  def receive : Actor.Receive = {
+    case ComputeDailyPrecipitation(sid, year, cst) => compute(sid, year)(cst)
+  }
+
+}
 
 /** 5. For a given weather station, calculates annual cumulative precip - or year to date. */
 class PrecipitationActor(ssc: StreamingContext, settings: WeatherSettings) extends WeatherActor {

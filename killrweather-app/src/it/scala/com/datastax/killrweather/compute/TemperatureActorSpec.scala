@@ -61,7 +61,7 @@ class DailyTemperatureActorSpec extends TemperatureSpec {
 
 class TemperatureActorSpec extends TemperatureSpec {
   import WeatherEvent._
-  
+
   "TemperatureActor" must {
     "compute daily temperature rollups per weather station to monthly statistics." in {
       val temperature = system.actorOf(Props(new TemperatureActor(ssc, settings)))

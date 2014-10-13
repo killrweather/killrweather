@@ -55,8 +55,8 @@ class TemperatureSupervisor(year: Int, ssc: StreamingContext, settings: WeatherS
   * the daily temp rollup table in Cassandra for later computation.
   */
 class DailyTemperatureActor(ssc: StreamingContext, settings: WeatherSettings) extends WeatherActor {
-  import com.datastax.killrweather.WeatherEvent._
   import settings.{CassandraKeyspace => keyspace, CassandraTableDailyTemp => dailytable, CassandraTableRaw => rawtable}
+  import com.datastax.killrweather.WeatherEvent._
 
   def receive : Actor.Receive = {
     case ComputeDailyTemperature(sid, year, cst) => compute(sid, year)(cst)

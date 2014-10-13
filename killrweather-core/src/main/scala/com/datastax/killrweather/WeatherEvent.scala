@@ -16,12 +16,8 @@
 package com.datastax.killrweather
 
 import akka.actor.ActorRef
-import org.apache.spark.util.StatCounter
-import org.joda.time.DateTime
 
 object WeatherEvent {
-  import org.apache.spark.rdd.RDD
-  import org.apache.spark.SparkContext._
 
   /** Base marker trait. */
   @SerialVersionUID(1L)
@@ -59,6 +55,7 @@ object WeatherEvent {
   case class Temperature(weather_station: String, year: Int, month: Int, day: Int,
     high: Double, low: Double, mean: Double, variance: Double, stdev: Double) extends WeatherAggregate
 
+  case class ComputeDailyPrecipitation(wsid: String, year: Int, constraint: Option[Int] = None) extends WeatherRequest
   case class GetPrecipitation(sid: String, year: Int) extends WeatherRequest
   case class Precipitation(sid: String, annual: Double) extends WeatherAggregate
 

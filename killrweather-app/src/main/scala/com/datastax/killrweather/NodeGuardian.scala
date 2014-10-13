@@ -54,7 +54,7 @@ class NodeGuardian(ssc: StreamingContext, kafka: EmbeddedKafka, settings: Weathe
 
   val precipitation = context.actorOf(Props(new PrecipitationActor(ssc, settings)), "precipitation")
 
- // ssc.start()
+  // ssc.start(): see KafkaStreamActor which calls start after declaring the output stream
 
   /* The first things we do. Retrieves the set of weather station Ids
   to hand to the daily background computation workers. */

@@ -26,7 +26,7 @@ trait PrecipitationSpec extends ActorSparkSpec {
 }
 
 class DailyPrecipitationActorSpec extends PrecipitationSpec {
-
+//GetPrecipitation
 }
 
 class PrecipitationActorSpec extends PrecipitationSpec {
