@@ -29,7 +29,6 @@ class WeatherStationActorSpec extends ActorSparkSpec {
   val station = system.actorOf(Props(new WeatherStationActor(ssc, settings)), "weather-station")
 
   "WeatherStationActor" must {
-    // duration: 1690 avg | Heap Memory: 121.0 - 119.6 MB | System Load Avg: 3.5 - 5.4
    "future.collectAsync: return a  weather station id" in {
       station ! GetWeatherStationIds
       val start = System.currentTimeMillis()
@@ -38,7 +37,6 @@ class WeatherStationActorSpec extends ActorSparkSpec {
       }
       println((System.currentTimeMillis() - start).seconds)
     }
-    // duration: 1942 avg | Heap Memory: 90.19, 144.3 MB | System Load Avg: 2.9, 3.8
    "streamWeatherStationIds: return weather station ids" in {
       val start = System.currentTimeMillis()
       station ! StreamWeatherStationIds

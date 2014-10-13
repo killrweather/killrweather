@@ -15,8 +15,6 @@
  */
 package com.datastax.killrweather.compute
 
-import com.datastax.killrweather.WeatherEvent.GetMonthlyTemperature
-
 import scala.concurrent.duration._
 import akka.actor._
 import org.joda.time.{DateTime, DateTimeZone}
@@ -43,7 +41,9 @@ class DailyTemperatureActorSpec extends TemperatureSpec {
       system.eventStream.subscribe(self, classOf[DailyTemperatureTaskCompleted]) // for test purposes
 
       val dailyTemperatures = system.actorOf(Props(new DailyTemperatureActor(ssc, settings)))
-      dailyTemperatures ! ComputeDailyTemperature(sid, year) // , constraint = Some(startAt)
+      // The first run must be like this, but after you can play around with
+      // ComputeDailyTemperature(sid, year, constraint = Some(startAt))
+      dailyTemperatures ! ComputeDailyTemperature(sid, year)
 
       expectMsgPF(3.minutes) {
         case DailyTemperatureTaskCompleted(actor, yr) =>
@@ -73,7 +73,7 @@ class TemperatureActorSpec extends TemperatureSpec {
           temps.map(_.day).max should be (31)
           temps foreach println
       }
-    }//temperature ! GetTemperature(sid, 10, 2005)
+    }
   }
 }
 
