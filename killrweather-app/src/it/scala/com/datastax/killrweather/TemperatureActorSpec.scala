@@ -34,18 +34,12 @@ class TemperatureActorSpec extends ActorSparkSpec {
   var wsids: Set[String] = Set.empty
 
   override def beforeAll() {
-    /*ssc.cassandraTable(CassandraKeyspace, CassandraTableRaw).toLocalIterator.take(5) foreach println*/
-
-/*
+   /*
     val wsa = system.actorOf(Props(new WeatherStationActor(ssc, settings)))
     wsa ! GetWeatherStationIds
     expectMsgPF() { case e: WeatherStationIds => wsids = e.sids.toSet}
     system stop wsa
-*/
-
-  }
-  override def afterAll() {
-    super.afterAll()
+   */
   }
 
   "DailyTemperatureActor" must {
@@ -54,8 +48,10 @@ class TemperatureActorSpec extends ActorSparkSpec {
      dailyTemperatures ! ComputeDailyTemperature(sid, year, Some(12))
 
      Thread.sleep(10000)
-     ssc.cassandraTable(CassandraKeyspace, CassandraTableDailyTemp)
-       .where("weather_station = ?", sid).toLocalIterator foreach (t => log.info(s"** found $t"))
+     val result = ssc.cassandraTable[DailyTemperature](CassandraKeyspace, CassandraTableDailyTemp)
+       .where("weather_station = ?", sid).collect
+
+     result.size should be > 0
     }
   }
   /*

@@ -35,9 +35,9 @@ object Weather {
     name: String,
     countryCode: String,
     callSign: String,
-    lat: Float,
-    long: Float,
-    elevation: Float) extends WeatherModel
+    lat: Double,
+    long: Double,
+    elevation: Double) extends WeatherModel
 
   /**
    * @param weatherStation Composite of Air Force Datsav3 station number and NCDC WBAN number
@@ -61,15 +61,15 @@ object Weather {
     month: Int,
     day: Int,
     hour: Int,
-    temperature: Float,
-    dewpoint: Float,
-    pressure: Float,
+    temperature: Double,
+    dewpoint: Double,
+    pressure: Double,
     windDirection: Int,
-    windSpeed: Float,
+    windSpeed: Double,
     skyCondition: Int,
     skyConditionText: String,
-    oneHourPrecip: Float,
-    sixHourPrecip: Float) extends WeatherModel
+    oneHourPrecip: Double,
+    sixHourPrecip: Double) extends WeatherModel
 
   object RawWeatherData {
     /** Tech debt - don't do it this way ;) */
@@ -80,15 +80,15 @@ object Weather {
         month = array(2).toInt,
         day = array(3).toInt,
         hour = array(4).toInt,
-        temperature = array(5).toFloat,
-        dewpoint = array(6).toFloat,
-        pressure = array(7).toFloat,
+        temperature = array(5).toDouble,
+        dewpoint = array(6).toDouble,
+        pressure = array(7).toDouble,
         windDirection = array(8).toInt,
-        windSpeed = array(9).toFloat,
+        windSpeed = array(9).toDouble,
         skyCondition = array(10).toInt,
         skyConditionText = array(11),
-        oneHourPrecip = array(11).toFloat,
-        sixHourPrecip = Option(array(12).toFloat).getOrElse(0))
+        oneHourPrecip = array(11).toDouble,
+        sixHourPrecip = Option(array(12).toDouble).getOrElse(0))
     }
   }
 }
