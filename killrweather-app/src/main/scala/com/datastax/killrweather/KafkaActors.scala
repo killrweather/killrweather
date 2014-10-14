@@ -54,6 +54,7 @@ class RawDataPublisher(val config: KafkaConfig, ssc: StreamingContext, settings:
   */
 class KafkaStreamActor(kafka: EmbeddedKafka, ssc: StreamingContext, settings: WeatherSettings) extends WeatherActor {
   import settings._
+  import WeatherEvent._
   import Weather._
 
   /* Creates the Kafka stream and defines the work to be done. */
@@ -64,7 +65,7 @@ class KafkaStreamActor(kafka: EmbeddedKafka, ssc: StreamingContext, settings: We
     .map (RawWeatherData(_))
     .saveToCassandra(CassandraKeyspace, CassandraTableRaw)
 
-  ssc.start()
+  context.parent ! OutputStreamInitialized
 
   def receive : Actor.Receive = {
     case _ =>

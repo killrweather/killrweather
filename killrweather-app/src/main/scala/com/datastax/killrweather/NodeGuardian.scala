@@ -45,16 +45,10 @@ class NodeGuardian(ssc: StreamingContext, kafka: EmbeddedKafka, settings: Weathe
   /* Reads raw data and publishes to Kafka topic - this would normally stream in. */
   val publisher = context.actorOf(Props(new RawDataPublisher(kafka.kafkaConfig, ssc, settings)))
 
-  /** Create the worker actors: */
-  val station = context.actorOf(Props(new WeatherStationActor(ssc, settings)), "weather-station")
-
-  ssc.checkpoint(SparkCheckpointDir)
-
+  /** Create the computation actors: */
   val temperature = context.actorOf(Props(new TemperatureSupervisor(2005, ssc, settings)), "temperature")
-
   val precipitation = context.actorOf(Props(new PrecipitationActor(ssc, settings)), "precipitation")
-
-  // ssc.start(): see KafkaStreamActor which calls start after declaring the output stream
+  val station = context.actorOf(Props(new WeatherStationActor(ssc, settings)), "weather-station")
 
   /* The first things we do. Retrieves the set of weather station Ids
   to hand to the daily background computation workers. */
@@ -71,11 +65,16 @@ class NodeGuardian(ssc: StreamingContext, kafka: EmbeddedKafka, settings: Weathe
   /** On startup, actor is in an uninitialized state. */
   override def receive = uninitialized orElse super.receive
 
-  /** Once it receives weather station ids, the guardian actor becomes initialized. */
+  /** Once it receives weather station ids and [[OutputStreamInitialized]],
+    * the guardian actor becomes initialized. */
   def uninitialized: Actor.Receive = {
     case e: WeatherStationIds =>
       temperature ! e
       precipitation ! e
+
+    case OutputStreamInitialized =>
+      ssc.checkpoint(SparkCheckpointDir)
+      ssc.start() // can not add more dstreams after this is started
       context become initialized
   }
 

@@ -87,7 +87,7 @@ class DailyTemperatureActor(ssc: StreamingContext, settings: WeatherSettings) ex
     }
 
     log.debug(s"Computing ${toDateFormat(dt)}")
-
+    /* Insure you never do this with anything but very small chunks of data, for the driver. */
     for {
       aggregate <- ssc.cassandraTable[Double](keyspace, rawtable)
                     .select("temperature")

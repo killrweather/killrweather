@@ -24,6 +24,7 @@ object WeatherEvent {
   sealed trait WeatherEvent extends Serializable
 
   sealed trait LifeCycleEvent extends WeatherEvent
+  case object OutputStreamInitialized extends LifeCycleEvent
   case object PublishFeed extends LifeCycleEvent
   case object Shutdown extends LifeCycleEvent
   case object TaskCompleted extends LifeCycleEvent

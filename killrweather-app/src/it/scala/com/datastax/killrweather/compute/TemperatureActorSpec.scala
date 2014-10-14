@@ -43,7 +43,7 @@ class DailyTemperatureActorSpec extends TemperatureSpec {
       val dailyTemperatures = system.actorOf(Props(new DailyTemperatureActor(ssc, settings)))
       // The first run must be like this, but after you can play around with
       // ComputeDailyTemperature(sid, year, constraint = Some(startAt))
-      dailyTemperatures ! ComputeDailyTemperature(sid, year)
+      dailyTemperatures ! ComputeDailyTemperature(sid, year, constraint = Some(startAt))
 
       expectMsgPF(3.minutes) {
         case DailyTemperatureTaskCompleted(actor, yr) =>
