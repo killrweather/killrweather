@@ -12,5 +12,8 @@ KillrWeather is written in [Scala](http://www.scala-lang.org). It uses [SBT](htt
 * Please see the [KillrWeather Wiki](https://github.com/killrweather/killrweather/wiki) for full setup instructions and documentation.
 * The primary **Spark, Kafka and Cassandra code** starts (here)[https://github.com/killrweather/killrweather/tree/master/killrweather-app/src]
 
- 
-
+## Setup
+1. [Set up your development environment](Environment-Prerequisites)
+2. [Create the Cassandra Schema](Code & Schema Setup)
+3. [The Code](Code)
+4. [The Time Series Data Model](Data Model)
