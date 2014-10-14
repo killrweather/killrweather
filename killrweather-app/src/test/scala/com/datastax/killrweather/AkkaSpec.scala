@@ -18,10 +18,12 @@ package com.datastax.killrweather
 
 import java.io.File
 
+import scala.concurrent.duration._
 import akka.cluster.Cluster
 import akka.actor.{Actor, ActorLogging, Props, ActorSystem}
 import akka.testkit.{DefaultTimeout, ImplicitSender, TestKit}
 import com.datastax.killrweather.Weather.RawWeatherData
+import com.datastax.killrweather.WeatherEvent.OutputStreamInitialized
 import com.datastax.spark.connector.cql.CassandraConnector
 import org.apache.spark.storage.StorageLevel
 import org.joda.time.{DateTimeZone, DateTime}
@@ -36,7 +38,6 @@ trait AbstractSpec extends Suite with WordSpecLike with Matchers with BeforeAndA
 abstract class ActorSparkSpec extends AkkaSpec with AbstractSpec {
   import com.datastax.spark.connector.streaming._
   import com.datastax.spark.connector._
-  import StreamingContext._
   import settings._
 
   val conf = new SparkConf().setAppName(getClass.getSimpleName).setMaster(SparkMaster)
@@ -47,33 +48,25 @@ abstract class ActorSparkSpec extends AkkaSpec with AbstractSpec {
 
   val ssc =  new StreamingContext(sc, Seconds(SparkStreamingBatchInterval)) // 1s
 
-  /* Declare a required output stream. */
-
-  /* Initialize data only if necessary. */
-  // to run streaming, at least one output
+  /* Declare a required output stream: to run streaming, at least one output */
   CassandraConnector(conf).withSessionDo { session =>
-    session.execute(s"CREATE TABLE IF NOT EXISTS $CassandraKeyspace.words (word TEXT PRIMARY KEY, count COUNTER)")
-    session.execute(s"TRUNCATE $CassandraKeyspace.words")
+    session.execute(s"CREATE TABLE IF NOT EXISTS $CassandraKeyspace.make_streaming_happy (entry INT PRIMARY KEY, key TEXT)")
   }
-  ssc.actorStream[String](Props[TestStreamingActor], "stream", StorageLevel.MEMORY_AND_DISK)
-    .flatMap(_.split("\\s+"))
-    .map(x => (x, 1))
-    .reduceByKey(_ + _)
-    .saveToCassandra(CassandraKeyspace, "words")
+  ssc.actorStream[String](Props[TestStreamingActor], "stream", StorageLevel.MEMORY_ONLY)
+    .flatMap(_.split("\\s+")).map(x => (1,x)).saveToCassandra(CassandraKeyspace, "make_streaming_happy")
 
-  val lines = ssc.sparkContext.textFile(s"$DataLoadPath/2005.csv.gz")
-    .flatMap(_.split("\\n"))
-    .map { case d => d.split(",")}
-    .map(RawWeatherData(_))
-
-  if (notInitialized)
-    lines.saveToCassandra(CassandraKeyspace, CassandraTableRaw)
-  else {
-    ssc.textFileStream("./data/test-output").saveAsTextFiles(getClass.getSimpleName, "test.out")
-    system.registerOnTermination(deleteOnExit())
+  /* Gets some data in the raw data table if this is run
+  before any data has been persisted by the app or another spec.
+  Initialize data only if necessary.*/
+  if (notInitialized) {
+    ssc.sparkContext.textFile(s"$DataLoadPath/2005.csv.gz")
+      .flatMap(_.split("\\n"))
+      .map { case d => d.split(",")}
+      .map(RawWeatherData(_))
+      .saveToCassandra(CassandraKeyspace, CassandraTableRaw)
   }
 
-  ssc.start()
+  def start(): Unit = ssc.start()
 
   def notInitialized: Boolean = {
     val test = new DateTime(DateTimeZone.UTC).withYear(2005).withMonthOfYear(1).withDayOfMonth(1)
@@ -83,6 +76,7 @@ abstract class ActorSparkSpec extends AkkaSpec with AbstractSpec {
   }
 
   override def afterAll() {
+    deleteOnExit()
     ssc.stop(true, false)
     super.afterAll()
   }

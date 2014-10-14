@@ -15,7 +15,9 @@
  */
 package com.datastax.killrweather
 
-import akka.actor.Actor
+import akka.actor.{ActorRef, Props, Actor}
+import akka.routing.RoundRobinRouter
+
 import org.apache.spark.streaming.StreamingContext
 import kafka.server.KafkaConfig
 import kafka.serializer.StringDecoder
@@ -24,6 +26,24 @@ import org.apache.spark.streaming.kafka.KafkaUtils
 import com.datastax.spark.connector.streaming._
 import com.datastax.spark.connector.embedded.EmbeddedKafka
 import com.datastax.killrweather.actor.{KafkaProducer, WeatherActor}
+import com.datastax.killrweather.WeatherEvent.PublishFeed
+
+class KafkaSupervisor(kafka: EmbeddedKafka, ssc: StreamingContext,
+                      settings: WeatherSettings, listener: ActorRef) extends WeatherActor {
+  import settings._
+
+ context.actorOf(Props(new KafkaStreamActor(kafka.kafkaParams, ssc, settings, listener)), "kafka-stream")
+
+  val publisher = context.actorOf(Props(
+    new RawDataPublisher(kafka.kafkaConfig, ssc, settings))
+    .withRouter(RoundRobinRouter(nrOfInstances = DataYearRange.length,
+    routerDispatcher = "killrweather.dispatchers.temperature")), "kafka-publisher")
+
+  def receive: Actor.Receive = {
+    case PublishFeed =>
+      DataYearRange foreach (publisher ! _)
+  }
+}
 
 /** 2. The RawDataPublisher transforms annual weather .gz files to line data and publishes to a Kafka topic.
   *
@@ -36,38 +56,48 @@ import com.datastax.killrweather.actor.{KafkaProducer, WeatherActor}
        .reduceByWindow(_ + _, Seconds(30), Seconds(1))
   * }}}
   */
-class RawDataPublisher(val config: KafkaConfig, ssc: StreamingContext, settings: WeatherSettings) extends KafkaProducer {
+class RawDataPublisher(val config: KafkaConfig, ssc: StreamingContext, settings: WeatherSettings)
+  extends KafkaProducer {
   import settings._
-  import WeatherEvent._
 
-  def receive : Actor.Receive = {
-    case PublishFeed =>
-      ssc.textFileStream(DataLoadPath).flatMap(_.split("\\n"))
-        .map(send(KafkaTopicRaw, KafkaGroupId, _))
+  def receive: Actor.Receive = {
+    case year: Int if DataYearRange contains year => publish(year)
+  }
+
+  def publish(year: Int): Unit = {
+    val location = s"$DataLoadPath/$year.csv.gz"
+    log.debug(s"Attempting to read $location")
+
+    /* Using rdd.toLocalIterator will consume as much memory as the largest partition in this RDD */
+    ssc.sparkContext.textFile(location)
+      .flatMap(_.split("\\n"))
+      .toLocalIterator
+      .foreach(send(KafkaTopicRaw, KafkaGroupId, _))
   }
 }
 
-/** 3. The KafkaStreamActor elegantly creates a streaming pipeline from Kafka to Cassandra via Spark.
+/** 3. The KafkaStreamActor creates a streaming pipeline from Kafka to Cassandra via Spark.
   * It creates the Kafka stream which streams the raw data, transforms it, to
   * a column entry for a specific weather station[[com.datastax.killrweather.Weather.RawWeatherData]],
   * and saves the new data to the cassandra table as it arrives.
   */
-class KafkaStreamActor(kafka: EmbeddedKafka, ssc: StreamingContext, settings: WeatherSettings) extends WeatherActor {
+class KafkaStreamActor(kafkaParams: Map[String, String], ssc: StreamingContext,
+                       settings: WeatherSettings, listener: ActorRef) extends WeatherActor {
+
   import settings._
   import WeatherEvent._
   import Weather._
 
-  /* Creates the Kafka stream and defines the work to be done. */
   val stream = KafkaUtils.createStream[String, String, StringDecoder, StringDecoder](
-    ssc, kafka.kafkaParams, Map(KafkaTopicRaw -> 1), StorageLevel.MEMORY_ONLY)
+    ssc, kafkaParams, Map(KafkaTopicRaw -> 1), StorageLevel.MEMORY_ONLY)
 
-  stream.map { case (_,d) => d.split(",")}
-    .map (RawWeatherData(_))
+  stream.map { case (_, d) => d.split(",")}
+    .map(RawWeatherData(_))
     .saveToCassandra(CassandraKeyspace, CassandraTableRaw)
 
-  context.parent ! OutputStreamInitialized
+  listener ! OutputStreamInitialized
 
-  def receive : Actor.Receive = {
+  def receive: Actor.Receive = {
     case _ =>
   }
 }

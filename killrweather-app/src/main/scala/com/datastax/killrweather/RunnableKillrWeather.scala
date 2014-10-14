@@ -24,9 +24,9 @@ import com.datastax.spark.connector.embedded.EmbeddedKafka
 /** Runnable: for running WeatherCenter from command line or IDE. */
 object RunnableKillrWeather extends App with KillrWeather
 
-/** Used to run [[RunnableKillrWeather]] and [[com.datastax.killrweather.api.WeatherServletContextListener]] */
+/** Used to run [[RunnableKillrWeather]] and
+  * [[com.datastax.killrweather.api.WeatherServletContextListener]] */
 trait KillrWeather extends WeatherApp {
-  import WeatherEvent._
 
   override val settings = new WeatherSettings()
 
@@ -36,17 +36,17 @@ trait KillrWeather extends WeatherApp {
   /** Creates the ActorSystem. */
   val system = ActorSystem(settings.AppName)
 
-  system.registerOnTermination {
-    kafka.shutdown()
-    guardian ! PoisonPill
-  }
-
   /** Creates the raw data topic. */
   kafka.createTopic(settings.KafkaTopicRaw)
 
   /* The root supervisor Actor of our app. */
   val guardian = system.actorOf(Props(new NodeGuardian(ssc, kafka, settings)), "node-guardian")
-  guardian ! GetWeatherStationIds
+
+  system.registerOnTermination {
+    kafka.shutdown()
+    ssc.stop(stopSparkContext = true, stopGracefully = true)
+    guardian ! PoisonPill
+  }
 
   ssc.awaitTermination()
 }

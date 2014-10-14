@@ -27,9 +27,12 @@ trait PrecipitationSpec extends ActorSparkSpec {
 
 class DailyPrecipitationActorSpec extends PrecipitationSpec {
 //GetPrecipitation
+
+  start()
 }
 
 class PrecipitationActorSpec extends PrecipitationSpec {
   //val precipitation = system.actorOf(Props(new PrecipitationActor(ssc, settings)), "precipitation")
 
+  start()
 }

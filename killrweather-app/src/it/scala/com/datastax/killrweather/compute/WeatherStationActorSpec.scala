@@ -28,6 +28,8 @@ class WeatherStationActorSpec extends ActorSparkSpec {
 
   val station = system.actorOf(Props(new WeatherStationActor(ssc, settings)), "weather-station")
 
+  start()
+
   "WeatherStationActor" must {
    "future.collectAsync: return a  weather station id" in {
       station ! GetWeatherStationIds
