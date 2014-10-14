@@ -16,6 +16,8 @@
 package com.datastax.killrweather
 
 import akka.actor.ActorRef
+import org.apache.spark.util.StatCounter
+import org.joda.time.DateTime
 
 object WeatherEvent {
 
@@ -52,6 +54,12 @@ object WeatherEvent {
   case class GetMonthlyTemperature(weather_station: String, month: Int, year: Int) extends WeatherRequest
   case class DailyTemperature(weather_station: String, year: Int, month: Int, day: Int,
     high: Double, low: Double, mean: Double, variance: Double, stdev: Double) extends WeatherAggregate
+
+  object DailyTemperature {
+    def apply(wsid: String, dt: DateTime, s: StatCounter): DailyTemperature =
+      DailyTemperature(weather_station = wsid, year = dt.getYear, month = dt.getMonthOfYear, day = dt.getDayOfMonth,
+        high = s.max, low = s.min, mean = s.mean, variance = s.variance, stdev = s.stdev)
+  }
 
   case class Temperature(weather_station: String, year: Int, month: Int, day: Int,
     high: Double, low: Double, mean: Double, variance: Double, stdev: Double) extends WeatherAggregate

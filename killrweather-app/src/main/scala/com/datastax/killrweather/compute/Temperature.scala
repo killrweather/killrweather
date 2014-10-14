@@ -20,6 +20,7 @@ import akka.pattern.pipe
 import akka.routing.RoundRobinRouter
 import org.apache.spark.SparkContext._
 import org.apache.spark.streaming.StreamingContext
+import org.apache.spark.util.StatCounter
 import org.joda.time.DateTime
 import com.datastax.killrweather.WeatherSettings
 import com.datastax.killrweather.actor.WeatherActor
@@ -80,25 +81,20 @@ class DailyTemperatureActor(ssc: StreamingContext, settings: WeatherSettings) ex
     * Persists to Cassandra daily temperature table by weather station.
     */
   def computeDay(dt: DateTime, wsid: String): Unit = {
-    def toDailyTemperature(values: Seq[Double]): DailyTemperature = {
-      val s = toStatCounter(values)
-      DailyTemperature(weather_station = wsid, year = dt.getYear, month = dt.getMonthOfYear, day = dt.getDayOfMonth,
-        high = s.max, low = s.min, mean = s.mean, variance = s.variance, stdev = s.stdev)
-    }
-
     log.debug(s"Computing ${toDateFormat(dt)}")
-    /* Insure you never do this with anything but very small chunks of data, for the driver. */
-    for {
-      aggregate <- ssc.cassandraTable[Double](keyspace, rawtable)
-                    .select("temperature")
-                    .where("weather_station = ? AND year = ? AND month = ? AND day = ?",
-                      wsid, dt.getYear, dt.getMonthOfYear, dt.getDayOfMonth)
-                    .collectAsync()
-                    .map(toDailyTemperature)
-    } yield {
-      ssc.sparkContext.parallelize(Seq(aggregate)).saveToCassandra(keyspace, dailytable)
-      if (dt.getDayOfYear >= 365) publishStatus(dt.getYear)
-    }
+
+    val toDailyTemperature = (s: StatCounter) => DailyTemperature(wsid, dt, s)
+ 
+    ssc.cassandraTable[(String, Double)](keyspace, rawtable)
+      .select("weather_station", "temperature")
+      .where("weather_station = ? AND year = ? AND month = ? AND day = ?",
+        wsid, dt.getYear, dt.getMonthOfYear, dt.getDayOfMonth)
+      .mapValues{ t => StatCounter(Seq(t))}
+      .reduceByKey(_ merge _)
+      .map { case (_, s) => toDailyTemperature(s) }
+      .saveToCassandra(keyspace, dailytable)
+
+    if (dt.getDayOfYear >= 365) publishStatus(dt.getYear)
   }
 
   def publishStatus(year: Int): Unit =
