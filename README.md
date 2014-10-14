@@ -1,17 +1,5 @@
-KillrWeather
-============
+# KillrWeather
 
-The killrweather.com app. Powerd by DataStax. An example application web site to highlight integration between Apache Spark and Apache Cassandra.
-
-## Data Model
-
-You can find any schema creation scripts [here](https://github.com/killrweather/killrweather/tree/master/data)
-
-####create-timeseries.cql
-Basic schema for creation of Cassandra keyspace and tables for storing raw weather data from ISD-lite hourly files.
-
- - weather_station: Lookup table for weather station by code. For this data file, we combine two fields in the format xxxxxx:yyyyy xxxxx is the 
-=======
 KillrWeather, powered by [DataStax](http://www.datastax.com), is about how to easily leverage and integrate [Apache Spark](http://spark.apache.org), 
 [Apache Cassandra](http://cassandra.apache.org), and [Apache Kafka](http://kafka.apache.org) for fast, streaming computations 
 on **time series data** in asynchronous [Akka](http://akka.io) event-driven environments.
