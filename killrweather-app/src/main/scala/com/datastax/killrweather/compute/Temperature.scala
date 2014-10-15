@@ -15,6 +15,8 @@
  */
 package com.datastax.killrweather.compute
 
+import scala.concurrent.Future
+import scala.util.control.NonFatal
 import akka.actor.{Actor, ActorRef, Props}
 import akka.pattern.pipe
 import akka.routing.RoundRobinRouter
@@ -27,16 +29,17 @@ import com.datastax.killrweather.actor.WeatherActor
 import com.datastax.spark.connector._
 import com.datastax.spark.connector.streaming._
 
-import scala.util.control.NonFatal
-
 /** Supervisor for a given `year`. */
 class TemperatureSupervisor(year: Int, ssc: StreamingContext, settings: WeatherSettings) extends WeatherActor {
   import com.datastax.killrweather.WeatherEvent._
 
   val temperature = context.actorOf(Props(new TemperatureActor(ssc, settings)))
 
-  /** Creates the daily temperature router to parallelize the work. Just 1 for now. Try a router. */
-  val dailyTemperatures = context.actorOf(Props(new DailyTemperatureActor(ssc, settings)))
+  /** Creates the daily temperature router to parallelize the work. Just 1 for now.*/
+  val dailyTemperatures = context.actorOf(Props(
+    new DailyTemperatureActor(ssc, settings))
+    .withRouter(RoundRobinRouter(nrOfInstances = 1,
+    routerDispatcher = "killrweather.dispatchers.temperature")))
 
   def receive : Actor.Receive = {
     case e: WeatherStationIds     => runTask(e.sids: _*)
@@ -97,7 +100,11 @@ class DailyTemperatureActor(ssc: StreamingContext, settings: WeatherSettings) ex
       .saveToCassandra(keyspace, dailytable)
     catch {
       case NonFatal(e) =>
-        log.error(e, s"Error processing data for station '$wsid' on '$dt'. You may just need to load all the raw data.")
+        log.error(e,
+          s"""
+             Error processing data for station '$wsid' on '$dt'. You may just need to load all the raw data.
+             Or this may be happening on IT test shutdown because it hasn't been done cleanly yet :)
+           """)
 
     }
 
@@ -123,16 +130,13 @@ class TemperatureActor(ssc: StreamingContext, settings: WeatherSettings) extends
   }
 
   /** Returns a future value to the `requester` actor. */
-  def monthly(wsid: String, month: Int, year: Int, requester: ActorRef): Unit = {
-    val dt = monthOfYearForYear(month, year)
+  def monthly(wsid: String, month: Int, year: Int, requester: ActorRef): Unit =
+    doMonthly(wsid, month, year) pipeTo requester
 
-    for {
-      temps <- ssc.cassandraTable[Temperature](keyspace, dailytable)
-                .where("weather_station = ? AND year = ? AND month = ?",
-                  wsid, dt.getYear, dt.getMonthOfYear)
-                .collectAsync
-
-    } yield temps
-  } pipeTo requester
+  def doMonthly(wsid: String, year: Int, month: Int): Future[Seq[Temperature]] =
+    ssc.cassandraTable[Temperature](keyspace, dailytable)
+      .where("weather_station = ? AND year = ? AND month = ?",
+        wsid, year, month)
+      .collectAsync
 
 }

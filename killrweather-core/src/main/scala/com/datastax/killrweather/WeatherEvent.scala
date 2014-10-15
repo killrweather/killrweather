@@ -32,8 +32,7 @@ object WeatherEvent {
   case object Shutdown extends LifeCycleEvent
   case object TaskCompleted extends LifeCycleEvent
   case class DailyTemperatureTaskCompleted(by: ActorRef, wsid: String, year: Int) extends LifeCycleEvent
-  case object StartValidation extends LifeCycleEvent
-  case object ValidationCompleted extends LifeCycleEvent
+  case class DailyPrecipitationTaskCompleted(by: ActorRef, wsid: String, year: Int) extends LifeCycleEvent
 
   sealed trait WeatherRequest extends WeatherEvent
   sealed trait WeatherResponse extends WeatherEvent
@@ -67,8 +66,8 @@ object WeatherEvent {
 
   case class ComputeDailyPrecipitation(wsid: String, year: Int, constraint: Option[Int] = None) extends WeatherRequest
   case class GetPrecipitation(sid: String, year: Int) extends WeatherRequest
-  case class Precipitation(sid: String, annual: Double) extends WeatherAggregate
-
+  case class DailyPrecipitation(wsid: String, dt: DateTime, precipitation: Double) extends WeatherAggregate
+  case class Precipitation(sid: String, year: Int, annual: Double) extends WeatherAggregate
   case class GetTopKPrecipitation(year: Int) extends WeatherRequest
   case class TopKPrecipitation(seq: Seq[(String, Double)]) extends WeatherAggregate
 

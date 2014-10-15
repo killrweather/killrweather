@@ -48,7 +48,8 @@ import com.datastax.killrweather.compute._
  * NOTE: if `NodeGuardian` is ever put on an Akka router, multiple instances of the stream will
  * exist on the node. Might want to call 'union' on the streams in that case.
  */
-class NodeGuardian(ssc: StreamingContext, kafkaServer: EmbeddedKafka, settings: WeatherSettings)
+class NodeGuardian(ssc: StreamingContext, kafkaServer: EmbeddedKafka,
+                   settings: WeatherSettings)
   extends ClusterAwareActor with Assertions with ActorLogging {
   import WeatherEvent._
   import settings._
@@ -89,8 +90,10 @@ class NodeGuardian(ssc: StreamingContext, kafkaServer: EmbeddedKafka, settings: 
     *   it sends them to the compute actors. */
   def initialized: Actor.Receive = {
     case e: GetMonthlyTemperature => temperature forward e
+    case e: GetPrecipitation      => precipitation forward e
     case e: GetWeatherStation     => station forward e
     case e: GetSkyConditionLookup => ???
+    case StreamWeatherStationIds  => station forward StreamWeatherStationIds
     case PoisonPill               => gracefulShutdown()
   }
 

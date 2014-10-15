@@ -48,7 +48,7 @@ class DailyTemperatureActorSpec extends TemperatureSpec {
       dailyTemperatures ! ComputeDailyTemperature(sid, year)
 
       expectMsgPF(3.minutes) {
-        case DailyTemperatureTaskCompleted(actor, yr) =>
+        case DailyTemperatureTaskCompleted(actor, wsid, yr) =>
           actor.path should be (dailyTemperatures.path)
           yr should be (year)
           val rows = ssc.cassandraTable(CassandraKeyspace, CassandraTableDailyTemp)
@@ -81,27 +81,26 @@ class TemperatureActorSpec extends TemperatureSpec {
 }
 
 
-class TemporaryReceiver(year: Int, temperature: ActorRef, precipitation: ActorRef, weatherStation: ActorRef)
-  extends Actor with ActorLogging {
-  import com.datastax.killrweather.Weather
+class TemperatureSupervisorSpec extends TemperatureSpec {
   import WeatherEvent._
 
-  var received = 0
-  val expected = 3
+  "TemperatureSupervisor" must {
+    start()
 
-  def receive: Actor.Receive = {
-    case StartValidation =>
-      temperature ! GetTemperature("010010:99999", 10, year)
-      precipitation ! GetPrecipitation("010000:99999", year)
-      weatherStation ! GetWeatherStation("13280:99999")
+    val supervisor = system.actorOf(Props(new TemperatureActor(ssc, settings)))
+    supervisor ! WeatherStationIds
 
-    case e: WeatherEvent.WeatherAggregate =>
-      log.info(s"Received $e"); received += 1; test()
-    case e: Weather.WeatherStation =>
-      log.info(s"Received $e"); received += 1; test()
+    "compute daily temperature rollups per weather station to monthly statistics." in {
+
+      supervisor ! GetMonthlyTemperature(sid, 1, year)
+      expectMsgPF(timeout.duration) {
+        case e =>
+          val temps = e.asInstanceOf[Seq[Temperature]]
+          temps.forall(t => t.month == 12 && t.year == year && t.weather_station == sid)
+          temps.map(_.day).min should be (1)
+          temps.map(_.day).max should be (31)
+          temps foreach println
+      }
+    }
   }
-
-  def test(): Unit =
-    if (received == expected) context.parent ! ValidationCompleted
 }
-

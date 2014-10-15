@@ -17,7 +17,6 @@ package com.datastax.killrweather
 
 import akka.pattern.{ pipe, ask }
 import akka.actor.{Actor, ActorRef}
-import com.datastax.killrweather.WeatherEvent.PublishWeatherStationIds
 import org.apache.spark.SparkContext._
 import org.apache.spark.streaming.StreamingContext
 import com.datastax.spark.connector.streaming._
@@ -33,17 +32,17 @@ class WeatherStationActor(ssc: StreamingContext, settings: WeatherSettings,
   import WeatherEvent._
 
   def receive : Actor.Receive = {
-    case GetWeatherStation(sid)  => weatherStation(sid, sender)
-    case StreamWeatherStationIds => streamWeatherStationIds(sender)
-    case PublishWeatherStationIds    => weatherStationIds()
+    case GetWeatherStation(sid)   => weatherStation(sid, sender)
+    case StreamWeatherStationIds  => streamWeatherStationIds(sender)
+    case PublishWeatherStationIds => weatherStationIds()
   }
 
   /** 1. Streams weather station Ids to the daily computation actors.
     * Requires less heap memory and system load, but is slower than collectAsync below.
     * The iterator will consume as much memory as the largest partition in this RDD. */
   def streamWeatherStationIds(requester: ActorRef): Unit =
-    ssc.cassandraTable[String](keyspace, weatherstations).select("id")
-      .toLocalIterator foreach (id => requester ! WeatherStationIds(id))
+    ssc.cassandraTable[String](keyspace, weatherstations).select("id").toLocalIterator
+      .foreach(id => requester ! WeatherStationIds(id))
 
   /** 1. Collects weather station Ids async, to the daily computation actors.
     * Requires more heap memory and system load, but is faster than toLocalIterator above. */

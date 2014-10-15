@@ -28,9 +28,9 @@ class WeatherStationActorSpec extends ActorSparkSpec {
 
   val expected = 19703 // the total count stations
 
-  val temp = TestProbe().ref
-  val precip = TestProbe().ref
-  val station = system.actorOf(Props(new WeatherStationActor(ssc, settings, temp, precip)), "weather-station")
+  val temp = TestProbe()
+  val precip = TestProbe()
+  val station = system.actorOf(Props(new WeatherStationActor(ssc, settings, temp.ref, precip.ref)), "weather-station")
 
   start()
 
@@ -38,7 +38,7 @@ class WeatherStationActorSpec extends ActorSparkSpec {
    "future.collectAsync: return a  weather station id" in {
       station ! PublishWeatherStationIds
       val start = System.currentTimeMillis()
-      expectMsgPF() {
+      temp.expectMsgPF() {
         case e: WeatherStationIds => e.sids.size should be(expected)
       }
       println((System.currentTimeMillis() - start).seconds)
