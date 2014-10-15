@@ -27,17 +27,16 @@ import com.datastax.killrweather.actor.WeatherActor
 import com.datastax.spark.connector._
 import com.datastax.spark.connector.streaming._
 
+import scala.util.control.NonFatal
+
 /** Supervisor for a given `year`. */
 class TemperatureSupervisor(year: Int, ssc: StreamingContext, settings: WeatherSettings) extends WeatherActor {
   import com.datastax.killrweather.WeatherEvent._
 
-  /** Creates the daily temperature router, with `sids`.size / 2 number of [[DailyTemperatureActor]] instances. */
-  val dailyTemperatures = context.actorOf(Props(
-    new DailyTemperatureActor(ssc, settings))
-    .withRouter(RoundRobinRouter(nrOfInstances = 1, // TODO weatherStationIds.size / 2
-    routerDispatcher = "killrweather.dispatchers.temperature")))
-
   val temperature = context.actorOf(Props(new TemperatureActor(ssc, settings)))
+
+  /** Creates the daily temperature router to parallelize the work. Just 1 for now. Try a router. */
+  val dailyTemperatures = context.actorOf(Props(new DailyTemperatureActor(ssc, settings)))
 
   def receive : Actor.Receive = {
     case e: WeatherStationIds     => runTask(e.sids: _*)
@@ -46,8 +45,10 @@ class TemperatureSupervisor(year: Int, ssc: StreamingContext, settings: WeatherS
 
   /** Sends a [[ComputeDailyTemperature]] command, round robin, to the daily
     * temperature actors to compute for the given weather station id and year. */
-  def runTask(sids: String*): Unit =
+  def runTask(sids: String*): Unit = {
+    //val values = sids.take(2) // Note - take just to run quickly for demo
     sids.foreach(dailyTemperatures ! ComputeDailyTemperature(_, year))
+  } // TODO need to keep this data updated
 
 }
 
@@ -81,11 +82,12 @@ class DailyTemperatureActor(ssc: StreamingContext, settings: WeatherSettings) ex
     * Persists to Cassandra daily temperature table by weather station.
     */
   def computeDay(dt: DateTime, wsid: String): Unit = {
-    log.debug(s"Computing ${toDateFormat(dt)}")
+    log.debug(s"Computing ${toDateFormat(dt)} for $wsid")
 
     val toDailyTemperature = (s: StatCounter) => DailyTemperature(wsid, dt, s)
  
-    ssc.cassandraTable[(String, Double)](keyspace, rawtable)
+    try
+      ssc.cassandraTable[(String, Double)](keyspace, rawtable)
       .select("weather_station", "temperature")
       .where("weather_station = ? AND year = ? AND month = ? AND day = ?",
         wsid, dt.getYear, dt.getMonthOfYear, dt.getDayOfMonth)
@@ -93,12 +95,19 @@ class DailyTemperatureActor(ssc: StreamingContext, settings: WeatherSettings) ex
       .reduceByKey(_ merge _)
       .map { case (_, s) => toDailyTemperature(s) }
       .saveToCassandra(keyspace, dailytable)
+    catch {
+      case NonFatal(e) =>
+        log.error(e, s"Error processing data for station '$wsid' on '$dt'. You may just need to load all the raw data.")
 
-    if (dt.getDayOfYear >= 365) publishStatus(dt.getYear)
+    }
+
+    if (dt.getDayOfYear >= 365) publishStatus(wsid, dt.getYear)
   }
 
-  def publishStatus(year: Int): Unit =
-    context.system.eventStream.publish(DailyTemperatureTaskCompleted(self, year))
+  def publishStatus(wsid: String, year: Int): Unit = {
+    log.info(s"Completed $year for $wsid")
+    context.system.eventStream.publish(DailyTemperatureTaskCompleted(self, wsid, year))
+  }
 }
 
 /** 5. The TemperatureActor reads the daily temperature rollup data from Cassandra,

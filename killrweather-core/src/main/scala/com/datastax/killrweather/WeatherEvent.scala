@@ -27,10 +27,11 @@ object WeatherEvent {
 
   sealed trait LifeCycleEvent extends WeatherEvent
   case object OutputStreamInitialized extends LifeCycleEvent
+  case class NodeInitialized(root: ActorRef) extends LifeCycleEvent
   case object PublishFeed extends LifeCycleEvent
   case object Shutdown extends LifeCycleEvent
   case object TaskCompleted extends LifeCycleEvent
-  case class DailyTemperatureTaskCompleted(by: ActorRef, year: Int) extends LifeCycleEvent
+  case class DailyTemperatureTaskCompleted(by: ActorRef, wsid: String, year: Int) extends LifeCycleEvent
   case object StartValidation extends LifeCycleEvent
   case object ValidationCompleted extends LifeCycleEvent
 
@@ -44,7 +45,7 @@ object WeatherEvent {
   case class GetWeatherStation(sid: String) extends WeatherRequest
   case class GetRawWeatherData(perPage: Int) extends WeatherRequest
 
-  case object GetWeatherStationIds extends WeatherRequest
+  case class PublishWeatherStationIds(year: Int) extends WeatherRequest
   case object StreamWeatherStationIds extends WeatherRequest
   case class WeatherStationIds(sids: String*) extends WeatherResponse
 

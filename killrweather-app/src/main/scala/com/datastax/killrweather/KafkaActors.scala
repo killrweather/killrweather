@@ -17,6 +17,7 @@ package com.datastax.killrweather
 
 import akka.actor.{ActorRef, Props, Actor}
 import akka.routing.RoundRobinRouter
+import com.datastax.killrweather.Weather.RawWeatherData
 
 import org.apache.spark.streaming.StreamingContext
 import kafka.server.KafkaConfig

@@ -17,6 +17,7 @@ package com.datastax.killrweather
 
 import scala.concurrent.duration._
 import akka.actor._
+import akka.pattern.ask
 import akka.pattern.gracefulStop
 import akka.util.Timeout
 import org.apache.spark.streaming.kafka.KafkaInputDStream
@@ -52,22 +53,17 @@ class NodeGuardian(ssc: StreamingContext, kafkaServer: EmbeddedKafka, settings: 
   import WeatherEvent._
   import settings._
 
-  implicit val timeout = Timeout(3.seconds)
+  implicit val timeout = Timeout(5.seconds)
 
   /* Creates the Kafka actors: */
   val kafka = context.actorOf(Props(new KafkaSupervisor(kafkaServer, ssc, settings, self)), "kafka")
+  /* Ingests raw data via Spark and publishes to Kafka topic. */
+  kafka ! PublishFeed
 
   /* The Spark/Cassandra computation actors: For the tutorial we just use 2005 for now. */
   val temperature = context.actorOf(Props(new TemperatureSupervisor(2005, ssc, settings)), "temperature")
   val precipitation = context.actorOf(Props(new PrecipitationActor(ssc, settings)), "precipitation")
-  val station = context.actorOf(Props(new WeatherStationActor(ssc, settings)), "weather-station")
-
-  /* Ingests raw data via Spark and publishes to Kafka topic. */
-  kafka ! PublishFeed
-
-  /* Requests weather station Ids from [[WeatherStationActor]]
-   for running the daily background computations. */
-  station ! GetWeatherStationIds
+  val station = context.actorOf(Props(new WeatherStationActor(ssc, settings, temperature, precipitation)), "weather-station")
 
   override def preStart(): Unit =
     log.info("Starting up.")
@@ -78,9 +74,7 @@ class NodeGuardian(ssc: StreamingContext, kafkaServer: EmbeddedKafka, settings: 
   /** On startup, actor is in an [[uninitialized]] state. */
   override def receive = uninitialized orElse super.receive
 
-  /** When [[WeatherStationIds]] is received from [[WeatherStationActor]],
-    *   it sends them to the compute actors.
-    * When [[OutputStreamInitialized]] is received from the [[KafkaStreamActor]] after
+  /** When [[OutputStreamInitialized]] is received from the [[KafkaStreamActor]] after
     *   it creates and defines the [[KafkaInputDStream]], at which point the
       * - streaming checkpoint can be set
       * - the [[StreamingContext]] can be started
@@ -88,25 +82,33 @@ class NodeGuardian(ssc: StreamingContext, kafkaServer: EmbeddedKafka, settings: 
     *   with [[ActorContext.become()]].
     */
   def uninitialized: Actor.Receive = {
-    case e: WeatherStationIds =>
-      temperature ! e
-      precipitation ! e
-
-    case OutputStreamInitialized =>
-      ssc.checkpoint(SparkCheckpointDir)
-      ssc.start() // can not add more dstreams after this is started
-      context become initialized
+    case OutputStreamInitialized => initialize()
   }
 
+  /** When [[WeatherStationIds]] is received from [[WeatherStationActor]],
+    *   it sends them to the compute actors. */
   def initialized: Actor.Receive = {
-    case e: GetTemperature        => temperature forward e
+    case e: GetMonthlyTemperature => temperature forward e
     case e: GetWeatherStation     => station forward e
-    case e: GetSkyConditionLookup =>
+    case e: GetSkyConditionLookup => ???
     case PoisonPill               => gracefulShutdown()
   }
 
-  def gracefulShutdown(): Unit = {
+  def initialize(): Unit = {
+    ssc.checkpoint(SparkCheckpointDir)
+    ssc.start() // can not add more dstreams after this is started
 
+    /* Requests weather station Ids from [[WeatherStationActor]]
+    for running the daily background computations. */
+    station ! PublishWeatherStationIds
+
+    context become initialized
+
+    log.info(s"Node is transitioning from 'uninitialized' to 'initialized'")
+    context.system.eventStream.publish(NodeInitialized(self))
+  }
+
+  def gracefulShutdown(): Unit = {
     context.children foreach (c => awaitCond(gracefulStop(c, timeout.duration).isCompleted))
     log.info(s"Graceful stop completed.")
   }

@@ -15,6 +15,8 @@
  */
 package com.datastax.killrweather.compute
 
+import akka.testkit.TestProbe
+
 import scala.concurrent.duration._
 import akka.actor._
 import com.datastax.killrweather._
@@ -26,13 +28,15 @@ class WeatherStationActorSpec extends ActorSparkSpec {
 
   val expected = 19703 // the total count stations
 
-  val station = system.actorOf(Props(new WeatherStationActor(ssc, settings)), "weather-station")
+  val temp = TestProbe().ref
+  val precip = TestProbe().ref
+  val station = system.actorOf(Props(new WeatherStationActor(ssc, settings, temp, precip)), "weather-station")
 
   start()
 
   "WeatherStationActor" must {
    "future.collectAsync: return a  weather station id" in {
-      station ! GetWeatherStationIds
+      station ! PublishWeatherStationIds
       val start = System.currentTimeMillis()
       expectMsgPF() {
         case e: WeatherStationIds => e.sids.size should be(expected)

@@ -45,7 +45,7 @@ class DailyTemperatureActorSpec extends TemperatureSpec {
       // The first run must be like this: ComputeDailyTemperature(sid, year)
       // but after you can play around with running just one month for expediency:
       // ComputeDailyTemperature(sid, year, constraint = Some(startAt))
-      dailyTemperatures ! ComputeDailyTemperature(sid, year, constraint = Some(startAt))
+      dailyTemperatures ! ComputeDailyTemperature(sid, year)
 
       expectMsgPF(3.minutes) {
         case DailyTemperatureTaskCompleted(actor, yr) =>
