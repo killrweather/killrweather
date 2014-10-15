@@ -23,7 +23,6 @@ import akka.cluster.Cluster
 import akka.actor.{Actor, ActorLogging, Props, ActorSystem}
 import akka.testkit.{DefaultTimeout, ImplicitSender, TestKit}
 import com.datastax.killrweather.Weather.RawWeatherData
-import com.datastax.killrweather.WeatherEvent.OutputStreamInitialized
 import com.datastax.spark.connector.cql.CassandraConnector
 import org.apache.spark.storage.StorageLevel
 import org.joda.time.{DateTimeZone, DateTime}
@@ -105,9 +104,7 @@ abstract class AkkaSpec extends TestKit(ActorSystem()) with AbstractSpec with Im
    protected val log = akka.event.Logging(system, system.name)
 
    override def afterAll() {
-     import scala.concurrent.duration._
      system.shutdown()
-     awaitCond(system.isTerminated, 3.seconds)
   }
 }
 

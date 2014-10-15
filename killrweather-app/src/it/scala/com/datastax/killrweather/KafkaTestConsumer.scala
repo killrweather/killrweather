@@ -27,7 +27,7 @@ class KafkaTestConsumer(zookeeper: String, groupId: String, topic: String, numTh
     executor.submit(new Runnable() {
       def run() {
         for(msgAndMetadata <- stream) {
-          println(s"Consumer received: ${new String(msgAndMetadata.message)}")
+          //println(s"Consumer received: ${new String(msgAndMetadata.message)}")
           latch.countDown()
         }
       }
