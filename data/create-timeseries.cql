@@ -78,7 +78,7 @@ CREATE TABLE daily_aggregate_precip (
    year int,
    month int,
    day int,
-   precipitation double,
+   precipitation counter,
    PRIMARY KEY ((weather_station), year, month, day)
 ) WITH CLUSTERING ORDER BY (year DESC, month DESC, day DESC);
 
@@ -86,6 +86,6 @@ CREATE TABLE daily_aggregate_precip (
 CREATE TABLE year_cumulative_precip (
    weather_station text,
    year int,
-   precipitation double,
+   precipitation counter,
    PRIMARY KEY ((weather_station), year)
 ) WITH CLUSTERING ORDER BY (year DESC);
