@@ -24,7 +24,7 @@ import akka.actor.Props
 import com.datastax.spark.connector.embedded.EmbeddedKafka
 import com.datastax.spark.connector.streaming._
 
-class KafkaSupervisorSpec extends ActorSparkSpec {
+class KafkaStreamingActorSpec extends ActorSparkSpec {
   import WeatherEvent._
   import settings._
 
@@ -34,9 +34,9 @@ class KafkaSupervisorSpec extends ActorSparkSpec {
 
   val year = 2005
 
-  lazy val kafkaServer = new EmbeddedKafka
+  lazy val kafka = new EmbeddedKafka
 
-  kafkaServer.createTopic(settings.KafkaTopicRaw)
+  kafka.createTopic(settings.KafkaTopicRaw)
 
   // fail fast if you have not run the create and load cql scripts yet :)
   CassandraConnector(conf).withSessionDo { session =>
@@ -50,42 +50,42 @@ class KafkaSupervisorSpec extends ActorSparkSpec {
      ) WITH CLUSTERING ORDER BY (year DESC, month DESC, day DESC, hour DESC)""")
   }
 
-  val latch = new CountDownLatch(1000)
-
-  val kafkaActor = system.actorOf(Props(new KafkaSupervisor(kafkaServer, ssc, settings, self)), "kafka")
+  system.actorOf(Props(new KafkaStreamingActor(
+    kafka.kafkaConfig, kafka.kafkaParams, ssc, settings, self)), "kafka")
 
   expectMsgPF(1.minute) {
     case OutputStreamInitialized => start()
   }
 
-  val consumer = new KafkaTestConsumer(kafkaServer.kafkaConfig.zkConnect, KafkaGroupId, KafkaTopicRaw, 2, latch)
-
-  "KafkaSupervisor" must {
-    ssc.cassandraTable(CassandraKeyspace, CassandraTableRaw).collect.size should be (0)
-
-    "RawDataPublisher: transforms annual weather .gz files to line data and publish to a Kafka topic" in {
-      kafkaActor ! PublishFeed
-
+  "KafkaStreamingActor" must {
+    "transforms annual weather .gz files to line data and publish to a Kafka topic" in {
+      val latch = new CountDownLatch(1000)
+      val consumer = new KafkaTestConsumer(kafka.kafkaConfig.zkConnect, KafkaGroupId, KafkaTopicRaw, 2, latch)
       latch.await(5.minutes.toMillis, TimeUnit.MILLISECONDS)
-      awaitCond(latch.getCount == 0) // we have at least 100 messages in kafka
+      // asserts raw data has started to be published to kafka
+      awaitCond(latch.getCount == 0)
+      log.info(s"\n\nSuccessfully read all data from Kafka.")
+      consumer.shutdown()
     }
-    "KafkaStreamActor: streams in data from kafka, transforms it, and saves it to Cassandra" in {
-      // while streaming gets going
-      awaitCond(ssc.cassandraTable(CassandraKeyspace, CassandraTableRaw).count() > 0, 60.seconds)
+    "streams in data from kafka, transforms it, and saves it to Cassandra" in {
+      awaitCond(ssc.cassandraTable(
+        settings.CassandraKeyspace, settings.CassandraTableDailyTemp)
+        .toLocalIterator.size > 100)
 
-      // assert there is now a day of data for the given wsid, for year, month, day, from kafka stream
-      val rows = ssc.cassandraTable(CassandraKeyspace, CassandraTableRaw)
-        .where("weather_station = ? AND year = ? and month = ? and day = ?", sid, year, 1, 1)
-        .toLocalIterator
+      log.debug(s"\n\nSuccessfully read all data from $CassandraTableRaw.")
 
-      rows.size should be >= (20)
+      awaitCond(ssc.cassandraTable(
+        settings.CassandraKeyspace, settings.CassandraTableDailyPrecip)
+        .toLocalIterator.size > 100)
+
+      log.debug(s"\n\nSuccessfully read all data from $CassandraTableDailyPrecip")
+
     }
   }
 
   override def afterAll() {
     super.afterAll()
-    consumer.shutdown()
-    kafkaServer.shutdown()
+    kafka.shutdown()
     Thread.sleep(2000) // hrm, no clean shutdown found yet that doesn't throw
   }
 }

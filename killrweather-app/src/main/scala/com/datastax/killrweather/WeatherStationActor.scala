@@ -22,10 +22,8 @@ import org.apache.spark.streaming.StreamingContext
 import com.datastax.spark.connector.streaming._
 import com.datastax.killrweather.actor.WeatherActor
 
-
 /** For a given weather station id, retrieves the full station data. */
-class WeatherStationActor(ssc: StreamingContext, settings: WeatherSettings,
-                          temperature: ActorRef, precipitation: ActorRef) extends WeatherActor {
+class WeatherStationActor(ssc: StreamingContext, settings: WeatherSettings) extends WeatherActor {
 
   import settings.{CassandraKeyspace => keyspace}
   import settings.{CassandraTableStations => weatherstations}
@@ -33,29 +31,7 @@ class WeatherStationActor(ssc: StreamingContext, settings: WeatherSettings,
 
   def receive : Actor.Receive = {
     case GetWeatherStation(sid)   => weatherStation(sid, sender)
-    case StreamWeatherStationIds  => streamWeatherStationIds(sender)
-    case PublishWeatherStationIds => weatherStationIds()
   }
-
-  /** 1. Streams weather station Ids to the daily computation actors.
-    * Requires less heap memory and system load, but is slower than collectAsync below.
-    * The iterator will consume as much memory as the largest partition in this RDD. */
-  def streamWeatherStationIds(requester: ActorRef): Unit =
-    ssc.cassandraTable[String](keyspace, weatherstations).select("id").toLocalIterator
-      .foreach(id => requester ! WeatherStationIds(id))
-
-  /** 1. Collects weather station Ids async, to the daily computation actors.
-    * Requires more heap memory and system load, but is faster than toLocalIterator above. */
-  def weatherStationIds(): Unit =
-    for {
-      stations <- ssc.cassandraTable[String](keyspace, weatherstations)
-        .select("id")
-        .collectAsync // Task: Tutorial - How would you write this better with Spark?
-        .map(ids => WeatherStationIds(ids: _*))
-    } yield {
-      temperature ! stations
-      precipitation ! stations
-    }
 
   /** The reason we can not allow a `LIMIT 1` in the `where` function is that
     * the query is executed on each node, so the limit would applied in each

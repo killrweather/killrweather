@@ -13,13 +13,9 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.datastax.killrweather.compute
+package com.datastax.killrweather
 
-import akka.testkit.TestProbe
-
-import scala.concurrent.duration._
 import akka.actor._
-import com.datastax.killrweather._
 
 class WeatherStationActorSpec extends ActorSparkSpec {
   import com.datastax.killrweather.WeatherEvent._
@@ -28,30 +24,11 @@ class WeatherStationActorSpec extends ActorSparkSpec {
 
   val expected = 19703 // the total count stations
 
-  val temp = TestProbe()
-  val precip = TestProbe()
-  val station = system.actorOf(Props(new WeatherStationActor(ssc, settings, temp.ref, precip.ref)), "weather-station")
+  val station = system.actorOf(Props(new WeatherStationActor(ssc, settings)), "weather-station")
 
   start()
 
   "WeatherStationActor" must {
-   "future.collectAsync: return a  weather station id" in {
-      station ! PublishWeatherStationIds
-      val start = System.currentTimeMillis()
-      temp.expectMsgPF() {
-        case e: WeatherStationIds => e.sids.size should be(expected)
-      }
-      println((System.currentTimeMillis() - start).seconds)
-    }
-   "streamWeatherStationIds: return weather station ids" in {
-      val start = System.currentTimeMillis()
-      station ! StreamWeatherStationIds
-      val wstations = receiveWhile(messages = expected) {
-        case e: WeatherStationIds => e
-      }
-      println((System.currentTimeMillis() - start).seconds)
-      wstations.size should be(expected)
-    }
     "return a weather station" in {
       station ! GetWeatherStation(sid)
       expectMsgPF() {

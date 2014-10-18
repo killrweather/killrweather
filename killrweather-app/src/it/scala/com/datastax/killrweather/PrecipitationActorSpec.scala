@@ -13,25 +13,9 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.datastax.killrweather.compute
+package com.datastax.killrweather
 
-import scala.concurrent.duration._
-import akka.actor._
-import org.joda.time.{DateTime, DateTimeZone}
-import com.datastax.spark.connector.streaming._
-import com.datastax.killrweather._
-
-trait PrecipitationSpec extends ActorSparkSpec {
-
-}
-
-class DailyPrecipitationActorSpec extends PrecipitationSpec {
-//GetPrecipitation
-
-  start()
-}
-
-class PrecipitationActorSpec extends PrecipitationSpec {
+class PrecipitationActorSpec extends ActorSparkSpec {
   //val precipitation = system.actorOf(Props(new PrecipitationActor(ssc, settings)), "precipitation")
 
   start()

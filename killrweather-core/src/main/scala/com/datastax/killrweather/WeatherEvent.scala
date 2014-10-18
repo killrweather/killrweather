@@ -17,9 +17,9 @@ package com.datastax.killrweather
 
 import akka.actor.ActorRef
 import org.apache.spark.util.StatCounter
-import org.joda.time.DateTime
 
 object WeatherEvent {
+  import Weather._
 
   /** Base marker trait. */
   @SerialVersionUID(1L)
@@ -31,8 +31,6 @@ object WeatherEvent {
   case object PublishFeed extends LifeCycleEvent
   case object Shutdown extends LifeCycleEvent
   case object TaskCompleted extends LifeCycleEvent
-  case class DailyTemperatureTaskCompleted(by: ActorRef, wsid: String, year: Int) extends LifeCycleEvent
-  case class DailyPrecipitationTaskCompleted(by: ActorRef, wsid: String, year: Int) extends LifeCycleEvent
 
   sealed trait WeatherRequest extends WeatherEvent
   sealed trait WeatherResponse extends WeatherEvent
@@ -44,8 +42,6 @@ object WeatherEvent {
   case class GetWeatherStation(sid: String) extends WeatherRequest
   case class GetRawWeatherData(perPage: Int) extends WeatherRequest
 
-  case class PublishWeatherStationIds(year: Int) extends WeatherRequest
-  case object StreamWeatherStationIds extends WeatherRequest
   case class WeatherStationIds(sids: String*) extends WeatherResponse
 
   /** @param constraint allows testing a subsection vs doing full year */
@@ -56,8 +52,9 @@ object WeatherEvent {
     high: Double, low: Double, mean: Double, variance: Double, stdev: Double) extends WeatherAggregate
 
   object DailyTemperature {
-    def apply(wsid: String, dt: DateTime, s: StatCounter): DailyTemperature =
-      DailyTemperature(weather_station = wsid, year = dt.getYear, month = dt.getMonthOfYear, day = dt.getDayOfMonth,
+    def apply(data: RawWeatherData, s: StatCounter): DailyTemperature =
+      DailyTemperature(weather_station = data.weatherStation,
+        year = data.year, month = data.month, day = data.day,
         high = s.max, low = s.min, mean = s.mean, variance = s.variance, stdev = s.stdev)
   }
 
@@ -66,7 +63,7 @@ object WeatherEvent {
 
   case class ComputeDailyPrecipitation(wsid: String, year: Int, constraint: Option[Int] = None) extends WeatherRequest
   case class GetPrecipitation(sid: String, year: Int) extends WeatherRequest
-  case class DailyPrecipitation(wsid: String, dt: DateTime, precipitation: Double) extends WeatherAggregate
+  case class DailyPrecipitation(data: RawWeatherData, precipitation: Double) extends WeatherAggregate
   case class Precipitation(sid: String, year: Int, annual: Double) extends WeatherAggregate
   case class GetTopKPrecipitation(year: Int) extends WeatherRequest
   case class TopKPrecipitation(seq: Seq[(String, Double)]) extends WeatherAggregate

@@ -62,13 +62,5 @@ class NodeGuardianSpec extends ActorSparkSpec {
           log.debug(s"Received e")
       }
     }
-    "StreamWeatherStationIds" in {
-      val expected = 19703
-      guardian ! StreamWeatherStationIds
-      val wstations = receiveWhile(messages = expected) {
-        case e: WeatherStationIds => e
-      }
-      wstations.size should be (expected)
-    }
   }
 }
