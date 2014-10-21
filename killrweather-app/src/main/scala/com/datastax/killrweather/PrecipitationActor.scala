@@ -52,7 +52,7 @@ class PrecipitationActor(ssc: StreamingContext, settings: WeatherSettings) exten
       .where("weather_station = ? AND year = ?", wsid, year)
       .collectAsync()
       .map(a => Precipitation(wsid, year, a.sum))
- 
+
   /** Returns the 10 highest temps for any station in the `year`. */
   def topK(year: Int, requester: ActorRef): Unit = Future {
     val top = ssc.cassandraTable[(String,Double)](keyspace, dailytable)
