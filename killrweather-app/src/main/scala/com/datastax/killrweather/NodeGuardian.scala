@@ -23,6 +23,8 @@ import org.apache.spark.streaming.kafka.KafkaInputDStream
 import org.apache.spark.streaming.StreamingContext
 import com.datastax.spark.connector.embedded.{Assertions, EmbeddedKafka}
 
+import scala.reflect.ClassTag
+
 /**
  * The `NodeGuardian` is the root of the primary KillrWeather deployed application.
  * It manages the worker actors and is Akka Cluster aware by extending [[ClusterAwareActor]].
@@ -47,8 +49,7 @@ class NodeGuardian(ssc: StreamingContext, kafka: EmbeddedKafka,
   implicit val timeout = Timeout(5.seconds)
 
   /* Creates the Kafka actors: */
-  context.actorOf(Props(new KafkaStreamingActor(
-    kafka.kafkaConfig, kafka.kafkaParams, ssc, settings, self)), "kafka")
+  context.actorOf(Props(new KafkaStreamingActor(kafka.kafkaConfig, kafka.kafkaParams, ssc, settings, self)), "kafka")
 
   /* The Spark/Cassandra computation actors: For the tutorial we just use 2005 for now. */
   val temperature = context.actorOf(Props(new TemperatureActor(ssc, settings)), "temperature")

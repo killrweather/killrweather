@@ -16,17 +16,16 @@
 package com.datastax.killrweather
 
 import akka.actor.{ActorRef, Actor}
-import org.apache.spark.streaming.StreamingContext
+import org.apache.spark.streaming.{Seconds, StreamingContext, Time}
 import org.apache.spark.SparkContext
-import org.apache.spark.SparkContext._
+import org.apache.spark.util.StatCounter
 import kafka.server.KafkaConfig
 import kafka.serializer.StringDecoder
 import org.apache.spark.storage.StorageLevel
 import org.apache.spark.streaming.kafka.KafkaUtils
-import org.apache.spark.util.StatCounter
-import com.datastax.spark.connector._
 import com.datastax.spark.connector.streaming._
-import com.datastax.killrweather.actor.{KafkaProducer, WeatherActor}
+import com.datastax.killrweather.actor.KafkaProducer
+import com.datastax.spark.connector._
 
 /** 3. The KafkaStreamActor creates a streaming pipeline from Kafka to Cassandra via Spark.
   * It creates the Kafka stream which streams the raw data, transforms it, to
@@ -37,66 +36,61 @@ class KafkaStreamingActor(val config: KafkaConfig,
                           kafkaParams: Map[String,String],
                           ssc: StreamingContext,
                           settings: WeatherSettings, listener: ActorRef)
-                          extends WeatherActor with KafkaProducer {
+                          extends KafkaProducer {
 
   import settings.{ CassandraKeyspace => keyspace }
   import settings._
   import WeatherEvent._
   import Weather._
+  import StreamingContext._
+  import SparkContext._
 
-  /* Using rdd.toLocalIterator will consume as much memory as the largest partition in this RDD */
-  for (year <- DataYearRange) {
-    val location = s"$DataLoadPath/$year.csv.gz"
-    log.info(s"Attempting to read $location")
+  /* Loads historic data from /data/load files. Because we run locally vs against a cluster
+   * solely for purposes of a demo app, we keep that file size data small.
+   * Using rdd.toLocalIterator will consume as much memory as the largest partition in this RDD,
+   * which in this use case is 360 or fewer (if current year before December 31) small Strings. */
+  for (partition <- ByYearPartitions) {
+    val toKafka = (line: String) => send(KafkaTopicRaw, KafkaGroupId, line)
 
-    ssc.sparkContext.textFile(location)
+    ssc.sparkContext.textFile(partition.uri)
       .flatMap(_.split("\\n"))
       .toLocalIterator
-      .map(send(KafkaTopicRaw, KafkaGroupId, _))
+      .foreach(toKafka)
   }
 
-  val stream = KafkaUtils.createStream[String, String, StringDecoder, StringDecoder](
+  /* Use StreamingContext.remember to specify how much of the past data to be "remembered" (i.e., kept around, not deleted).
+     Otherwise, data will get deleted and slice will fail.
+     Slices over data within the last hour, then you should call remember (Seconds(1)). */
+  ssc.remember(Seconds(60))
+
+   val stream = KafkaUtils.createStream[String, String, StringDecoder, StringDecoder](
     ssc, kafkaParams, Map(KafkaTopicRaw -> 1), StorageLevel.MEMORY_ONLY)
     .map { case (_, d) => d.split(",")}
     .map(RawWeatherData(_))
-    // once we convert the data we can not break off in the stream - serialization errors
-    // we need to persist the raw before we can start aggregating bcz aggregation requires
-    // the raw to already be stored
-    .saveToCassandra(CassandraKeyspace, CassandraTableRaw)
+     // temporary - just making the data more insteresting since the truncated
+     // file currently just has 0.0 for all one hour precips
+    .map(p => if(p.day == 2) p.copy(oneHourPrecip = 1.0) else p)
 
-  listener ! OutputStreamInitialized
+  /** Saves the raw data to Cassandra - raw table. */
+  stream.saveToCassandra(keyspace, CassandraTableRaw)
+
+  /** For the given day of the year, aggregates hourly precipitation values by day.
+    * Persists to Cassandra daily precip table by weather station. */
+  stream
+    .map(hourly => (hourly.weatherStation,hourly.year,hourly.month,hourly.day,hourly.oneHourPrecip))
+    .saveToCassandra(keyspace, CassandraTableDailyPrecip)
 
   /** For the given day of the year, aggregates all the temp values to statistics:
     * high, low, mean, std, etc.
     * Persists to Cassandra daily temperature table by weather station.
-    *
-    * For the given day of the year, aggregates all the precip values to statistics.
-    * Persists to Cassandra daily precip table by weather station.
     */
-  def aggregate(data: RawWeatherData): Unit = {
-    val wsid = data.weatherStation
-    val dt = s"${data.month}/${data.day}/${data.year}"
-    log.debug(s"Computing ${data.month}/${data.day}/${data.year} for $wsid")
+  // stream.slice(fromTime = Time(start), toTime = Time(end))
+  /* val temps = rddByDay.map(t => DayKey(t) -> StatCounter(Seq(t.temperature)))
+            temps.reduceByKey(_ merge _)
+            .map { case (k, s) => DailyTemperature(k,s) }
+            .saveToCassandra(keyspace, CassandraTableDailyTemp) */
 
-    val toDailyTemperature = (s: StatCounter) => DailyTemperature(data, s)
-
-    val dataStream = ssc.cassandraTable[(String, Double)](keyspace, CassandraTableRaw)
-
-    dataStream.select("weather_station", "temperature")
-      .where("weather_station = ? AND year = ? AND month = ? AND day = ?",
-        data.weatherStation, data.year, data.month, data.day)
-      .mapValues { t => StatCounter(Seq(t))}
-      .reduceByKey(_ merge _)
-      .map { case (_, s) => toDailyTemperature(s)}
-      .saveToCassandra(keyspace, CassandraTableDailyTemp)
-
-    dataStream.select("weather_station", "temperature")
-      .select("weather_station", "precipitation")
-      .where("weather_station = ? AND year = ? AND month = ? AND day = ?",
-        data.weatherStation, data.year, data.month, data.day)
-      .map { case (_, p) => DailyPrecipitation(data, p)}
-      .saveToCassandra(keyspace, CassandraTableDailyPrecip)
-  }
+  listener ! OutputStreamInitialized
 
   def receive: Actor.Receive = {
     case _ =>

@@ -57,14 +57,14 @@ abstract class ActorSparkSpec extends AkkaSpec with AbstractSpec {
   /* Gets some data in the raw data table if this is run
   before any data has been persisted by the app or another spec.
   Initialize data only if necessary.*/
-  if (notInitialized) {
+  /*if (notInitialized) {
     ssc.sparkContext.textFile(s"$DataLoadPath/2005.csv.gz")
       .flatMap(_.split("\\n"))
       .map { case d => d.split(",")}
       .map(RawWeatherData(_))
       .saveToCassandra(CassandraKeyspace, CassandraTableRaw)
   }
-
+*/
   def start(): Unit = ssc.start()
 
   def notInitialized: Boolean = {
@@ -131,13 +131,13 @@ class MetricsListener(cluster: Cluster) extends Actor with ActorLogging {
 
   def logHeap(nodeMetrics: NodeMetrics): Unit = nodeMetrics match {
     case HeapMemory(address, timestamp, used, committed, max) =>
-      log.info("Heap Memory: {} MB", used.doubleValue / 1024 / 1024)
+      log.debug("Heap Memory: {} MB", used.doubleValue / 1024 / 1024)
     case _ => // no heap info
   }
 
   def logCpu(nodeMetrics: NodeMetrics): Unit = nodeMetrics match {
     case Cpu(address, timestamp, Some(systemLoadAverage), cpuCombined, processors) =>
-      log.info("System Load Avg: {} ({} processors)", systemLoadAverage, processors)
+      log.debug("System Load Avg: {} ({} processors)", systemLoadAverage, processors)
     case _ => // no cpu info
   }
 }

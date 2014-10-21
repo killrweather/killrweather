@@ -33,7 +33,7 @@ trait KafkaProducer extends WeatherActor {
     props.put("partitioner.class", "kafka.producer.DefaultPartitioner")
     props.put("request.required.acks", "1")
     props.put("producer.type", "async")
-    props.put("batch.num.messages", "100")
+    props.put("batch.num.messages", "360")
 
     new Producer[String, String](new ProducerConfig(props))
   }
@@ -41,12 +41,18 @@ trait KafkaProducer extends WeatherActor {
   def send(topic : String, key : String, message : String): Unit =
     producer.send(KeyedMessage(topic, key, message))
 
+  def batchSend(topic: String, group: String, batch: Seq[String]): Unit = {
+    val messages = batch map (KeyedMessage(topic, group, _))
+    producer.send(messages.toArray: _*)
+    log.debug(s"Published ${batch.size} messages to kafka topic '$topic'")
+  }
+
   def batchSend(topic: String, group: String, batchSize: Int, lines: Seq[String]): Unit =
     if (lines.nonEmpty) {
-      val (send, unsent) = lines.toSeq.splitAt(batchSize)
-      val messages = send map (KeyedMessage(topic, group, _))
+      val (toSend, unsent) = lines.toSeq.splitAt(batchSize)
+      val messages = toSend map (KeyedMessage(topic, group, _))
       producer.send(messages.toArray: _*)
-      log.debug(s"Published messages to kafka topic '$topic'. Batching remaining ${unsent.size}")
+      if(unsent.size > 0)log.debug(s"Published batch messages to kafka topic '$topic'. Batching remaining ${unsent.size}")
       batchSend(topic, group, batchSize, unsent)
     }
 

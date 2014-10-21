@@ -15,6 +15,8 @@
  */
 package com.datastax.killrweather
 
+import org.apache.spark.util.StatCounter
+
 object Weather {
 
   /** Base marker trait. */
@@ -91,4 +93,36 @@ object Weather {
         sixHourPrecip = Option(array(12).toDouble).getOrElse(0))
     }
   }
+
+  trait WeatherAggregate extends WeatherModel
+
+  case class HourKey(wsid: String, year: Int, month: Int, day: Int, hour: Int) extends WeatherAggregate
+  case class DayKey(wsid: String, year: Int, month: Int, day: Int) extends WeatherAggregate
+  object DayKey {
+    def apply(t: RawWeatherData): DayKey =
+      DayKey(t.weatherStation, t.year, t.month, t.day)
+    def apply(t: (String, Int, Int, Int)): DayKey =
+      DayKey(t._1,t._2,t._3,t._4)
+  }
+  case class DailyPrecipitation(weather_station: String, year: Int, month: Int, day: Int, precipitation: Double) extends WeatherAggregate
+
+  object DailyPrecipitation {
+    def apply(key:DayKey, precipitation: Double): DailyPrecipitation =
+      DailyPrecipitation(key.wsid, key.year, key.month, key.day, precipitation)
+  }
+
+  case class Precipitation(weather_station: String, year: Int, annual: Double) extends WeatherAggregate
+
+  case class AnnualPrecipitation(sid: String, year: Int, total: Double)
+
+  case class DailyTemperature(weather_station: String, year: Int, month: Int, day: Int,
+                              high: Double, low: Double, mean: Double, variance: Double, stdev: Double) extends WeatherAggregate
+
+  object DailyTemperature {
+    def apply(key:DayKey, v: StatCounter): DailyTemperature =
+      DailyTemperature(key.wsid, key.year, key.month, key.day,
+        high = v.max, low = v.min, mean = v.mean, variance = v.variance, stdev = v.stdev)
+  }
+
+  case class UriYearPartition(year: Int, uri: String) extends WeatherModel
 }

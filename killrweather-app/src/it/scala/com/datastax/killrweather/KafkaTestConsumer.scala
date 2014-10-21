@@ -7,7 +7,7 @@ import java.util.concurrent.Executors
 import scala.collection.JavaConversions._
 import kafka.consumer.ConsumerConfig
 
-class KafkaTestConsumer(zookeeper: String, groupId: String, topic: String, numThreads: Int, latch: CountDownLatch) {
+class KafkaTestConsumer(zookeeper: String, topic: String, groupId: String, numThreads: Int, latch: CountDownLatch) {
 
   val  consumer = kafka.consumer.Consumer.createJavaConsumerConnector(createConsumerConfig)
 
@@ -27,7 +27,7 @@ class KafkaTestConsumer(zookeeper: String, groupId: String, topic: String, numTh
     executor.submit(new Runnable() {
       def run() {
         for(msgAndMetadata <- stream) {
-          //println(s"Consumer received: ${new String(msgAndMetadata.message)}")
+          println(s"Consumer received: ${new String(msgAndMetadata.message)}")
           latch.countDown()
         }
       }
@@ -46,6 +46,7 @@ class KafkaTestConsumer(zookeeper: String, groupId: String, topic: String, numTh
   }
 
   def shutdown() {
+    println("Consumer shutting down.")
     if (consumer != null) consumer.shutdown()
     if (executor != null) executor.shutdown()
   }

@@ -34,7 +34,6 @@ object WeatherEvent {
 
   sealed trait WeatherRequest extends WeatherEvent
   sealed trait WeatherResponse extends WeatherEvent
-  trait WeatherAggregate extends WeatherResponse
 
   /** Composite of Air Force Datsav3 station number and NCDC WBAN number
     * @param sid uses the composite key format: stationNum:wbanNum
@@ -48,23 +47,12 @@ object WeatherEvent {
   case class ComputeDailyTemperature(wsid: String, year: Int, constraint: Option[Int] = None) extends WeatherRequest
   case class GetTemperature(wsid: String, doy: Int, year: Int) extends WeatherRequest
   case class GetMonthlyTemperature(weather_station: String, month: Int, year: Int) extends WeatherRequest
-  case class DailyTemperature(weather_station: String, year: Int, month: Int, day: Int,
-    high: Double, low: Double, mean: Double, variance: Double, stdev: Double) extends WeatherAggregate
-
-  object DailyTemperature {
-    def apply(data: RawWeatherData, s: StatCounter): DailyTemperature =
-      DailyTemperature(weather_station = data.weatherStation,
-        year = data.year, month = data.month, day = data.day,
-        high = s.max, low = s.min, mean = s.mean, variance = s.variance, stdev = s.stdev)
-  }
 
   case class Temperature(weather_station: String, year: Int, month: Int, day: Int,
     high: Double, low: Double, mean: Double, variance: Double, stdev: Double) extends WeatherAggregate
 
   case class ComputeDailyPrecipitation(wsid: String, year: Int, constraint: Option[Int] = None) extends WeatherRequest
   case class GetPrecipitation(sid: String, year: Int) extends WeatherRequest
-  case class DailyPrecipitation(data: RawWeatherData, precipitation: Double) extends WeatherAggregate
-  case class Precipitation(sid: String, year: Int, annual: Double) extends WeatherAggregate
   case class GetTopKPrecipitation(year: Int) extends WeatherRequest
   case class TopKPrecipitation(seq: Seq[(String, Double)]) extends WeatherAggregate
 

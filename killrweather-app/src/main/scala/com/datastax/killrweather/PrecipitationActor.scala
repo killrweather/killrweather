@@ -26,7 +26,8 @@ import scala.concurrent.Future
 
 /** 5. For a given weather station, calculates annual cumulative precip - or year to date. */
 class PrecipitationActor(ssc: StreamingContext, settings: WeatherSettings) extends WeatherActor {
-  import com.datastax.killrweather.WeatherEvent._
+  import Weather._
+  import WeatherEvent._
   import settings.{CassandraKeyspace => keyspace, CassandraTableDailyPrecip => dailytable}
 
   implicit def ordering: Ordering[(String,Double)] = Ordering.by(_._2)
@@ -51,7 +52,7 @@ class PrecipitationActor(ssc: StreamingContext, settings: WeatherSettings) exten
       .where("weather_station = ? AND year = ?", wsid, year)
       .collectAsync()
       .map(a => Precipitation(wsid, year, a.sum))
-
+ 
   /** Returns the 10 highest temps for any station in the `year`. */
   def topK(year: Int, requester: ActorRef): Unit = Future {
     val top = ssc.cassandraTable[(String,Double)](keyspace, dailytable)

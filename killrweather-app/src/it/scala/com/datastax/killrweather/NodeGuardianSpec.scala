@@ -21,6 +21,7 @@ import com.datastax.spark.connector.embedded.EmbeddedKafka
 
 class NodeGuardianSpec extends ActorSparkSpec {
   import WeatherEvent._
+  import Weather._
   import settings._
 
   val year = 2005

@@ -15,8 +15,6 @@
  */
 package com.datastax.killrweather
 
-import java.util.concurrent.TimeUnit
-
 import akka.actor.{ActorSystem, PoisonPill, Props}
 import com.typesafe.config.Config
 import com.datastax.spark.connector.embedded.EmbeddedKafka
@@ -58,12 +56,13 @@ trait KillrWeather extends WeatherApp {
  * @param conf Optional config for test
  */
 final class WeatherSettings(conf: Option[Config] = None) extends Settings(conf) {
-  import scala.concurrent.duration.Duration
+  import Weather.UriYearPartition
 
   val CassandraKeyspace = killrweather.getString("cassandra.keyspace")
   val CassandraTableRaw = killrweather.getString("cassandra.table.raw")
   val CassandraTableDailyTemp = killrweather.getString("cassandra.table.daily.temperature")
   val CassandraTableDailyPrecip = killrweather.getString("cassandra.table.daily.precipitation")
+  val CassandraTableCumulativePrecip = killrweather.getString("cassandra.table.cumulative.precipitation")
   val CassandraTableSky = killrweather.getString("cassandra.table.sky")
   val CassandraTableStations = killrweather.getString("cassandra.table.stations")
 
@@ -74,14 +73,15 @@ final class WeatherSettings(conf: Option[Config] = None) extends Settings(conf) 
 
   val SparkCheckpointDir = killrweather.getString("spark.checkpoint.dir")
 
-  // can't upgrade config until spark does :( could not get around that in the build
-  val DailyTemperatureTaskInterval = Duration(killrweather.getLong("data.daily.temperature-task-interval-min"), TimeUnit.MILLISECONDS)
-
   val DataLoadPath = killrweather.getString("data.load.path")
 
-  val DataYearRange: Range = {
+  val HistoricDataYearRange: Range = {
     val s = killrweather.getInt("data.raw.year.start")
     val e = killrweather.getInt("data.raw.year.end")
     s to e
   }
+
+  val ByYearPartitions: Seq[UriYearPartition] =
+    for (year <- HistoricDataYearRange) yield
+      UriYearPartition(year, s"$DataLoadPath/$year.csv.gz")
 }

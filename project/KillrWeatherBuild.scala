@@ -78,9 +78,11 @@ object Dependencies {
     val scalazSpire       = "org.typelevel"       %% "scalaz-spire"                       % ScalazContrib   // MIT
     val scalazStream      = "org.scalaz.stream"   %% "scalaz-stream"                      % ScalazStream    // MIT
     val slf4jApi          = "org.slf4j"           % "slf4j-api"                           % Slf4j           // MIT
-    val sparkML           = "org.apache.spark"    %% "spark-mllib"                        % Spark
-    val sparkCassandra    = "com.datastax.spark"  %% "spark-cassandra-connector"          % SparkCassandra
-    val sparkCassandraEmb = "com.datastax.spark"  %% "spark-cassandra-connector-embedded" % SparkCassandra
+    val sparkML           = "org.apache.spark"    %% "spark-mllib"                        % Spark           // ApacheV2
+    val sparkSQL          = "org.apache.spark"    %% "spark-sql"                          % Spark           // ApacheV2
+    // for spark, streaming, sql and ml
+    val sparkCassandra    = "com.datastax.spark"  %% "spark-cassandra-connector"          % SparkCassandra  // ApacheV2
+    val sparkCassandraEmb = "com.datastax.spark"  %% "spark-cassandra-connector-embedded" % SparkCassandra  // ApacheV2
 
   }
   /*blob/master/file/src/samples/scala/create-and-delete-files-and-directories.scala*/
@@ -125,6 +127,6 @@ object Dependencies {
   val api = json ++ rest ++ scalaz ++ time ++ test ++ Seq(akkaActor, sparkCassandra)
 
   val app = akka ++ json ++ connector ++ logging ++
-    rest ++ scalaz ++ time ++ test ++ Seq(kafka, sparkML)
+    rest ++ scalaz ++ time ++ test ++ Seq(kafka, sparkML, sparkSQL)
 
 }
