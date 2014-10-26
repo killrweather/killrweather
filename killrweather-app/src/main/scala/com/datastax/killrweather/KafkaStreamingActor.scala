@@ -74,7 +74,7 @@ class KafkaStreamingActor(kafkaParams: Map[String,String],
    */
   val temps = stream.map(t => DayKey(t) -> StatCounter(Seq(t.temperature)))
     temps.reduceByKey(_ merge _)
-    .map { case (k, s) => DailyTemperature(k,s) }
+    .map { case (time, stats) => DailyTemperature(time, stats) }
     .saveToCassandra(CassandraKeyspace, CassandraTableDailyTemp)
 
   /** Notifies the supervisor that the Spark Streams have been created and defined.

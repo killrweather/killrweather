@@ -16,10 +16,10 @@
 package com.datastax.killrweather
 
 import akka.actor._
-import org.joda.time.{DateTime, DateTimeZone}
 
 class TemperatureActorSpec extends ActorSparkSpec {
-  import com.datastax.killrweather.WeatherEvent._
+  import WeatherEvent._
+  import Weather._
 
   val year = 2005
 
@@ -27,20 +27,18 @@ class TemperatureActorSpec extends ActorSparkSpec {
 
   val expected = 19703 // the total count stations
 
-  val startAt = new DateTime(DateTimeZone.UTC).withMonthOfYear(12).withDayOfMonth(1).getDayOfYear
-
   "TemperatureActor" must {
     start()
     "compute daily temperature rollups per weather station to monthly statistics." in {
       val temperature = system.actorOf(Props(new TemperatureActor(ssc, settings)))
-      temperature ! GetMonthlyTemperature(sid, 12, year)
+      temperature ! GetMonthlyTemperature(sid, year, 12)
       expectMsgPF(timeout.duration) {
         case e =>
-          val temps = e.asInstanceOf[Seq[Temperature]]
-          temps.forall(t => t.month == 12 && t.year == year && t.wsid == sid)
-          temps.map(_.day).min should be (1)
-          temps.map(_.day).max should be (31)
-          temps foreach println
+          val temp = e.asInstanceOf[Option[MonthlyTemperature]].get
+          temp.wsid should be (sid)
+          temp.year should be (year)
+          temp.month should be (12)
+          println(s"For month: low=${temp.low} high=${temp.high}")
       }
     }
   }

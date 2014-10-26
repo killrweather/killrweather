@@ -27,22 +27,39 @@ import org.apache.spark.streaming.StreamingContext
   */
 class TemperatureActor(ssc: StreamingContext, settings: WeatherSettings)
   extends WeatherActor with ActorLogging {
-  import com.datastax.killrweather.WeatherEvent._
+
   import settings.{CassandraKeyspace => keyspace, CassandraTableDailyTemp => dailytable}
+  import WeatherEvent._
+  import Weather._
+
 
   def receive : Actor.Receive = {
-    case GetMonthlyTemperature(wsid, month, year) => monthly(wsid, month, year, sender)
-    case GetTemperature(wsid, doy, year) => ???
+    case e: GetDailyTemperature   => daily(e, sender)
+    case e: GetMonthlyTemperature => monthly(e, sender)
   }
 
   /** Returns a future value to the `requester` actor. */
-  def monthly(wsid: String, month: Int, year: Int, requester: ActorRef): Unit =
-    doMonthly(wsid, month, year) pipeTo requester
+  def daily(e: GetDailyTemperature, requester: ActorRef): Future[Option[DailyTemperature]] =
+    (for {
+      a <- ssc.cassandraTable[DailyTemperature](keyspace, dailytable)
+        .where("wsid = ? AND year = ? AND month = ?", e.wsid, e.year, e.month, e.day)
+        .collectAsync
+    } yield a.headOption) pipeTo requester
 
-  def doMonthly(wsid: String, year: Int, month: Int): Future[Seq[Temperature]] =
-    ssc.cassandraTable[Temperature](keyspace, dailytable)
-      .where("wsid = ? AND year = ? AND month = ?",
-        wsid, year, month)
-      .collectAsync
+  /** Returns a future value to the `requester` actor. */
+  def monthly(e: GetMonthlyTemperature, requester: ActorRef): Future[Option[MonthlyTemperature]] =
+    (for {
+      a <- ssc.cassandraTable[DailyTemperature](keyspace, dailytable)
+        .where("wsid = ? AND year = ? AND month = ?", e.wsid, e.year, e.month)
+        .collectAsync
+    } yield forMonth(e.wsid, e.year, e.month, a)) pipeTo requester
 
+  def forMonth(wsid: String, year: Int, month: Int, temps: Seq[DailyTemperature]): Option[MonthlyTemperature] =
+    if (temps.nonEmpty) {
+      val rdd = ssc.sparkContext.parallelize(temps)
+      val high = rdd.map(_.high).max
+      val low = rdd.map(_.low).min
+
+      Some(MonthlyTemperature(wsid, year, month, high, low))
+    } else None
 }

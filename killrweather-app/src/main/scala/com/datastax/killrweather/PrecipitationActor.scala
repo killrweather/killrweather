@@ -29,11 +29,9 @@ class PrecipitationActor(ssc: StreamingContext, settings: WeatherSettings)
   import WeatherEvent._
   import settings.{CassandraKeyspace => keyspace, CassandraTableDailyPrecip => dailytable}
 
-  implicit def ordering: Ordering[(String,Double)] = Ordering.by(_._2)
-
   def receive : Actor.Receive = {
-    case GetPrecipitation(wsid, year) => cumulative(wsid, year, sender)
-    case GetTopKPrecipitation(year)   => topK(year, sender)
+    case GetPrecipitation(wsid, year)       => cumulative(wsid, year, sender)
+    case GetTopKPrecipitation(wsid, year)   => topK(wsid, year, sender)
   }
 
   /** Returns a future value to the `requester` actor.
@@ -45,21 +43,21 @@ class PrecipitationActor(ssc: StreamingContext, settings: WeatherSettings)
   }
 
   /** Tutorial: find a better way to do this with spark than collectAsync. */
-  def doCumulative(wsid: String, year: Int): Future[Precipitation] =
+  def doCumulative(wsid: String, year: Int): Future[AnnualPrecipitation] =
     ssc.cassandraTable[Double](keyspace, dailytable)
       .select("precipitation")
       .where("wsid = ? AND year = ?", wsid, year)
       .collectAsync()
-      .map(a => Precipitation(wsid, year, a.sum))
+      .map(a => AnnualPrecipitation(wsid, year, a.sum))
 
   /** Returns the 10 highest temps for any station in the `year`. */
-  def topK(year: Int, requester: ActorRef): Unit = Future {
-    val top = ssc.cassandraTable[(String,Double)](keyspace, dailytable)
+  def topK(wsid: String, year: Int, requester: ActorRef): Unit = Future {
+    val top = ssc.cassandraTable[Double](keyspace, dailytable)
       .select("precipitation")
-      .where("year = ?", year)
+      .where("wsid = ? year = ?", wsid, year)
       .top(10)
 
-    TopKPrecipitation(top)
+    TopKPrecipitation(wsid, top.toSeq)
   } pipeTo requester
 
 }

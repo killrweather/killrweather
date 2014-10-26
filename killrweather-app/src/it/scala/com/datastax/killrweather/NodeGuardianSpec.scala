@@ -48,11 +48,10 @@ class NodeGuardianSpec extends ActorSparkSpec {
     "return monthly temperature stats for a given wsid, month and year" in {
       Thread.sleep(10000) // since we are in memory and need data to get populated on startup
 
-      guardian ! GetMonthlyTemperature("992840:99999", 1, year)
-
+      guardian ! GetMonthlyTemperature("992840:99999", year, 1)
       expectMsgPF(3.seconds) {
         case e =>
-          val temps =  e.asInstanceOf[Seq[Temperature]]
+          val temps =  e.asInstanceOf[MonthlyTemperature]
           log.debug(s"Received temps $temps")
       }
     }
