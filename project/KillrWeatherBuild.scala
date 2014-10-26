@@ -25,7 +25,7 @@ object KillrWeatherBuild extends Build {
     id = "root",
     base = file("."),
     settings = parentSettings,
-    aggregate = Seq(core, api, app)
+    aggregate = Seq(core, app)
   )
 
   lazy val core = Project(
@@ -34,20 +34,13 @@ object KillrWeatherBuild extends Build {
     settings = defaultSettings ++ Seq(libraryDependencies ++= Dependencies.core)
   )
 
-  lazy val api = Project(
-    id = "api",
-    base = file("./killrweather-api"),
-    dependencies = Seq(core),
-    settings = defaultSettings ++ withContainer ++ Seq(libraryDependencies ++= Dependencies.api)
-  ) configs IntegrationTest configs config("container")
-
   lazy val app = Project(
     id = "app",
     base = file("./killrweather-app"),
-    dependencies = Seq(core, api),
-    settings = defaultSettings ++ withContainer ++ withSigar ++
+    dependencies = Seq(core),
+    settings = defaultSettings ++ withSigar ++
       Seq(libraryDependencies ++= Dependencies.app)
-  ) configs IntegrationTest configs config("container")
+  ) configs IntegrationTest
 
 }
 
@@ -64,13 +57,14 @@ object Dependencies {
     val akkaContrib       = "com.typesafe.akka"   %% "akka-contrib"                       % Akka    force() // ApacheV2
     val akkaRemote        = "com.typesafe.akka"   %% "akka-remote"                        % Akka    force() // ApacheV2
     val akkaSlf4j         = "com.typesafe.akka"   %% "akka-slf4j"                         % Akka    force() // ApacheV2
-    // can't use latest: spark :( val config            = "com.typesafe"        % "config"                              % Config  force() // ApacheV2
+    val bijection         = "com.twitter"         %% "bijection-core"                     % "0.7.0"
+    // can't use latest: spark :( val config = "com.typesafe"        % "config"   % Config  force() // ApacheV2
     val jodaTime          = "joda-time"           % "joda-time"                           % JodaTime        // ApacheV2
     val jodaConvert       = "org.joda"            % "joda-convert"                        % JodaConvert     // ApacheV2
     val json4sCore        = "org.json4s"          %% "json4s-core"                        % Json4s          // ApacheV2
     val json4sJackson     = "org.json4s"          %% "json4s-jackson"                     % Json4s          // ApacheV2
     val json4sNative      = "org.json4s"          %% "json4s-native"                      % Json4s          // ApacheV2
-    val kafka             = "org.apache.kafka"    %% "kafka"                              % Kafka           // ApacheV2
+    val kafka             = "org.apache.kafka"    %% "kafka"                              % Kafka withSources() // ApacheV2
     val scalazContrib     = "org.typelevel"       %% "scalaz-contrib-210"                 % ScalazContrib   // MIT
     val scalazContribVal  = "org.typelevel"       %% "scalaz-contrib-validation"          % ScalazContrib   // MIT
     val scalazContribUndo = "org.typelevel"       %% "scalaz-contrib-undo"                % ScalazContrib   // MIT
@@ -81,25 +75,14 @@ object Dependencies {
     val sparkML           = "org.apache.spark"    %% "spark-mllib"                        % Spark           // ApacheV2
     val sparkSQL          = "org.apache.spark"    %% "spark-sql"                          % Spark           // ApacheV2
     // for spark, streaming, sql and ml
-    val sparkCassandra    = "com.datastax.spark"  %% "spark-cassandra-connector"          % SparkCassandra  // ApacheV2
+    val sparkCassandra    = "com.datastax.spark"  %% "spark-cassandra-connector"          % SparkCassandra withSources() // ApacheV2
     val sparkCassandraEmb = "com.datastax.spark"  %% "spark-cassandra-connector-embedded" % SparkCassandra  // ApacheV2
 
   }
-  /*blob/master/file/src/samples/scala/create-and-delete-files-and-directories.scala*/
 
-  object Runtime {
-    val jettyWebapp       = "org.eclipse.jetty"   % "jetty-webapp"                        % JettyWebapp  % "container"
-    val servletApi        = "javax.servlet"       % "javax.servlet-api"                   % JavaxServlet % "container"
-    val scalatra          = "org.scalatra"        %% "scalatra"                           % Scalatra
-    val scalatraJson      = "org.scalatra"        %% "scalatra-json"                      % Scalatra
-  }
-
-  /* TBD if i'll keep these or not, it's just for running the API without deploying to tomcat
-  - ease of use during Presentations, so we can just run in IDE or SBT command line. */
   object Test {
     val akkaTestKit     = "com.typesafe.akka"     %% "akka-testkit"                       % Akka         % "test,it" // ApacheV2
     val scalatest       = "org.scalatest"         %% "scalatest"                          % ScalaTest    % "test,it"
-    val scalatraTest    = "org.scalatra"          %% "scalatra-scalatest"                 % ScalatraTest % "test,it"
     val sigar           = "org.fusesource"        % "sigar"                               % Sigar        % "test,it"
   }
 
@@ -113,20 +96,15 @@ object Dependencies {
 
   val logging = Seq(akkaSlf4j, slf4jApi)
 
-  val rest = Seq(Runtime.jettyWebapp, Runtime.scalatra, Runtime.scalatraJson, Runtime.servletApi)
-
   val scalaz = Seq(scalazContrib, scalazContribVal, scalazContribUndo, scalazNst, scalazSpire, scalazStream)
 
   val time = Seq(jodaConvert, jodaTime)
 
-  val test = Seq(Test.akkaTestKit, Test.scalatest, Test.scalatraTest,  Test.sigar)
+  val test = Seq(Test.akkaTestKit, Test.scalatest, Test.sigar)
 
   /** Module deps */
-  val core = connector ++ scalaz
+  val core = connector ++ json ++ scalaz ++ Seq(kafka)
 
-  val api = json ++ rest ++ scalaz ++ time ++ test ++ Seq(akkaActor, sparkCassandra)
-
-  val app = akka ++ json ++ connector ++ logging ++
-    rest ++ scalaz ++ time ++ test ++ Seq(kafka, sparkML, sparkSQL)
+  val app = akka ++ core ++ logging ++ time ++ test ++ Seq(sparkML, sparkSQL)
 
 }

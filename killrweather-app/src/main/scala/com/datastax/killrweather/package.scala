@@ -15,10 +15,9 @@
  */
 package com.datastax
 
-import com.datastax.killrweather.api.WeatherCenterJson
-import org.json4s.{DefaultFormats, Formats}
+import org.json4s.{NoTypeHints, native, Formats}
 
 package object killrweather {
 
-  implicit val formats: Formats = WeatherCenterJson.formats(DefaultFormats)
+  implicit val formats: Formats = native.Serialization.formats(NoTypeHints)
 }

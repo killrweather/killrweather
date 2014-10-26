@@ -16,14 +16,14 @@
 package com.datastax.killrweather
 
 import akka.pattern.{ pipe, ask }
-import akka.actor.{Actor, ActorRef}
+import akka.actor.{ActorLogging, Actor, ActorRef}
 import org.apache.spark.SparkContext._
 import org.apache.spark.streaming.StreamingContext
 import com.datastax.spark.connector.streaming._
-import com.datastax.killrweather.actor.WeatherActor
 
 /** For a given weather station id, retrieves the full station data. */
-class WeatherStationActor(ssc: StreamingContext, settings: WeatherSettings) extends WeatherActor {
+class WeatherStationActor(ssc: StreamingContext, settings: WeatherSettings)
+  extends WeatherActor with ActorLogging {
 
   import settings.{CassandraKeyspace => keyspace}
   import settings.{CassandraTableStations => weatherstations}

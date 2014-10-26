@@ -13,20 +13,21 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.datastax.killrweather.actor
+package com.datastax.killrweather
 
 import java.util.concurrent.TimeoutException
 
-import scala.concurrent.duration._
 import akka.actor.SupervisorStrategy._
 import akka.actor._
 import akka.util.Timeout
 import org.apache.spark.util.StatCounter
-import org.joda.time.{DateTimeZone, DateTime}
 import org.joda.time.format.DateTimeFormat
+import org.joda.time.{DateTime, DateTimeZone}
+
+import scala.concurrent.duration._
 
 /** A base actor for weather data computation. */
-trait WeatherActor extends Actor with ActorLogging {
+trait WeatherActor extends Actor {
 
   implicit val timeout = Timeout(5.seconds)
 

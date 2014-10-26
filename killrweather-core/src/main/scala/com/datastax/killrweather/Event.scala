@@ -64,3 +64,6 @@ object WeatherEvent {
 
 }
 
+object KafkaEvent {
+  case class KafkaMessageEnvelope[K,V](topic: String, key: K, messages: V*)
+}

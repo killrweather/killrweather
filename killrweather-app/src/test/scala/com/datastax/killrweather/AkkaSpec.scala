@@ -18,9 +18,11 @@ package com.datastax.killrweather
 
 import java.io.File
 
+import com.datastax.killrweather.KafkaEvent.KafkaMessageEnvelope
+
 import scala.concurrent.duration._
 import akka.cluster.Cluster
-import akka.actor.{Actor, ActorLogging, Props, ActorSystem}
+import akka.actor._
 import akka.testkit.{DefaultTimeout, ImplicitSender, TestKit}
 import com.datastax.killrweather.Weather.RawWeatherData
 import com.datastax.spark.connector.cql.CassandraConnector
@@ -47,31 +49,71 @@ abstract class ActorSparkSpec extends AkkaSpec with AbstractSpec {
 
   val ssc =  new StreamingContext(sc, Seconds(SparkStreamingBatchInterval)) // 1s
 
-  /* Declare a required output stream: to run streaming, at least one output */
+  val keyspace = CassandraKeyspace
+
+  // fail fast if you have not run the create and load cql scripts yet :)
   CassandraConnector(conf).withSessionDo { session =>
-    session.execute(s"CREATE TABLE IF NOT EXISTS $CassandraKeyspace.make_streaming_happy (entry INT PRIMARY KEY, key TEXT)")
-  }
-  ssc.actorStream[String](Props[TestStreamingActor], "stream", StorageLevel.MEMORY_ONLY)
-    .flatMap(_.split("\\s+")).map(x => (1,x)).saveToCassandra(CassandraKeyspace, "make_streaming_happy")
+    // insure for test we are not going to look at existing data, but new from the kafka actor processes
+    session.execute(s"DROP TABLE IF EXISTS $keyspace.raw_weather_data")
+    session.execute(s"DROP TABLE IF EXISTS $keyspace.daily_aggregate_precip")
+    session.execute(s"DROP TABLE IF EXISTS $keyspace.daily_aggregate_temperature")
 
-  /* Gets some data in the raw data table if this is run
-  before any data has been persisted by the app or another spec.
-  Initialize data only if necessary.*/
-  /*if (notInitialized) {
-    ssc.sparkContext.textFile(s"$DataLoadPath/2005.csv.gz")
-      .flatMap(_.split("\\n"))
-      .map { case d => d.split(",")}
-      .map(RawWeatherData(_))
-      .saveToCassandra(CassandraKeyspace, CassandraTableRaw)
-  }
-*/
-  def start(): Unit = ssc.start()
+    session.execute( s"""CREATE TABLE IF NOT EXISTS $keyspace.raw_weather_data (
+      weather_station text, year int, month int, day int, hour int,temperature double, dewpoint double, pressure double,
+      wind_direction int, wind_speed double,sky_condition int, sky_condition_text text, one_hour_precip double, six_hour_precip double,
+      PRIMARY KEY ((weather_station), year, month, day, hour)
+     ) WITH CLUSTERING ORDER BY (year DESC, month DESC, day DESC, hour DESC)""")
 
-  def notInitialized: Boolean = {
-    val test = new DateTime(DateTimeZone.UTC).withYear(2005).withMonthOfYear(1).withDayOfMonth(1)
-    ssc.cassandraTable(CassandraKeyspace, CassandraTableRaw)
-      .select("temperature").where("weather_station = ? AND year = ? AND month = ? AND day = ?",
-        "010010:99999", test.getYear, test.getMonthOfYear, test.getDayOfMonth).count == 0
+    session.execute( s"""CREATE TABLE IF NOT EXISTS $keyspace.daily_aggregate_temperature (
+       weather_station text,year int,month int,day int,high double,low double,mean double,variance double,stdev double,
+       PRIMARY KEY ((weather_station), year, month, day)
+    ) WITH CLUSTERING ORDER BY (year DESC, month DESC, day DESC)""")
+
+    session.execute( s"""CREATE TABLE IF NOT EXISTS $keyspace.daily_aggregate_precip (
+       weather_station text,year int,month int,day int,precipitation counter,
+       PRIMARY KEY ((weather_station), year, month, day)
+    ) WITH CLUSTERING ORDER BY (year DESC, month DESC, day DESC)""")
+  }
+
+  val kafkaActor: Option[ActorRef] = None
+
+  def start(): Unit = {
+    // for tests not creating a streaming output prior to calling start on the ssc - for test purposes
+    if (kafkaActor.isEmpty) {
+      ssc.actorStream[String](Props[TestStreamingActor], "stream", StorageLevel.MEMORY_ONLY)
+        .flatMap(_.split("\\s+")).map(x => (1,x)).saveToCassandra(CassandraKeyspace, "make_streaming_happy")
+    }
+
+    ssc.start()
+    loadData()
+  }
+
+  /* Loads data from /data/load files (because this is for a runnable demo.
+   * Because we run locally vs against a cluster as a demo app, we keep that file size data small.
+   * Using rdd.toLocalIterator will consume as much memory as the largest partition in this RDD,
+   * which in this use case is 360 or fewer (if current year before December 31) small Strings. */
+  def loadData(): Unit = kafkaActor match {
+    case Some(actor) =>
+      // store via kafka stream
+      for (partition <- ByYearPartitions) {
+        val toActor = (line: String) =>
+          actor ! KafkaMessageEnvelope[String,String](KafkaTopicRaw, KafkaGroupId, line)
+
+        ssc.sparkContext.textFile(partition.uri)
+          .flatMap(_.split("\\n"))
+          .toLocalIterator
+          .foreach(toActor)
+      }
+
+    case None =>
+    // not a kafka actor test, store directly
+      for (partition <- ByYearPartitions) {
+        ssc.sparkContext.textFile(partition.uri)
+          .flatMap(_.split("\\n"))
+          .map(_.split(","))
+          .map(RawWeatherData(_))
+          .saveToCassandra(CassandraKeyspace, CassandraTableRaw)
+      }
   }
 
   override def afterAll() {

@@ -17,7 +17,6 @@
 import sbt._
 import sbt.Keys._
 import net.virtualvoid.sbt.graph.Plugin.graphSettings
-import com.earldouglas.xsbtwebplugin.WebPlugin
 
 import scala.language.postfixOps
 
@@ -40,7 +39,7 @@ object Settings extends Build {
     publish := {}
   )
 
-  lazy val defaultSettings = graphSettings ++ Seq(
+  lazy val defaultSettings = testSettings ++ graphSettings ++ Seq(
     autoCompilerPlugins := true,
     libraryDependencies <+= scalaVersion { v => compilerPlugin("org.scala-lang.plugins" % "continuations" % v) },
     scalacOptions in (Compile, doc) ++= Seq("-implicits","-doc-root-content", "rootdoc.txt"),
@@ -72,8 +71,6 @@ object Settings extends Build {
     (compile in IntegrationTest) <<= (compile in Test, compile in IntegrationTest) map { (_, c) => c },
     managedClasspath in IntegrationTest <<= Classpaths.concat(managedClasspath in IntegrationTest, exportedProducts in Test)
   )
-
-  lazy val withContainer = WebPlugin.webSettings ++ testSettings
 
   lazy val withSigar = Seq(
     javaOptions in run ++= Seq("-Djava.library.path=./sigar", "-Xms128m", "-Xmx1024m")

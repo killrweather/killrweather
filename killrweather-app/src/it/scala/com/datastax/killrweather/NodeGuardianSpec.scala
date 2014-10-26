@@ -30,11 +30,12 @@ class NodeGuardianSpec extends ActorSparkSpec {
   lazy val kafka = new EmbeddedKafka
 
   system.eventStream.subscribe(self, classOf[NodeInitialized])
-  //system.eventStream.subscribe(self, classOf[DailyPrecipitationTaskCompleted])
 
   kafka.createTopic(settings.KafkaTopicRaw)
 
-  val guardian = system.actorOf(Props(new NodeGuardian(ssc, kafka, settings)), "node-guardian")
+  val brokers = Set(s"${kafka.kafkaConfig.hostName}:${kafka.kafkaConfig.port}") // TODO the right way
+
+  val guardian = system.actorOf(Props(new NodeGuardian(ssc, kafka, brokers, settings)), "node-guardian")
 
   override def afterAll() { super.afterAll(); kafka.shutdown() }
 

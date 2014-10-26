@@ -15,19 +15,18 @@
  */
 package com.datastax.killrweather
 
-import akka.actor.{Actor, ActorRef}
+import scala.concurrent.Future
+import akka.actor.{ActorLogging, Actor, ActorRef}
 import akka.pattern.pipe
-import com.datastax.killrweather.actor.WeatherActor
 import com.datastax.spark.connector.streaming._
 import org.apache.spark.SparkContext._
 import org.apache.spark.streaming.StreamingContext
 
-import scala.concurrent.Future
-
 /** The TemperatureActor reads the daily temperature rollup data from Cassandra,
   * and for a given weather station, computes temperature statistics by month for a given year.
   */
-class TemperatureActor(ssc: StreamingContext, settings: WeatherSettings) extends WeatherActor {
+class TemperatureActor(ssc: StreamingContext, settings: WeatherSettings)
+  extends WeatherActor with ActorLogging {
   import com.datastax.killrweather.WeatherEvent._
   import settings.{CassandraKeyspace => keyspace, CassandraTableDailyTemp => dailytable}
 

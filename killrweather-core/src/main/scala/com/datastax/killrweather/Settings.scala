@@ -50,6 +50,7 @@ class Settings(conf: Option[Config] = None) extends Logging {
   val killrweather = rootConfig.getConfig("killrweather")
   protected val spark = rootConfig.getConfig("spark")
   protected val cassandra = rootConfig.getConfig("cassandra")
+  protected val kafka = rootConfig.getConfig("kafka")
   protected val akka = rootConfig.getConfig("akka")
 
   val AppName = killrweather.getString("app-name")
@@ -67,6 +68,14 @@ class Settings(conf: Option[Config] = None) extends Logging {
       "spark.cassandra.connection.host") getOrElse "127.0.0.1"//InetAddress.getLocalHost.getHostAddress
 
   logInfo(s"Starting up with spark master '$SparkMaster' cassandra hosts '$CassandraHosts'")
+
+  //val KafkaHosts: immutable.Seq[String] = Util.immutableSeq(timeseries.getStringList("kafka.hosts"))
+  val KafkaGroupId = kafka.getString("group.id")
+  val KafkaTopicRaw = kafka.getString("topic.raw")
+  val KafkaEncoderFqcn = kafka.getString("encoder.fqcn")
+  val KafkaDecoderFqcn = kafka.getString("decoder.fqcn")
+  val KafkaPartitioner = kafka.getString("partitioner.fqcn")
+  val KafkaBatchSendSize = kafka.getInt("batch.send.size")
 
   val CassandraAuthUsername: Option[String] = Try(cassandra.getString("auth.username")).toOption
     .orElse(sys.props.get("spark.cassandra.auth.username"))

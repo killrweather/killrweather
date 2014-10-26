@@ -27,11 +27,11 @@ import scala.reflect.ClassTag
 
 /**
  * The `NodeGuardian` is the root of the primary KillrWeather deployed application.
- * It manages the worker actors and is Akka Cluster aware by extending [[ClusterAwareActor]].
+ * It manages the worker actors and is Akka Cluster aware by extending [[ClusterAware]].
  *
  * Creates the [[KafkaStreamingActor]] which
  *    - Transforms raw weather data .gz files
- *    to line data and publishes to the Kafka topic created in [[KillrWeather]].
+ *    to line data and publishes to the Kafka topic created in [[KillrWeatherApp]].
  *    - Creates a streaming pipeline from Kafka to Cassandra,
  *    via Spark, which streams the raw data from Kafka, transforms each line of data to
  *    a [[com.datastax.killrweather.Weather.RawWeatherData]] (hourly per weather station),
@@ -40,16 +40,19 @@ import scala.reflect.ClassTag
  * NOTE: if `NodeGuardian` is ever put on an Akka router, multiple instances of the stream will
  * exist on the node. Might want to call 'union' on the streams in that case.
  */
-class NodeGuardian(ssc: StreamingContext, kafka: EmbeddedKafka,
+class NodeGuardian(ssc: StreamingContext,
+                   kafka: EmbeddedKafka,
+                   brokers: Set[String],
                    settings: WeatherSettings)
-  extends ClusterAwareActor with Assertions with ActorLogging {
+  extends ClusterAware with Assertions with ActorLogging {
   import WeatherEvent._
   import settings._
 
   implicit val timeout = Timeout(5.seconds)
 
   /* Creates the Kafka actors: */
-  context.actorOf(Props(new KafkaStreamingActor(kafka.kafkaConfig, kafka.kafkaParams, ssc, settings, self)), "kafka")
+  context.actorOf(Props(new KafkaStreamingActor(
+    kafka.kafkaParams, brokers, ssc, settings, self)), "kafka")
 
   /* The Spark/Cassandra computation actors: For the tutorial we just use 2005 for now. */
   val temperature = context.actorOf(Props(new TemperatureActor(ssc, settings)), "temperature")
@@ -77,7 +80,7 @@ class NodeGuardian(ssc: StreamingContext, kafka: EmbeddedKafka,
   }
 
   def initialized: Actor.Receive = {
-    case e: GetMonthlyTemperature => temperature forward e
+    case e: GetMonthlyTemperature => ??? //temperature forward e
     case e: GetPrecipitation      => precipitation forward e
     case e: GetWeatherStation     => station forward e
     case e: GetSkyConditionLookup => ???

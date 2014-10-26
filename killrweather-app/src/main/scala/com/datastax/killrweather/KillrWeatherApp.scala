@@ -13,16 +13,17 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-
 package com.datastax.killrweather
 
 import org.apache.spark.streaming.{Seconds, StreamingContext}
-import org.apache.spark.{SparkConf, SparkContext}
-import com.datastax.spark.connector.util.Logging
+import org.apache.spark.{SparkContext, SparkConf}
 
-trait WeatherApp extends Logging {
+/** Runnable. */
+object KillrWeatherApp extends App {
+  import akka.actor.{ActorSystem, PoisonPill, Props}
+  import com.datastax.spark.connector.embedded.EmbeddedKafka
 
-  val settings = new Settings
+  val settings = new WeatherSettings
   import settings._
 
   /** Configures Spark.
@@ -35,15 +36,45 @@ trait WeatherApp extends Logging {
     *
     * Note that this internally creates a SparkContext (starting point of all Spark functionality)
     * which can be accessed as ssc.sparkContext.
-  */
+    */
   lazy val conf = new SparkConf().setAppName(getClass.getSimpleName).setMaster(SparkMaster)
     .set("spark.cassandra.connection.host", CassandraHosts)
     .set("spark.cleaner.ttl", SparkCleanerTtl.toString)
 
   lazy val sc = new SparkContext(conf)
 
-
   /** Creates the Spark Streaming context. */
   lazy val ssc =  new StreamingContext(sc, Seconds(SparkStreamingBatchInterval))
 
+  /** Starts the Kafka broker and Zookeeper. */
+  lazy val kafka = new EmbeddedKafka
+
+  /** Creates the ActorSystem. */
+  val system = ActorSystem(settings.AppName)
+
+  /** Creates the raw data topic.
+    *
+    * For time series data you want to randomize the messages on partitions.
+    * - If you are using the null partitioner and the 0.8.1.1 (or below) producer, watch out for this,
+    *   which is improved in the 0.8.2 producer: http://tinyurl.com/kln5rrv (from https://cwiki.apache.org)
+    * - You could use timeUUID as the key (for the partition which you will have that back in your consumer
+    *   if you can access the MessageAndMetaData
+    *   https://github.com/apache/kafka/blob/trunk/core/src/main/scala/kafka/message/MessageAndMetadata.scala ),
+    *   and then have that as part of the insert in a clustered column to cassandra for the other fields for
+    *   your partition key.
+    */
+  kafka.createTopic(settings.KafkaTopicRaw)
+
+  val brokers = Set(s"${kafka.kafkaConfig.hostName}:${kafka.kafkaConfig.port}") // TODO the right way
+
+  /* The root supervisor Actor of our app. */
+  val guardian = system.actorOf(Props(new NodeGuardian(ssc, kafka, brokers, settings)), "node-guardian")
+
+  system.registerOnTermination {
+    kafka.shutdown()
+    ssc.stop(stopSparkContext = true, stopGracefully = true)
+    guardian ! PoisonPill
+  }
+
+  ssc.awaitTermination()
 }

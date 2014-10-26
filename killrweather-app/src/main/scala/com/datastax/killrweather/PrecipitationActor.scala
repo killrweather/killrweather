@@ -15,17 +15,16 @@
  */
 package com.datastax.killrweather
 
-import akka.actor.{Actor, ActorRef}
+import scala.concurrent.Future
+import akka.actor.{ActorLogging, Actor, ActorRef}
 import akka.pattern.pipe
-import com.datastax.killrweather.actor.WeatherActor
 import com.datastax.spark.connector.streaming._
 import org.apache.spark.SparkContext._
 import org.apache.spark.streaming.StreamingContext
 
-import scala.concurrent.Future
-
-/** 5. For a given weather station, calculates annual cumulative precip - or year to date. */
-class PrecipitationActor(ssc: StreamingContext, settings: WeatherSettings) extends WeatherActor {
+/** For a given weather station, calculates annual cumulative precip - or year to date. */
+class PrecipitationActor(ssc: StreamingContext, settings: WeatherSettings)
+  extends WeatherActor with ActorLogging {
   import Weather._
   import WeatherEvent._
   import settings.{CassandraKeyspace => keyspace, CassandraTableDailyPrecip => dailytable}

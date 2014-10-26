@@ -42,7 +42,7 @@ object Weather {
     elevation: Double) extends WeatherModel
 
   /**
-   * @param weatherStation Composite of Air Force Datsav3 station number and NCDC WBAN number
+   * @param wsid Composite of Air Force Datsav3 station number and NCDC WBAN number
    * @param year Year collected
    * @param month Month collected
    * @param day Day collected
@@ -58,7 +58,7 @@ object Weather {
    * @param sixHourPrecip Six-hour accumulated liquid precipitation (millimeters)
    */
   case class RawWeatherData(
-    weatherStation: String,
+    weather_station: String,
     year: Int,
     month: Int,
     day: Int,
@@ -77,7 +77,7 @@ object Weather {
     /** Tech debt - don't do it this way ;) */
     def apply(array: Array[String]): RawWeatherData = {
       RawWeatherData(
-        weatherStation = array(0),
+        weather_station = array(0),
         year = array(1).toInt,
         month = array(2).toInt,
         day = array(3).toInt,
@@ -100,7 +100,7 @@ object Weather {
   case class DayKey(wsid: String, year: Int, month: Int, day: Int) extends WeatherAggregate
   object DayKey {
     def apply(t: RawWeatherData): DayKey =
-      DayKey(t.weatherStation, t.year, t.month, t.day)
+      DayKey(t.weather_station, t.year, t.month, t.day)
     def apply(t: (String, Int, Int, Int)): DayKey =
       DayKey(t._1,t._2,t._3,t._4)
   }

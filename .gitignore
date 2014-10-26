@@ -19,3 +19,4 @@ project/plugins/project/
 .idea_modules
 /tmp
 spark-cassandra-timeseries/tmp/
+test-output
