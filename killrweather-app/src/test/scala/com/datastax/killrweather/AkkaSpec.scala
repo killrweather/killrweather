@@ -59,19 +59,19 @@ abstract class ActorSparkSpec extends AkkaSpec with AbstractSpec {
     session.execute(s"DROP TABLE IF EXISTS $keyspace.daily_aggregate_temperature")
 
     session.execute( s"""CREATE TABLE IF NOT EXISTS $keyspace.raw_weather_data (
-      weather_station text, year int, month int, day int, hour int,temperature double, dewpoint double, pressure double,
+      wsid text, year int, month int, day int, hour int,temperature double, dewpoint double, pressure double,
       wind_direction int, wind_speed double,sky_condition int, sky_condition_text text, one_hour_precip double, six_hour_precip double,
-      PRIMARY KEY ((weather_station), year, month, day, hour)
+      PRIMARY KEY ((wsid), year, month, day, hour)
      ) WITH CLUSTERING ORDER BY (year DESC, month DESC, day DESC, hour DESC)""")
 
     session.execute( s"""CREATE TABLE IF NOT EXISTS $keyspace.daily_aggregate_temperature (
-       weather_station text,year int,month int,day int,high double,low double,mean double,variance double,stdev double,
-       PRIMARY KEY ((weather_station), year, month, day)
+       wsid text,year int,month int,day int,high double,low double,mean double,variance double,stdev double,
+       PRIMARY KEY ((wsid), year, month, day)
     ) WITH CLUSTERING ORDER BY (year DESC, month DESC, day DESC)""")
 
     session.execute( s"""CREATE TABLE IF NOT EXISTS $keyspace.daily_aggregate_precip (
-       weather_station text,year int,month int,day int,precipitation counter,
-       PRIMARY KEY ((weather_station), year, month, day)
+       wsid text,year int,month int,day int,precipitation counter,
+       PRIMARY KEY ((wsid), year, month, day)
     ) WITH CLUSTERING ORDER BY (year DESC, month DESC, day DESC)""")
   }
 

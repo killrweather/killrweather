@@ -48,7 +48,7 @@ class PrecipitationActor(ssc: StreamingContext, settings: WeatherSettings)
   def doCumulative(wsid: String, year: Int): Future[Precipitation] =
     ssc.cassandraTable[Double](keyspace, dailytable)
       .select("precipitation")
-      .where("weather_station = ? AND year = ?", wsid, year)
+      .where("wsid = ? AND year = ?", wsid, year)
       .collectAsync()
       .map(a => Precipitation(wsid, year, a.sum))
 

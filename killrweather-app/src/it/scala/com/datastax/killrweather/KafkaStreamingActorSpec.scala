@@ -22,8 +22,7 @@ import akka.actor.Props
 import com.datastax.spark.connector.embedded._
 import com.datastax.spark.connector.streaming._
 
-class KafkaStreamingActorSpec extends ActorSparkSpec {
-  import Weather._
+class KafkaStreamingActorSpec extends ActorSparkSpec { 
   import WeatherEvent._
   import settings._
 

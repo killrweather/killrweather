@@ -63,7 +63,7 @@ class KafkaStreamingActor(kafkaParams: Map[String,String],
     * we do not have to do a spark reduceByKey, which is expensive!
     */
   stream
-    .map(h => (h.weather_station,h.year,h.month,h.day,h.oneHourPrecip))
+    .map(h => (h.wsid,h.year,h.month,h.day,h.oneHourPrecip))
     .saveToCassandra(CassandraKeyspace, CassandraTableDailyPrecip)
 
   /**
@@ -74,7 +74,7 @@ class KafkaStreamingActor(kafkaParams: Map[String,String],
    */
   val temps = stream.map(t => DayKey(t) -> StatCounter(Seq(t.temperature)))
     temps.reduceByKey(_ merge _)
-    .map { case (k, s) => println(s"k=$k, v=$s"); DailyTemperature(k,s) }
+    .map { case (k, s) => DailyTemperature(k,s) }
     .saveToCassandra(CassandraKeyspace, CassandraTableDailyTemp)
 
   /** Notifies the supervisor that the Spark Streams have been created and defined.

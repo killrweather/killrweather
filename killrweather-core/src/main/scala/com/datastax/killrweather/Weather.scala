@@ -58,7 +58,7 @@ object Weather {
    * @param sixHourPrecip Six-hour accumulated liquid precipitation (millimeters)
    */
   case class RawWeatherData(
-    weather_station: String,
+    wsid: String,
     year: Int,
     month: Int,
     day: Int,
@@ -77,7 +77,7 @@ object Weather {
     /** Tech debt - don't do it this way ;) */
     def apply(array: Array[String]): RawWeatherData = {
       RawWeatherData(
-        weather_station = array(0),
+        wsid = array(0),
         year = array(1).toInt,
         month = array(2).toInt,
         day = array(3).toInt,
@@ -100,22 +100,22 @@ object Weather {
   case class DayKey(wsid: String, year: Int, month: Int, day: Int) extends WeatherAggregate
   object DayKey {
     def apply(t: RawWeatherData): DayKey =
-      DayKey(t.weather_station, t.year, t.month, t.day)
+      DayKey(t.wsid, t.year, t.month, t.day)
     def apply(t: (String, Int, Int, Int)): DayKey =
       DayKey(t._1,t._2,t._3,t._4)
   }
-  case class DailyPrecipitation(weather_station: String, year: Int, month: Int, day: Int, precipitation: Double) extends WeatherAggregate
+  case class DailyPrecipitation(wsid: String, year: Int, month: Int, day: Int, precipitation: Double) extends WeatherAggregate
 
   object DailyPrecipitation {
     def apply(key:DayKey, precipitation: Double): DailyPrecipitation =
       DailyPrecipitation(key.wsid, key.year, key.month, key.day, precipitation)
   }
 
-  case class Precipitation(weather_station: String, year: Int, annual: Double) extends WeatherAggregate
+  case class Precipitation(wsid: String, year: Int, annual: Double) extends WeatherAggregate
 
-  case class AnnualPrecipitation(sid: String, year: Int, total: Double)
+  case class AnnualPrecipitation(wsid: String, year: Int, total: Double)
 
-  case class DailyTemperature(weather_station: String, year: Int, month: Int, day: Int,
+  case class DailyTemperature(wsid: String, year: Int, month: Int, day: Int,
                               high: Double, low: Double, mean: Double, variance: Double, stdev: Double) extends WeatherAggregate
 
   object DailyTemperature {

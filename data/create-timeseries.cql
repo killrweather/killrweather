@@ -29,7 +29,7 @@ sky_condition_text text, // Non-coded sky conditions
 */
 
 CREATE TABLE raw_weather_data (
-   weather_station text,    // Composite of Air Force Datsav3 station number and NCDC WBAN number
+   wsid text,               // Composite of Air Force Datsav3 station number and NCDC WBAN number
    year int,                // Year collected
    month int,               // Month collected
    day int,                 // Day collected
@@ -43,7 +43,7 @@ CREATE TABLE raw_weather_data (
    sky_condition_text text, // Non-coded sky conditions
    one_hour_precip double,   // One-hour accumulated liquid precipitation (millimeters)
    six_hour_precip double,   // Six-hour accumulated liquid precipitation (millimeters)
-   PRIMARY KEY ((weather_station), year, month, day, hour)
+   PRIMARY KEY ((wsid), year, month, day, hour)
 ) WITH CLUSTERING ORDER BY (year DESC, month DESC, day DESC, hour DESC);
 
 /*
@@ -58,7 +58,7 @@ CREATE TABLE sky_condition_lookup (
 );
 
 CREATE TABLE daily_aggregate_temperature (
-   weather_station text,
+   wsid text,
    year int,
    month int,
    day int,
@@ -67,25 +67,25 @@ CREATE TABLE daily_aggregate_temperature (
    mean double,
    variance double,
    stdev double,
-   PRIMARY KEY ((weather_station), year, month, day)
+   PRIMARY KEY ((wsid), year, month, day)
 ) WITH CLUSTERING ORDER BY (year DESC, month DESC, day DESC);
 
 /*
   Sum of all one_hour_preip for one day and one weather station
 */
 CREATE TABLE daily_aggregate_precip (
-   weather_station text,
+   wsid text,
    year int,
    month int,
    day int,
    precipitation counter,
-   PRIMARY KEY ((weather_station), year, month, day)
+   PRIMARY KEY ((wsid), year, month, day)
 ) WITH CLUSTERING ORDER BY (year DESC, month DESC, day DESC);
 
 
 CREATE TABLE year_cumulative_precip (
-   weather_station text,
+   wsid text,
    year int,
    precipitation counter,
-   PRIMARY KEY ((weather_station), year)
+   PRIMARY KEY ((wsid), year)
 ) WITH CLUSTERING ORDER BY (year DESC);

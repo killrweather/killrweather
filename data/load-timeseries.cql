@@ -7,7 +7,7 @@ COPY weather_station (id, name, country_code, state_code, call_sign, lat, long, 
 
 /*
 Better to load this much data with one of the utility loading programs. But for simplicity of demos:
-COPY raw_weather_data (weather_station, year, month, day, hour, temperature, dewpoint, pressure, wind_direction, wind_speed, sky_condition, one_hour_precip, six_hour_precip)
+COPY raw_weather_data (wsid, year, month, day, hour, temperature, dewpoint, pressure, wind_direction, wind_speed, sky_condition, one_hour_precip, six_hour_precip)
 FROM '2014.csv';
 */
 

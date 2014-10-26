@@ -41,7 +41,7 @@ class TemperatureActor(ssc: StreamingContext, settings: WeatherSettings)
 
   def doMonthly(wsid: String, year: Int, month: Int): Future[Seq[Temperature]] =
     ssc.cassandraTable[Temperature](keyspace, dailytable)
-      .where("weather_station = ? AND year = ? AND month = ?",
+      .where("wsid = ? AND year = ? AND month = ?",
         wsid, year, month)
       .collectAsync
 

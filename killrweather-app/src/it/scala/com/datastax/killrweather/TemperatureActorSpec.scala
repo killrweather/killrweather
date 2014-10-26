@@ -37,7 +37,7 @@ class TemperatureActorSpec extends ActorSparkSpec {
       expectMsgPF(timeout.duration) {
         case e =>
           val temps = e.asInstanceOf[Seq[Temperature]]
-          temps.forall(t => t.month == 12 && t.year == year && t.weather_station == sid)
+          temps.forall(t => t.month == 12 && t.year == year && t.wsid == sid)
           temps.map(_.day).min should be (1)
           temps.map(_.day).max should be (31)
           temps foreach println

@@ -46,9 +46,9 @@ object WeatherEvent {
   /** @param constraint allows testing a subsection vs doing full year */
   case class ComputeDailyTemperature(wsid: String, year: Int, constraint: Option[Int] = None) extends WeatherRequest
   case class GetTemperature(wsid: String, doy: Int, year: Int) extends WeatherRequest
-  case class GetMonthlyTemperature(weather_station: String, month: Int, year: Int) extends WeatherRequest
+  case class GetMonthlyTemperature(wsid: String, month: Int, year: Int) extends WeatherRequest
 
-  case class Temperature(weather_station: String, year: Int, month: Int, day: Int,
+  case class Temperature(wsid: String, year: Int, month: Int, day: Int,
     high: Double, low: Double, mean: Double, variance: Double, stdev: Double) extends WeatherAggregate
 
   case class ComputeDailyPrecipitation(wsid: String, year: Int, constraint: Option[Int] = None) extends WeatherRequest
