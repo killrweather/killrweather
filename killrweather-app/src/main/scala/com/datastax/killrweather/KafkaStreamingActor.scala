@@ -36,15 +36,19 @@ class KafkaStreamingActor(kafkaParams: Map[String,String],
                           listener: ActorRef)
     extends KafkaProducerActor[String,String](brokers, settings) with WeatherActor {
 
-  import settings._
+   import settings._
   import WeatherEvent._
   import Weather._
 
   import StreamingContext._
   import SparkContext._
 
+
+  //You could use timeUUID as the key (for the partition which you will have that back in your consumer
+  // if you can access the MessageAndMetaData https://github.com/apache/kafka/blob/trunk/core/src/main/scala/kafka/message/MessageAndMetadata.scala ),
+  // and then have that as part of the insert in a clustered column to cassandra for the other fields for your partition key.
    val stream = KafkaUtils.createStream[String, String, StringDecoder, StringDecoder](
-    ssc, kafkaParams, Map(KafkaTopicRaw -> 3), StorageLevel.MEMORY_AND_DISK_2)// TODO increase consumers
+    ssc, kafkaParams, Map(KafkaTopicRaw -> 10), StorageLevel.DISK_ONLY_2)
      .map { case (_, d) => d.split(",")}
      .map(RawWeatherData(_))
 

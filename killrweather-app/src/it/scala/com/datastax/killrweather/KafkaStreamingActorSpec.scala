@@ -22,7 +22,8 @@ import akka.actor.Props
 import com.datastax.spark.connector.embedded._
 import com.datastax.spark.connector.streaming._
 
-class KafkaStreamingActorSpec extends ActorSparkSpec { 
+class KafkaStreamingActorSpec extends ActorSparkSpec {
+  import Weather._
   import WeatherEvent._
   import settings._
 
@@ -40,7 +41,8 @@ class KafkaStreamingActorSpec extends ActorSparkSpec {
     kafka.kafkaParams, brokers, ssc, settings, self)), "kafka"))
 
   val latch = new CountDownLatch(expected)
-  val consumer = new KafkaTestConsumer(kafka.kafkaConfig.zkConnect, KafkaTopicRaw, KafkaGroupId, 1, latch)
+
+  val consumer = new KafkaTestConsumer(kafka.kafkaConfig.zkConnect, KafkaTopicRaw, KafkaGroupId, partitions = 10, 1, latch)
 
   expectMsgPF(20.seconds) {
     case OutputStreamInitialized => start()
@@ -48,7 +50,8 @@ class KafkaStreamingActorSpec extends ActorSparkSpec {
 
   "KafkaStreamingActor" must {
     "transforms annual weather .gz files to line data and publish to a Kafka topic" in {
-      awaitCond(latch.getCount > 500, 3.seconds) // assert process of publishing has started
+      awaitCond(latch.getCount == expected, 10.seconds) // assert process of publishing has started, continues to consume
+      println(s"found ${latch.getCount} in kafka")
     }
     s"streams in data from kafka, transforms it, and saves it to $CassandraTableRaw" in {
       val tableData = ssc.cassandraTable(keyspace, CassandraTableRaw)

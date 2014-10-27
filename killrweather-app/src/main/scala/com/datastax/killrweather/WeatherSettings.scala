@@ -46,5 +46,5 @@ final class WeatherSettings(conf: Option[Config] = None) extends Settings(conf) 
   import Weather.UriYearPartition
   val ByYearPartitions: Seq[UriYearPartition] =
     for (year <- HistoricDataYearRange) yield
-      UriYearPartition(year, s"$DataLoadPath/$year.csv.gz")
+      UriYearPartition(year, s"$DataLoadPath/$year.csv.gz") //2005-us.csv
 }

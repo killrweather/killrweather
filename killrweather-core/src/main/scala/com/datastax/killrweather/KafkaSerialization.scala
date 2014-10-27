@@ -19,3 +19,4 @@ class KillrWeatherDecoder(props: VerifiableProperties = null)(implicit system: A
   def fromBytes(bytes: Array[Byte]): RawWeatherData =
     serialization.deserialize(bytes, classOf[RawWeatherData]).get // ouch
 }
+
