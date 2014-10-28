@@ -1,6 +1,6 @@
 # KillrWeather
 
-KillrWeather, powered by [DataStax](http://www.datastax.com), is about how to easily leverage and integrate [Apache Spark](http://spark.apache.org), 
+KillrWeather, powered by [DataStax](http://www.datastax.com), is a reference application (in progress) showing how to easily leverage and integrate [Apache Spark](http://spark.apache.org), 
 [Apache Cassandra](http://cassandra.apache.org), and [Apache Kafka](http://kafka.apache.org) for fast, streaming computations 
 on **time series data** in asynchronous [Akka](http://akka.io) event-driven environments.
   
