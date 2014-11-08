@@ -20,9 +20,10 @@ import java.util.concurrent.TimeoutException
 import akka.actor.SupervisorStrategy._
 import akka.actor._
 import akka.util.Timeout
-import org.apache.spark.util.StatCounter
+import org.apache.spark.SparkException
 import org.joda.time.format.DateTimeFormat
 import org.joda.time.{DateTime, DateTimeZone}
+import com.datastax.driver.core.utils.UUIDs
 
 import scala.concurrent.duration._
 
@@ -35,6 +36,7 @@ trait WeatherActor extends Actor {
 
   override val supervisorStrategy =
     OneForOneStrategy(maxNrOfRetries = 10, withinTimeRange = 1 minute) {
+      case _: SparkException           => Stop
       case _: ActorInitializationException => Stop
       case _: IllegalArgumentException => Stop
       case _: NullPointerException     => Resume
@@ -42,8 +44,6 @@ trait WeatherActor extends Actor {
       case _: TimeoutException         => Escalate
       case _: Exception                => Escalate
     }
-
-  def toStatCounter(values: Seq[Double]): StatCounter = StatCounter(values)
 
   /** Creates a timestamp for the current date time in UTC. */
   def timestamp: DateTime = new DateTime(DateTimeZone.UTC)
@@ -64,11 +64,4 @@ trait WeatherActor extends Actor {
 
   def toDateFormat(dt: DateTime): String = DateTimeFormat.forPattern("EEEE, MMMM dd, yyyy").print(dt)
 
-}
-
-trait DailyWeatherActor extends WeatherActor {
-
-  def year: Int
-
-  def weatherStationActor: ActorRef
 }

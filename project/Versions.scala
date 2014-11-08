@@ -17,6 +17,7 @@
 object Versions {
 
   val Akka           = "2.2.3" // binary incompat with akka and config latest 2.3.6 with spark :(
+  val CassandraDriver = "2.1.0"//2.1.2"
   val Config         = "1.2.1"
   val JDK            = "1.7"
   val JodaConvert    = "1.7"
@@ -33,5 +34,5 @@ object Versions {
   val Sigar          = "1.6.4"
   val Slf4j          = "1.7.7"
   val Spark          = "1.1.0"
-  val SparkCassandra = "1.1.0-alpha4"
+  val SparkCassandra = "1.1.0-beta1"
 }

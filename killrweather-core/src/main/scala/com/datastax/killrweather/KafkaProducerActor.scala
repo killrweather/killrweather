@@ -18,50 +18,75 @@ package com.datastax.killrweather
 import java.util.Properties
 
 import akka.actor.{ActorLogging, Actor}
-import scalaz.concurrent.Task
+import kafka.serializer.StringEncoder
+import kafka.server.KafkaConfig
 import kafka.producer._
 
-class KafkaProducerActor[K, V](brokers: Set[String], settings: Settings)
+/** Simple producer for an Akka Actor using string encoder and default partitioner. */
+abstract class KafkaProducerActor[K, V](brokers: Set[String], settings: Settings)
   extends Actor with ActorLogging {
-
   import KafkaEvent._
+
   import settings._
 
-  val props: Properties = {
-    val props = new Properties()
-    props.put("metadata.broker.list", brokers.mkString(","))
-    props.put("serializer.class", KafkaEncoderFqcn)
-    props.put("partitioner.class", KafkaPartitioner)
-    props.put("producer.type", "async")
-    props.put("request.required.acks", "1")
-    props.put("batch.num.messages", KafkaBatchSendSize.toString)
-    props
+  private val producerConfig: ProducerConfig = KafkaProducer.createConfig(
+    brokers, KafkaBatchSendSize, "async", KafkaEncoderFqcn)
+
+  private val producer = new KafkaProducer[K, V](producerConfig)
+
+  override def postStop(): Unit = {
+    log.info("Shutting down producer.")
+    producer.close()
   }
-
-  val config = new ProducerConfig(props)
-
-  val producer = new Producer[K,V](config)
-
-  override def postStop(): Unit = close()
 
   def receive = {
-    case e: KafkaMessageEnvelope[K,V] => send(e)
+    case e: KafkaMessageEnvelope[K,V] => producer.send(e)
+  }
+}
+
+/** Simple producer using string encoder and default partitioner. */
+class KafkaProducer[K, V](producerConfig: ProducerConfig) {
+
+  def this(brokers: Set[String], batchSize: Int, producerType: String, serializerFqcn: String) =
+    this(KafkaProducer.createConfig(brokers, batchSize, producerType, serializerFqcn))
+
+  def this(config: KafkaConfig) =
+    this(KafkaProducer.defaultConfig(config))
+
+  import KafkaEvent._
+
+  private val producer = new Producer[K, V](producerConfig)
+
+  /** Sends the data, partitioned by key to the topic. */
+  def send(e: KafkaMessageEnvelope[K,V]): Unit =
+    batchSend(e.topic, e.key, e.messages)
+
+  /* Sends a single message. */
+  def send(topic : String, key : K, message : V): Unit =
+    batchSend(topic, key, Seq(message))
+
+  def batchSend(topic: String, key: K, batch: Seq[V]): Unit = {
+    val messages = batch map (msg => new KeyedMessage[K, V](topic, key, msg))
+    producer.send(messages.toArray: _*)
   }
 
-  /**
-   * Sends the data, partitioned by key to the topic using an async producer.
-   */
-  def send(e: KafkaMessageEnvelope[K,V]): Unit = {
-    val messages = e.messages map (m => KeyedMessage(e.topic, e.key, m))
-    producer.send(messages: _*)
+  def close(): Unit = producer.close()
+
+}
+
+object KafkaProducer {
+
+  def createConfig(brokers: Set[String], batchSize: Int, producerType: String, serializerFqcn: String): ProducerConfig = {
+    val props = new Properties()
+    props.put("metadata.broker.list", brokers.mkString(","))
+    props.put("serializer.class", serializerFqcn)
+    props.put("partitioner.class", "kafka.producer.DefaultPartitioner")
+    props.put("producer.type", producerType)
+    props.put("request.required.acks", "1")
+    props.put("batch.num.messages", batchSize.toString)
+    new ProducerConfig(props)
   }
 
-  /**
-   * Close API to close the producer pool connections to all Kafka brokers. Also closes
-   * the zookeeper client connection if one exists
-   */
-  def close(): Task[Unit] = Task.delay {
-   log.info("Shutting down producer.")
-   producer.close()
-  }
+  def defaultConfig(config: KafkaConfig): ProducerConfig =
+    createConfig(Set(s"${config.hostName}:${config.port}"), 100, "async", classOf[StringEncoder].getName)
 }

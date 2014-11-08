@@ -71,7 +71,7 @@ CREATE TABLE daily_aggregate_temperature (
 ) WITH CLUSTERING ORDER BY (year DESC, month DESC, day DESC);
 
 /*
-  Sum of all one_hour_preip for one day and one weather station
+  Sum of all one_hour_precip for one day and one weather station
 */
 CREATE TABLE daily_aggregate_precip (
    wsid text,

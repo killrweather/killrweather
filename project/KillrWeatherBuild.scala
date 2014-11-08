@@ -58,7 +58,9 @@ object Dependencies {
     val akkaRemote        = "com.typesafe.akka"   %% "akka-remote"                        % Akka    force() // ApacheV2
     val akkaSlf4j         = "com.typesafe.akka"   %% "akka-slf4j"                         % Akka    force() // ApacheV2
     val bijection         = "com.twitter"         %% "bijection-core"                     % "0.7.0"
+    val cassandraDriver   = "com.datastax.cassandra"  % "cassandra-driver-core"           % CassandraDriver  exclude("com.google.guava", "guava")            withSources()
     // can't use latest: spark :( val config = "com.typesafe"        % "config"   % Config  force() // ApacheV2
+    val chillAkka         = "tv.cntt"             %% "chill-akka"                         % "1.1"
     val jodaTime          = "joda-time"           % "joda-time"                           % JodaTime        // ApacheV2
     val jodaConvert       = "org.joda"            % "joda-convert"                        % JodaConvert     // ApacheV2
     val json4sCore        = "org.json4s"          %% "json4s-core"                        % Json4s          // ApacheV2
@@ -90,7 +92,7 @@ object Dependencies {
 
   val akka = Seq(akkaActor, akkaCluster, akkaContrib, akkaRemote)
 
-  val connector = Seq(sparkCassandra, sparkCassandraEmb)
+  val connector = Seq(cassandraDriver, sparkCassandra, sparkCassandraEmb)
 
   val json = Seq(json4sCore, json4sJackson, json4sNative)
 
@@ -103,8 +105,8 @@ object Dependencies {
   val test = Seq(Test.akkaTestKit, Test.scalatest, Test.sigar)
 
   /** Module deps */
-  val core = connector ++ json ++ scalaz ++ Seq(kafka)
+  val core = connector ++ json ++ scalaz ++ Seq(chillAkka, kafka)
 
-  val app = akka ++ core ++ logging ++ time ++ test ++ Seq(sparkML, sparkSQL)
+  val app = akka ++ core ++ logging ++ time ++ test ++ Seq(chillAkka,sparkML, sparkSQL)
 
 }

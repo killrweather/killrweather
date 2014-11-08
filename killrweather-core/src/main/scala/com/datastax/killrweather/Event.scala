@@ -33,7 +33,6 @@ object WeatherEvent {
   sealed trait WeatherResponse extends WeatherEvent
 
   case class GetWeatherStation(sid: String) extends WeatherRequest
-  case class GetRawWeatherData(perPage: Int) extends WeatherRequest
   case class GetDailyTemperature(wsid: String, year: Int, month: Int, day: Int) extends WeatherRequest
   case class GetMonthlyTemperature(wsid: String, year: Int, month: Int) extends WeatherRequest
   case class GetPrecipitation(wsid: String, year: Int) extends WeatherRequest

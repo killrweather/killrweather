@@ -94,8 +94,9 @@ object Weather {
     }
   }
 
-  trait WeatherAggregate extends WeatherModel {
+  trait WeatherAggregate extends WeatherModel with Serializable {
     def wsid: String
+    def year: Int
   }
 
   case class HourKey(wsid: String, year: Int, month: Int, day: Int, hour: Int) extends WeatherAggregate
@@ -119,6 +120,8 @@ object Weather {
                                 precipitation: Double) extends Precipitation
 
   case class AnnualPrecipitation(wsid: String, year: Int, total: Double) extends Precipitation
+
+  case class HourlyTemperature(wsid: String, year: Int, month: Int, day: Int, hour: Int, temperature: Double) extends WeatherAggregate
 
   case class DailyTemperature(wsid: String,
                               year: Int,
@@ -150,7 +153,7 @@ object Weather {
                          high: Double,
                          low: Double) extends WeatherAggregate
 
-  case class TopKPrecipitation(wsid: String, seq: Seq[Double]) extends WeatherAggregate
+  case class TopKPrecipitation(wsid: String, year: Int, seq: Seq[Double]) extends WeatherAggregate
 
   case class UriYearPartition(year: Int, uri: String) extends WeatherModel
 }

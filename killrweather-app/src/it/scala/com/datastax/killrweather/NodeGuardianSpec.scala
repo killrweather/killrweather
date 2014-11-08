@@ -25,7 +25,6 @@ class NodeGuardianSpec extends ActorSparkSpec {
   import settings._
 
   val year = 2005
-  val wsid = "010010:99999"
 
   lazy val kafka = new EmbeddedKafka
 

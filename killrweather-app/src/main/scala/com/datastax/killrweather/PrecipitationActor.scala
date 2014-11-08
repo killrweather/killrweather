@@ -57,7 +57,7 @@ class PrecipitationActor(ssc: StreamingContext, settings: WeatherSettings)
       .where("wsid = ? year = ?", wsid, year)
       .top(10)
 
-    TopKPrecipitation(wsid, top.toSeq)
+    TopKPrecipitation(wsid, year, top.toSeq)
   } pipeTo requester
 
 }

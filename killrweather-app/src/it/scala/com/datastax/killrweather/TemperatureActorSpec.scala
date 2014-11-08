@@ -15,31 +15,44 @@
  */
 package com.datastax.killrweather
 
+import scala.concurrent.duration._
 import akka.actor._
+import com.datastax.spark.connector.streaming._
 
 class TemperatureActorSpec extends ActorSparkSpec {
   import WeatherEvent._
   import Weather._
+  import settings._
 
   val year = 2005
 
   val sid = "010010:99999"
 
-  val expected = 19703 // the total count stations
+  val temperature = system.actorOf(Props(new TemperatureActor(ssc, settings)))
 
   "TemperatureActor" must {
     start()
+     s"aggregate hourly wsid temperatures for a given day and year and asynchronously store in $CassandraTableDailyTemp" in {
+       temperature ! GetDailyTemperature(sid, year, 1, 10)
+       val aggregate = expectMsgPF[DailyTemperature](timeout.duration) {
+         case Some(e) => e.asInstanceOf[DailyTemperature]
+       }
+
+       val tableData = ssc.cassandraTable[DailyTemperature](CassandraKeyspace, CassandraTableDailyTemp)
+         .where("wsid = ? AND year = ? AND month = ? AND day = ?",
+           aggregate.wsid, aggregate.year, aggregate.month, aggregate.day)
+       awaitCond(tableData.toLocalIterator.toSeq.headOption.nonEmpty, 10.seconds)
+       println(tableData.toLocalIterator.toSeq.headOption)
+    }
     "compute daily temperature rollups per weather station to monthly statistics." in {
-      val temperature = system.actorOf(Props(new TemperatureActor(ssc, settings)))
       temperature ! GetMonthlyTemperature(sid, year, 12)
-      expectMsgPF(timeout.duration) {
-        case e =>
-          val temp = e.asInstanceOf[Option[MonthlyTemperature]].get
-          temp.wsid should be (sid)
-          temp.year should be (year)
-          temp.month should be (12)
-          println(s"For month: low=${temp.low} high=${temp.high}")
+      val aggregate = expectMsgPF(timeout.duration) {
+        case Some(e) => e.asInstanceOf[MonthlyTemperature]
       }
+      aggregate.wsid should be (sid)
+      aggregate.year should be (year)
+      aggregate.month should be (12)
+      println(s"For month: low=${aggregate.low} high=${aggregate.high}")
     }
   }
 }

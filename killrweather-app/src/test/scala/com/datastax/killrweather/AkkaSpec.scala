@@ -18,8 +18,6 @@ package com.datastax.killrweather
 
 import java.io.File
 
-import com.datastax.killrweather.KafkaEvent.KafkaMessageEnvelope
-
 import scala.concurrent.duration._
 import akka.cluster.Cluster
 import akka.actor._
@@ -27,7 +25,6 @@ import akka.testkit.{DefaultTimeout, ImplicitSender, TestKit}
 import com.datastax.killrweather.Weather.RawWeatherData
 import com.datastax.spark.connector.cql.CassandraConnector
 import org.apache.spark.storage.StorageLevel
-import org.joda.time.{DateTimeZone, DateTime}
 import org.scalatest._
 import org.apache.spark.{SparkContext, SparkConf}
 import org.apache.spark.streaming.{Seconds, StreamingContext}
@@ -39,37 +36,35 @@ trait AbstractSpec extends Suite with WordSpecLike with Matchers with BeforeAndA
 abstract class ActorSparkSpec extends AkkaSpec with AbstractSpec {
   import com.datastax.spark.connector.streaming._
   import com.datastax.spark.connector._
+  import KafkaEvent._
   import settings._
 
   val conf = new SparkConf().setAppName(getClass.getSimpleName).setMaster(SparkMaster)
     .set("spark.cassandra.connection.host", CassandraHosts)
+    .set("spark.serializer", "org.apache.spark.serializer.KryoSerializer")
+    .set("spark.kryo.registrator", "com.datastax.killrweather.KillrKryoRegistrator")
     .set("spark.cleaner.ttl", SparkCleanerTtl.toString)
 
   val sc = new SparkContext(conf)
 
   val ssc =  new StreamingContext(sc, Seconds(SparkStreamingBatchInterval)) // 1s
 
-  val keyspace = CassandraKeyspace
-
-  // fail fast if you have not run the create and load cql scripts yet :)
   CassandraConnector(conf).withSessionDo { session =>
     // insure for test we are not going to look at existing data, but new from the kafka actor processes
-    session.execute(s"DROP TABLE IF EXISTS $keyspace.raw_weather_data")
-    session.execute(s"DROP TABLE IF EXISTS $keyspace.daily_aggregate_precip")
-    session.execute(s"DROP TABLE IF EXISTS $keyspace.daily_aggregate_temperature")
-
-    session.execute( s"""CREATE TABLE IF NOT EXISTS $keyspace.raw_weather_data (
+    session.execute(s"DROP KEYSPACE IF EXISTS $CassandraKeyspace")
+    session.execute(s"CREATE KEYSPACE IF NOT EXISTS $CassandraKeyspace WITH REPLICATION = {'class': 'SimpleStrategy', 'replication_factor': 1 }")
+    session.execute(s"""CREATE TABLE $CassandraKeyspace.$CassandraTableRaw (
       wsid text, year int, month int, day int, hour int,temperature double, dewpoint double, pressure double,
       wind_direction int, wind_speed double,sky_condition int, sky_condition_text text, one_hour_precip double, six_hour_precip double,
       PRIMARY KEY ((wsid), year, month, day, hour)
      ) WITH CLUSTERING ORDER BY (year DESC, month DESC, day DESC, hour DESC)""")
 
-    session.execute( s"""CREATE TABLE IF NOT EXISTS $keyspace.daily_aggregate_temperature (
+    session.execute(s"""CREATE TABLE $CassandraKeyspace.$CassandraTableDailyTemp (
        wsid text,year int,month int,day int,high double,low double,mean double,variance double,stdev double,
        PRIMARY KEY ((wsid), year, month, day)
     ) WITH CLUSTERING ORDER BY (year DESC, month DESC, day DESC)""")
 
-    session.execute( s"""CREATE TABLE IF NOT EXISTS $keyspace.daily_aggregate_precip (
+    session.execute(s"""CREATE TABLE $CassandraKeyspace.$CassandraTableDailyPrecip (
        wsid text,year int,month int,day int,precipitation counter,
        PRIMARY KEY ((wsid), year, month, day)
     ) WITH CLUSTERING ORDER BY (year DESC, month DESC, day DESC)""")
@@ -136,6 +131,8 @@ abstract class ActorSparkSpec extends AkkaSpec with AbstractSpec {
 
  //with SharedEmbeddedCassandra
 abstract class AkkaSpec extends TestKit(ActorSystem()) with AbstractSpec with ImplicitSender with DefaultTimeout {
+
+   val wsid = "010010:99999"
 
    val settings = new WeatherSettings()
 
