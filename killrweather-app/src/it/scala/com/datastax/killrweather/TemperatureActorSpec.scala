@@ -17,7 +17,7 @@ package com.datastax.killrweather
 
 import scala.concurrent.duration._
 import akka.actor._
-import com.datastax.spark.connector.streaming._
+import com.datastax.spark.connector._
 
 class TemperatureActorSpec extends ActorSparkSpec {
   import WeatherEvent._
@@ -28,7 +28,7 @@ class TemperatureActorSpec extends ActorSparkSpec {
 
   val sid = "010010:99999"
 
-  val temperature = system.actorOf(Props(new TemperatureActor(ssc, settings)))
+  val temperature = system.actorOf(Props(new TemperatureActor(sc, settings)))
 
   "TemperatureActor" must {
     start()
@@ -38,20 +38,20 @@ class TemperatureActorSpec extends ActorSparkSpec {
          case Some(e) => e.asInstanceOf[DailyTemperature]
        }
 
-       val tableData = ssc.cassandraTable[DailyTemperature](CassandraKeyspace, CassandraTableDailyTemp)
+       val tableData = sc.cassandraTable[DailyTemperature](CassandraKeyspace, CassandraTableDailyTemp)
          .where("wsid = ? AND year = ? AND month = ? AND day = ?",
            aggregate.wsid, aggregate.year, aggregate.month, aggregate.day)
        awaitCond(tableData.toLocalIterator.toSeq.headOption.nonEmpty, 10.seconds)
        println(tableData.toLocalIterator.toSeq.headOption)
     }
     "compute daily temperature rollups per weather station to monthly statistics." in {
-      temperature ! GetMonthlyTemperature(sid, year, 12)
+      temperature ! GetMonthlyTemperature(sid, year, 1)
       val aggregate = expectMsgPF(timeout.duration) {
         case Some(e) => e.asInstanceOf[MonthlyTemperature]
       }
       aggregate.wsid should be (sid)
       aggregate.year should be (year)
-      aggregate.month should be (12)
+      aggregate.month should be (1)
       println(s"For month: low=${aggregate.low} high=${aggregate.high}")
     }
   }

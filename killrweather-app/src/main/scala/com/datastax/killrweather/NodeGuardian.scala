@@ -23,8 +23,6 @@ import org.apache.spark.streaming.kafka.KafkaInputDStream
 import org.apache.spark.streaming.StreamingContext
 import com.datastax.spark.connector.embedded.{Assertions, EmbeddedKafka}
 
-import scala.reflect.ClassTag
-
 /**
  * The `NodeGuardian` is the root of the primary KillrWeather deployed application.
  * It manages the worker actors and is Akka Cluster aware by extending [[ClusterAware]].
@@ -45,6 +43,12 @@ class NodeGuardian(ssc: StreamingContext,
                    brokers: Set[String],
                    settings: WeatherSettings)
   extends ClusterAware with Assertions with ActorLogging {
+
+  def this(ssc: StreamingContext,
+           kafka: EmbeddedKafka,
+           settings: WeatherSettings) = this(
+    ssc, kafka, Set(s"${kafka.kafkaConfig.hostName}:${kafka.kafkaConfig.port}"), settings)
+
   import WeatherEvent._
   import settings._
 
@@ -55,9 +59,9 @@ class NodeGuardian(ssc: StreamingContext,
     kafka.kafkaParams, brokers, ssc, settings, self)), "kafka")
 
   /* The Spark/Cassandra computation actors: For the tutorial we just use 2005 for now. */
-  val temperature = context.actorOf(Props(new TemperatureActor(ssc, settings)), "temperature")
+  val temperature = context.actorOf(Props(new TemperatureActor(ssc.sparkContext, settings)), "temperature")
   val precipitation = context.actorOf(Props(new PrecipitationActor(ssc, settings)), "precipitation")
-  val station = context.actorOf(Props(new WeatherStationActor(ssc, settings)), "weather-station")
+  val station = context.actorOf(Props(new WeatherStationActor(ssc.sparkContext, settings)), "weather-station")
 
   override def preStart(): Unit =
     log.info("Starting up.")

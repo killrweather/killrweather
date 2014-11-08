@@ -14,8 +14,10 @@
  * limitations under the License.
  */
 package com.datastax.killrweather
- 
-import scala.concurrent.duration._ 
+
+import org.apache.spark.streaming.{Seconds, StreamingContext}
+
+import scala.concurrent.duration._
 import akka.actor.Props
 import com.datastax.spark.connector.embedded.EmbeddedKafka
 
@@ -32,11 +34,20 @@ class NodeGuardianSpec extends ActorSparkSpec {
 
   kafka.createTopic(settings.KafkaTopicRaw)
 
-  val brokers = Set(s"${kafka.kafkaConfig.hostName}:${kafka.kafkaConfig.port}") // TODO the right way
+  val ssc = new StreamingContext(sc, Seconds(SparkStreamingBatchInterval))
 
-  val guardian = system.actorOf(Props(new NodeGuardian(ssc, kafka, brokers, settings)), "node-guardian")
+  val guardian = system.actorOf(Props(new NodeGuardian(ssc, kafka, settings)), "node-guardian")
 
-  override def afterAll() { super.afterAll(); kafka.shutdown() }
+  override def start(): Unit = {
+    ssc.start()
+    super.start()
+  }
+
+  override def afterAll() {
+    super.afterAll()
+    ssc.stop(true, false)
+    kafka.shutdown()
+  }
 
   "KillrWeather" must {
     "publish a NodeInitialized to the event stream on initialization" in {

@@ -22,20 +22,19 @@ import scala.concurrent.duration._
 import akka.cluster.Cluster
 import akka.actor._
 import akka.testkit.{DefaultTimeout, ImplicitSender, TestKit}
-import com.datastax.killrweather.Weather.RawWeatherData
-import com.datastax.spark.connector.cql.CassandraConnector
-import org.apache.spark.storage.StorageLevel
 import org.scalatest._
 import org.apache.spark.{SparkContext, SparkConf}
 import org.apache.spark.streaming.{Seconds, StreamingContext}
 import com.datastax.spark.connector.streaming.StreamingEvent._
 import com.datastax.spark.connector.streaming.TypedStreamingActor
+import com.datastax.spark.connector.cql.CassandraConnector
 
 trait AbstractSpec extends Suite with WordSpecLike with Matchers with BeforeAndAfterAll
 
 abstract class ActorSparkSpec extends AkkaSpec with AbstractSpec {
   import com.datastax.spark.connector.streaming._
   import com.datastax.spark.connector._
+  import Weather._
   import KafkaEvent._
   import settings._
 
@@ -46,8 +45,6 @@ abstract class ActorSparkSpec extends AkkaSpec with AbstractSpec {
     .set("spark.cleaner.ttl", SparkCleanerTtl.toString)
 
   val sc = new SparkContext(conf)
-
-  val ssc =  new StreamingContext(sc, Seconds(SparkStreamingBatchInterval)) // 1s
 
   CassandraConnector(conf).withSessionDo { session =>
     // insure for test we are not going to look at existing data, but new from the kafka actor processes
@@ -72,16 +69,7 @@ abstract class ActorSparkSpec extends AkkaSpec with AbstractSpec {
 
   val kafkaActor: Option[ActorRef] = None
 
-  def start(): Unit = {
-    // for tests not creating a streaming output prior to calling start on the ssc - for test purposes
-    if (kafkaActor.isEmpty) {
-      ssc.actorStream[String](Props[TestStreamingActor], "stream", StorageLevel.MEMORY_ONLY)
-        .flatMap(_.split("\\s+")).map(x => (1,x)).saveToCassandra(CassandraKeyspace, "make_streaming_happy")
-    }
-
-    ssc.start()
-    loadData()
-  }
+  def start(): Unit = loadData()
 
   /* Loads data from /data/load files (because this is for a runnable demo.
    * Because we run locally vs against a cluster as a demo app, we keep that file size data small.
@@ -94,7 +82,7 @@ abstract class ActorSparkSpec extends AkkaSpec with AbstractSpec {
         val toActor = (line: String) =>
           actor ! KafkaMessageEnvelope[String,String](KafkaTopicRaw, KafkaGroupId, line)
 
-        ssc.sparkContext.textFile(partition.uri)
+        sc.textFile(partition.uri)
           .flatMap(_.split("\\n"))
           .toLocalIterator
           .foreach(toActor)
@@ -103,7 +91,7 @@ abstract class ActorSparkSpec extends AkkaSpec with AbstractSpec {
     case None =>
     // not a kafka actor test, store directly
       for (partition <- ByYearPartitions) {
-        ssc.sparkContext.textFile(partition.uri)
+        sc.textFile(partition.uri)
           .flatMap(_.split("\\n"))
           .map(_.split(","))
           .map(RawWeatherData(_))
@@ -113,7 +101,6 @@ abstract class ActorSparkSpec extends AkkaSpec with AbstractSpec {
 
   override def afterAll() {
     deleteOnExit()
-    ssc.stop(true, false)
     super.afterAll()
   }
 

@@ -17,6 +17,8 @@ package com.datastax.killrweather
 
 import java.util.concurrent.CountDownLatch
 
+import org.apache.spark.streaming.{Seconds, StreamingContext}
+
 import scala.concurrent.duration._
 import akka.actor.Props
 import com.datastax.spark.connector.embedded.{EmbeddedKafka, KafkaConsumer}
@@ -34,12 +36,19 @@ class KafkaStreamingActorSpec extends ActorSparkSpec {
   // AdminUtils.createTopic(kafka.client, KafkaTopicRaw, partitions = 1, replicationFactor = 1, new Properties())
   kafka.createTopic(KafkaTopicRaw)
 
+  val ssc = new StreamingContext(sc, Seconds(SparkStreamingBatchInterval))
+
   override val kafkaActor = Some(system.actorOf(Props(new KafkaStreamingActor(
     kafka.kafkaParams, kafka.kafkaConfig, ssc, settings, self)), "kafka-stream")) //.withDispatcher("killrweather.kafka-dispatcher")
 
   val latch = new CountDownLatch(expected)
 
   val consumer = new KafkaConsumer(kafka.kafkaConfig.zkConnect, KafkaTopicRaw, KafkaGroupId, 1, latch)
+
+  override def start(): Unit = {
+    ssc.start()
+    super.start()
+  }
 
   expectMsgPF(20.seconds) {
     case OutputStreamInitialized => start()
@@ -71,6 +80,7 @@ class KafkaStreamingActorSpec extends ActorSparkSpec {
 
   override def afterAll() {
     super.afterAll()
+    ssc.stop(true, false)
     consumer.shutdown()
     kafka.shutdown()
     Thread.sleep(2000) // hrm, no clean shutdown found yet that doesn't throw

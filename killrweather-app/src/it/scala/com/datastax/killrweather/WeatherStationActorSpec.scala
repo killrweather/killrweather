@@ -24,7 +24,7 @@ class WeatherStationActorSpec extends ActorSparkSpec {
 
   val expected = 19703 // the total count stations
 
-  val station = system.actorOf(Props(new WeatherStationActor(ssc, settings)), "weather-station")
+  val station = system.actorOf(Props(new WeatherStationActor(sc, settings)), "weather-station")
 
   start()
 

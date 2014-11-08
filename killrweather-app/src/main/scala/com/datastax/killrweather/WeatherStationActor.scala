@@ -17,12 +17,12 @@ package com.datastax.killrweather
 
 import akka.pattern.{ pipe, ask }
 import akka.actor.{ActorLogging, Actor, ActorRef}
+import org.apache.spark.SparkContext
 import org.apache.spark.SparkContext._
-import org.apache.spark.streaming.StreamingContext
-import com.datastax.spark.connector.streaming._
+import com.datastax.spark.connector._
 
 /** For a given weather station id, retrieves the full station data. */
-class WeatherStationActor(ssc: StreamingContext, settings: WeatherSettings)
+class WeatherStationActor(sc: SparkContext, settings: WeatherSettings)
   extends WeatherActor with ActorLogging {
 
   import settings.{CassandraKeyspace => keyspace}
@@ -30,7 +30,7 @@ class WeatherStationActor(ssc: StreamingContext, settings: WeatherSettings)
   import WeatherEvent._
 
   def receive : Actor.Receive = {
-    case GetWeatherStation(sid)   => weatherStation(sid, sender)
+    case GetWeatherStation(sid) => weatherStation(sid, sender)
   }
 
   /** The reason we can not allow a `LIMIT 1` in the `where` function is that
@@ -39,7 +39,7 @@ class WeatherStationActor(ssc: StreamingContext, settings: WeatherSettings)
     */
   def weatherStation(sid: String, requester: ActorRef): Unit =
     for {
-      stations <- ssc.cassandraTable[Weather.WeatherStation](keyspace, weatherstations)
+      stations <- sc.cassandraTable[Weather.WeatherStation](keyspace, weatherstations)
         .where("id = ?", sid)
         .collectAsync
       station <- stations.headOption

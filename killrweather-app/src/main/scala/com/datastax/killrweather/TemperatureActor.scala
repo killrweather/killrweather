@@ -15,20 +15,19 @@
  */
 package com.datastax.killrweather
 
+import org.apache.spark.SparkContext
 import org.apache.spark.util.StatCounter
 
 import scala.concurrent.Future
 import akka.actor.{ActorLogging, Actor, ActorRef}
 import akka.pattern.pipe
 import org.apache.spark.SparkContext._
-import org.apache.spark.streaming.StreamingContext
-import com.datastax.spark.connector.streaming._
 import com.datastax.spark.connector._
 
 /** The TemperatureActor reads the daily temperature rollup data from Cassandra,
   * and for a given weather station, computes temperature statistics by month for a given year.
   */
-class TemperatureActor(ssc: StreamingContext, settings: WeatherSettings)
+class TemperatureActor(sc: SparkContext, settings: WeatherSettings)
   extends WeatherActor with ActorLogging {
 
   import settings.{CassandraKeyspace => keyspace, CassandraTableDailyTemp => dailytable, CassandraTableRaw => rawtable }
@@ -55,7 +54,7 @@ class TemperatureActor(ssc: StreamingContext, settings: WeatherSettings)
     */
   def daily(e: GetDailyTemperature, requester: ActorRef): Future[Option[DailyTemperature]] =
     (for {
-      a <- ssc.cassandraTable[HourlyTemperature](keyspace, rawtable)
+      a <- sc.cassandraTable[Double](keyspace, rawtable)
               .select("temperature").where("wsid = ? AND year = ? AND month = ? AND day = ?",
                  e.wsid, e.year, e.month, e.day)
               .collectAsync
@@ -65,20 +64,20 @@ class TemperatureActor(ssc: StreamingContext, settings: WeatherSettings)
     * by on-demand requests during the `forDay` function's `self ! data`
     * to the daily temperature aggregation table. */
   def store(e: DailyTemperature): Unit =
-    ssc.sparkContext.makeRDD(Seq(e)).saveToCassandra(keyspace, dailytable)
+    sc.makeRDD(Seq(e)).saveToCassandra(keyspace, dailytable)
 
   /** Returns a future value to the `requester` actor. */
   def monthly(e: GetMonthlyTemperature, requester: ActorRef): Future[Option[MonthlyTemperature]] =
     (for {
-      a <- ssc.cassandraTable[DailyTemperature](keyspace, dailytable)
+      a <- sc.cassandraTable[DailyTemperature](keyspace, dailytable)
               .where("wsid = ? AND year = ? AND month = ?", e.wsid, e.year, e.month)
               .collectAsync
     } yield forMonth(e.wsid, e.year, e.month, a)) pipeTo requester
 
-  def forDay(key: DayKey, temps: Seq[HourlyTemperature]): Option[DailyTemperature] =
+  def forDay(key: DayKey, temps: Seq[Double]): Option[DailyTemperature] =
     if (temps.nonEmpty) {
-      val aggregate = ssc.sparkContext.parallelize(temps)
-        .map { case hourly => StatCounter(Seq(hourly.temperature)) }
+      val aggregate = sc.parallelize(temps)
+        .map { case temp => StatCounter(Seq(temp)) }
         .reduce(_ merge _) // would only ever be 0-23 small items
 
       val data = DailyTemperature(key, aggregate)
@@ -88,7 +87,7 @@ class TemperatureActor(ssc: StreamingContext, settings: WeatherSettings)
 
   def forMonth(wsid: String, year: Int, month: Int, temps: Seq[DailyTemperature]): Option[MonthlyTemperature] =
     if (temps.nonEmpty) {
-      val rdd = ssc.sparkContext.parallelize(temps)
+      val rdd = sc.parallelize(temps)
       val high = rdd.map(_.high).max
       val low = rdd.map(_.low).min
 
