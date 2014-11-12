@@ -64,10 +64,10 @@ class NodeGuardian(ssc: StreamingContext,
   val station = context.actorOf(Props(new WeatherStationActor(ssc.sparkContext, settings)), "weather-station")
 
   override def preStart(): Unit =
-    log.info("Starting up.")
+    log.info("Starting at {} as {}", cluster.selfAddress, self)
 
   override def postStop(): Unit =
-    log.info("Shutting down.")
+    log.info("Node {} shutting down.", cluster.selfAddress)
 
   /** On startup, actor is in an [[uninitialized]] state. */
   override def receive = uninitialized orElse super.receive
@@ -110,8 +110,10 @@ class NodeGuardian(ssc: StreamingContext,
 
    val toActor = (data: String) => kafkaActor ! KafkaMessageEnvelope[String,String](topic, group, data)
 
-    for (file <- IngestionData)
+    for (file <- IngestionData) {
+      log.info(s"Ingesting $file")
       ssc.sparkContext.textFile(file).flatMap(_.split("\\n")).toLocalIterator.foreach(toActor)
+    }
   }
 
   def gracefulShutdown(): Unit = {

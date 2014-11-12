@@ -2,7 +2,7 @@ package com.datastax.killrweather
 
 import com.esotericsoftware.kryo.Kryo
 import org.apache.spark.serializer.KryoRegistrator
-
+/** work in progress */
 class KillrKryoRegistrator extends KryoRegistrator {
 
   import WeatherEvent._

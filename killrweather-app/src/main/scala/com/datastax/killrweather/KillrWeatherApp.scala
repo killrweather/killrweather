@@ -15,13 +15,21 @@
  */
 package com.datastax.killrweather
 
+import akka.actor.{ActorSystem, PoisonPill, Props}
+import com.datastax.killrweather.clients.KillrClient
 import org.apache.spark.streaming.{Seconds, StreamingContext}
 import org.apache.spark.{SparkContext, SparkConf}
 import com.datastax.spark.connector.embedded.EmbeddedKafka
 
-/** Runnable. */
+/** Runnable. Requires running these in cqlsh
+  * {{{
+  *   cqlsh> source 'create-timeseries.cql';
+  *   cqlsh> source 'load-timeseries.cql';
+  * }}}
+  *
+  * See: https://github.com/killrweather/killrweather/wiki/2.%20Code%20and%20Data%20Setup#data-setup
+  */
 object KillrWeatherApp extends App {
-  import akka.actor.{ActorSystem, PoisonPill, Props}
 
   val settings = new WeatherSettings
   import settings._
@@ -56,10 +64,13 @@ object KillrWeatherApp extends App {
   lazy val ssc = new StreamingContext(sc, Seconds(settings.SparkStreamingBatchInterval))
  
   /** Creates the ActorSystem. */
-  val system = ActorSystem(AppName)
+
+  val system = ActorSystem(AppName, rootConfig)
 
   /* The root supervisor Actor of our app. */
   val guardian = system.actorOf(Props(new NodeGuardian(ssc, kafka, settings)), "node-guardian")
+
+  val client = system.actorOf(Props(new KillrClient(settings, ssc, guardian)), "client")
 
   system.registerOnTermination {
     kafka.shutdown()

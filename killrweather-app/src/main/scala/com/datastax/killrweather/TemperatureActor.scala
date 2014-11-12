@@ -15,13 +15,14 @@
  */
 package com.datastax.killrweather
 
-import org.apache.spark.SparkContext
-import org.apache.spark.util.StatCounter
-
 import akka.actor.{ActorLogging, Actor, ActorRef}
 import akka.pattern.pipe
+import org.apache.spark.SparkContext
+import org.apache.spark.util.StatCounter
 import org.apache.spark.SparkContext._
 import com.datastax.spark.connector._
+
+import scala.util.Try
 
 /** The TemperatureActor reads the daily temperature rollup data from Cassandra,
   * and for a given weather station, computes temperature statistics by month for a given year.
@@ -38,7 +39,7 @@ class TemperatureActor(sc: SparkContext, settings: WeatherSettings)
   def receive : Actor.Receive = {
     case e: GetDailyTemperature   => daily(e.day, sender)
     case e: DailyTemperature      => store(e)
-    case e: GetMonthlyTemperature => monthly(e, sender)
+    case e: GetMonthlyHiLowTemperature => highLow(e, sender)
   }
 
   /** Computes and sends the daily aggregation to the `requester` actor.
@@ -64,7 +65,7 @@ class TemperatureActor(sc: SparkContext, settings: WeatherSettings)
   /**
    * Computes and sends the monthly aggregation to the `requester` actor.
    */
-  def monthly(e: GetMonthlyTemperature, requester: ActorRef): Unit =
+  def highLow(e: GetMonthlyHiLowTemperature, requester: ActorRef): Unit =
     (for {
       a <- sc.cassandraTable[DailyTemperature](keyspace, dailytable)
               .where("wsid = ? AND year = ? AND month = ?", e.wsid, e.year, e.month)
@@ -76,29 +77,25 @@ class TemperatureActor(sc: SparkContext, settings: WeatherSettings)
     * to the daily temperature aggregation table.
     */
   private def store(e: DailyTemperature): Unit =
-    sc.makeRDD(Seq(e)).saveToCassandra(keyspace, dailytable)
+    sc.parallelize(Seq(e)).saveToCassandra(keyspace, dailytable)
 
-  private def forDay(key: Day, temps: Seq[Double]): Option[DailyTemperature] =
+  /**
+   * Would only be handling handles 0-23 small items or fewer.
+   */
+  private def forDay(key: Day, temps: Seq[Double]): WeatherAggregate  =
     if (temps.nonEmpty) {
-      val stats = sc.parallelize(temps)
-        .map { case temp => StatCounter(Seq(temp)) }
-        .reduce(_ merge _) // would only ever be 0-23 small items
-
+      val stats = StatCounter(temps)
       val data = DailyTemperature(
         key.wsid, key.year, key.month, key.day,
         high = stats.max, low = stats.min,
         mean = stats.mean, variance = stats.variance, stdev = stats.stdev)
 
       self ! data
-      Some(data)
-    } else None
+      data
+    } else NoDataAvailable(key.wsid, key.year, classOf[DailyTemperature])
 
-  private def forMonth(wsid: String, year: Int, month: Int, temps: Seq[DailyTemperature]): Option[MonthlyTemperature] =
-    if (temps.nonEmpty) {
-      val rdd = sc.parallelize(temps)
-      val high = rdd.map(_.high).max
-      val low = rdd.map(_.low).min
+  private def forMonth(wsid: String, year: Int, month: Int, temps: Seq[DailyTemperature]): WeatherAggregate =
+    if (temps.nonEmpty) MonthlyTemperature(wsid, year, month, temps.map(_.high).max, temps.map(_.low).min)
+    else NoDataAvailable(wsid, year, classOf[MonthlyTemperature])
 
-      Some(MonthlyTemperature(wsid, year, month, high, low))
-    } else None
 }

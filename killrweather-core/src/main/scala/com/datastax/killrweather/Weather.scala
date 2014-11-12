@@ -112,6 +112,8 @@ object Weather {
       Day(wsid, utcTimestamp.getYear, utcTimestamp.getMonthOfYear, utcTimestamp.getDayOfMonth)
   }
 
+  case class NoDataAvailable(wsid: String, year: Int, query: Class[_ <: WeatherAggregate]) extends WeatherAggregate
+
   /* Precipitation */
   trait Precipitation extends WeatherAggregate
 

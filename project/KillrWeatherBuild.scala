@@ -25,7 +25,7 @@ object KillrWeatherBuild extends Build {
     id = "root",
     base = file("."),
     settings = parentSettings,
-    aggregate = Seq(core, app, client)
+    aggregate = Seq(core, app)
   )
 
   lazy val core = Project(
@@ -41,13 +41,6 @@ object KillrWeatherBuild extends Build {
     settings = defaultSettings ++ withSigar ++
       Seq(libraryDependencies ++= Dependencies.app)
   ) configs IntegrationTest
-
-  lazy val client = Project(
-    id = "client",
-    base = file("./killrweather-client"),
-    dependencies = Seq(core),
-    settings = defaultSettings ++ Seq(libraryDependencies ++= Dependencies.core)
-  )
 
 }
 
@@ -66,14 +59,14 @@ object Dependencies {
     val akkaSlf4j         = "com.typesafe.akka"   %% "akka-slf4j"                         % Akka    force() // ApacheV2
     val bijection         = "com.twitter"         %% "bijection-core"                     % "0.7.0"
     val cassandraDriver   = "com.datastax.cassandra"  % "cassandra-driver-core"           % CassandraDriver  exclude("com.google.guava", "guava")            withSources()
-    // can't use latest: spark :( val config = "com.typesafe"        % "config"   % Config  force() // ApacheV2
     val chillAkka         = "tv.cntt"             %% "chill-akka"                         % "1.1"
     val jodaTime          = "joda-time"           % "joda-time"                           % JodaTime        // ApacheV2
     val jodaConvert       = "org.joda"            % "joda-convert"                        % JodaConvert     // ApacheV2
     val json4sCore        = "org.json4s"          %% "json4s-core"                        % Json4s          // ApacheV2
     val json4sJackson     = "org.json4s"          %% "json4s-jackson"                     % Json4s          // ApacheV2
     val json4sNative      = "org.json4s"          %% "json4s-native"                      % Json4s          // ApacheV2
-    val kafka             = "org.apache.kafka"    %% "kafka"                              % Kafka withSources() // ApacheV2
+    val kafka             = "org.apache.kafka"    %% "kafka"                              % Kafka           // ApacheV2
+    val kafkaStreaming    = "org.apache.spark"    %% "spark-streaming-kafka" % Spark exclude("com.google.guava", "guava") exclude("org.apache.spark", "spark-core") // ApacheV2
     val scalazContrib     = "org.typelevel"       %% "scalaz-contrib-210"                 % ScalazContrib   // MIT
     val scalazContribVal  = "org.typelevel"       %% "scalaz-contrib-validation"          % ScalazContrib   // MIT
     val scalazContribUndo = "org.typelevel"       %% "scalaz-contrib-undo"                % ScalazContrib   // MIT
@@ -84,7 +77,7 @@ object Dependencies {
     val sparkML           = "org.apache.spark"    %% "spark-mllib"                        % Spark           // ApacheV2
     val sparkSQL          = "org.apache.spark"    %% "spark-sql"                          % Spark           // ApacheV2
     // for spark, streaming, sql and ml
-    val sparkCassandra    = "com.datastax.spark"  %% "spark-cassandra-connector"          % SparkCassandra withSources() // ApacheV2
+    val sparkCassandra    = "com.datastax.spark"  %% "spark-cassandra-connector"          % SparkCassandra  // ApacheV2
     val sparkCassandraEmb = "com.datastax.spark"  %% "spark-cassandra-connector-embedded" % SparkCassandra  // ApacheV2
 
   }
@@ -112,8 +105,8 @@ object Dependencies {
   val test = Seq(Test.akkaTestKit, Test.scalatest, Test.sigar)
 
   /** Module deps */
-  val core = connector ++ json ++ scalaz ++ Seq(chillAkka, kafka)
+  val core = connector ++ akka ++ json ++ scalaz ++ logging ++ Seq(chillAkka, kafka)
 
-  val app = akka ++ core ++ logging ++ time ++ test ++ Seq(chillAkka,sparkML, sparkSQL)
+  val app = core ++ time ++ test ++ Seq(kafkaStreaming, sparkML, sparkSQL)
 
 }

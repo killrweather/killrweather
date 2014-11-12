@@ -15,11 +15,12 @@
  */
 package com.datastax.killrweather
 
-import scala.util.Try
-import com.typesafe.config.{ConfigFactory, Config}
 import com.datastax.driver.core.ConsistencyLevel
-import com.datastax.spark.connector.cql.{NoAuthConf, PasswordAuthConf, AuthConf}
+import com.datastax.spark.connector.cql.{AuthConf, NoAuthConf, PasswordAuthConf}
 import com.datastax.spark.connector.util.Logging
+import com.typesafe.config.{Config, ConfigFactory}
+
+import scala.util.Try
 
 /**
  * Application settings. First attempts to acquire from the deploy environment.

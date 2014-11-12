@@ -32,10 +32,16 @@ class TemperatureActorSpec extends ActorSparkSpec {
   "TemperatureActor" must {
     "aggregate hourly wsid temperatures for a given day and year" in {
       temperature ! GetDailyTemperature(sample)
-      val aggregate = expectMsgPF(timeout.duration) {
-        case Some(e) => e.asInstanceOf[DailyTemperature]
+      expectMsgPF(timeout.duration) {
+        case aggregate: DailyTemperature =>
+          validate(Day(aggregate.wsid, aggregate.year, aggregate.month, aggregate.day))
       }
-      validate(Day(aggregate.wsid, aggregate.year, aggregate.month, aggregate.day))
+    }
+    "handle no data available" in {
+      temperature ! GetDailyTemperature(sample.copy(year = 2020))
+      expectMsgPF(timeout.duration) {
+        case na: NoDataAvailable =>
+      }
     }
     s"asynchronously store DailyTemperature data in $CassandraTableDailyTemp" in {
       val tableData = sc.cassandraTable[DailyTemperature](CassandraKeyspace, CassandraTableDailyTemp)
@@ -47,11 +53,11 @@ class TemperatureActorSpec extends ActorSparkSpec {
       validate(Day(aggregate.wsid, aggregate.year, aggregate.month, aggregate.day))
     }
     "compute daily temperature rollups per weather station to monthly statistics." in {
-      temperature ! GetMonthlyTemperature(sample.wsid, sample.year, sample.month)
-      val aggregate = expectMsgPF(timeout.duration) {
-        case Some(e) => e.asInstanceOf[MonthlyTemperature]
+      temperature ! GetMonthlyHiLowTemperature(sample.wsid, sample.year, sample.month)
+      expectMsgPF(timeout.duration) {
+        case aggregate: MonthlyTemperature =>
+          validate(Day(aggregate.wsid, aggregate.year, aggregate.month, sample.day))
       }
-      validate(Day(aggregate.wsid, aggregate.year, aggregate.month, sample.day))
     }
   }
 

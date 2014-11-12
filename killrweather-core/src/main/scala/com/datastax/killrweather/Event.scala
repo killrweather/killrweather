@@ -43,6 +43,7 @@ object WeatherEvent {
 
   trait TemperatureRequest extends WeatherRequest
   case class GetDailyTemperature(day: Day) extends TemperatureRequest
+  case class GetMonthlyHiLowTemperature(wsid: String, year: Int, month: Int) extends TemperatureRequest
   case class GetMonthlyTemperature(wsid: String, year: Int, month: Int) extends TemperatureRequest
 
 

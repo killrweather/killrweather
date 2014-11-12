@@ -8,16 +8,9 @@ class ClusterAware extends Actor with ActorLogging {
 
   val cluster = Cluster(context.system)
 
-  val subscriptions = Set(
-    classOf[MemberEvent],
-    classOf[UnreachableMember],
-    classOf[MemberRemoved],
-    classOf[LeaderChanged],
-    classOf[ClusterMetricsChanged])
-
   /** subscribe to cluster changes, re-subscribe when restart. */
    override def preStart(): Unit =
-    subscriptions foreach (cluster.subscribe(self, _))
+     cluster.subscribe(self, classOf[ClusterDomainEvent])
 
   override def postStop(): Unit = cluster.unsubscribe(self)
 

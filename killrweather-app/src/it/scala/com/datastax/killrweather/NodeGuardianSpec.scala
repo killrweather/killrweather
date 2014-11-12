@@ -91,10 +91,10 @@ class NodeGuardianSpec extends ActorSparkSpec {
     }
     "aggregate hourly wsid temperatures for a given day and year" in {
       guardian ! GetDailyTemperature(sample)
-      val aggregate = expectMsgPF(timeout.duration) {
-        case Some(e) => e.asInstanceOf[DailyTemperature]
+      expectMsgPF(timeout.duration) {
+        case aggregate: DailyTemperature =>
+          validate(Day(aggregate.wsid, aggregate.year, aggregate.month, aggregate.day))
       }
-      validate(Day(aggregate.wsid, aggregate.year, aggregate.month, aggregate.day))
     }
     s"asynchronously store DailyTemperature data in $CassandraTableDailyTemp" in {
       val tableData = sc.cassandraTable[DailyTemperature](CassandraKeyspace, CassandraTableDailyTemp)
@@ -106,11 +106,11 @@ class NodeGuardianSpec extends ActorSparkSpec {
       validate(Day(aggregate.wsid, aggregate.year, aggregate.month, aggregate.day))
     }
     "compute daily temperature rollups per weather station to monthly statistics." in {
-      guardian ! GetMonthlyTemperature(sample.wsid, sample.year, sample.month)
-      val aggregate = expectMsgPF(timeout.duration) {
-        case Some(e) => e.asInstanceOf[MonthlyTemperature]
+      guardian ! GetMonthlyHiLowTemperature(sample.wsid, sample.year, sample.month)
+      expectMsgPF(timeout.duration) {
+        case aggregate: MonthlyTemperature =>
+          validate(Day(aggregate.wsid, aggregate.year, aggregate.month, sample.day))
       }
-      validate(Day(aggregate.wsid, aggregate.year, aggregate.month, sample.day))
     }
   }
 
