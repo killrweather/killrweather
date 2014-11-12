@@ -17,6 +17,8 @@ package com.datastax.killrweather
 
 import java.util.concurrent.atomic.AtomicInteger
 
+import org.joda.time.{DateTimeZone, DateTime}
+
 import scala.concurrent.duration._
 import akka.actor.Props
 import org.apache.spark.streaming.{Seconds, StreamingContext}
@@ -55,6 +57,21 @@ class NodeGuardianSpec extends ActorSparkSpec {
     "publish a NodeInitialized to the event stream on initialization" in {
       expectMsgPF(10.seconds) {
         case NodeInitialized(actor) => actor.path should be (guardian.path)
+      }
+    }
+    "return a weather station" in {
+      guardian ! GetWeatherStation(sample.wsid)
+      expectMsgPF() {
+        case e: WeatherStation =>
+          e.id should be(sample.wsid)
+      }
+    }
+    "get the current weather for a given weather station, based on UTC" in {
+      val timstamp = new DateTime(DateTimeZone.UTC).withYear(sample.year).withMonthOfYear(sample.month).withDayOfMonth(sample.day)
+      guardian ! GetCurrentWeather(sample.wsid, Some(timstamp))
+      expectMsgPF() {
+        case Some(e) =>
+          e.asInstanceOf[RawWeatherData].wsid should be(sample.wsid)
       }
     }
     "transforms annual weather .gz files to line data and publish to a Kafka topic" in {

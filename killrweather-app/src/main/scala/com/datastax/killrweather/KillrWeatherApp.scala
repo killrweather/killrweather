@@ -16,7 +16,7 @@
 package com.datastax.killrweather
 
 import akka.actor.{ActorSystem, PoisonPill, Props}
-import com.datastax.killrweather.clients.KillrClient
+import com.datastax.killrweather.clients.{KafkaClient, KillrClient}
 import org.apache.spark.streaming.{Seconds, StreamingContext}
 import org.apache.spark.{SparkContext, SparkConf}
 import com.datastax.spark.connector.embedded.EmbeddedKafka
@@ -70,12 +70,13 @@ object KillrWeatherApp extends App {
   /* The root supervisor Actor of our app. */
   val guardian = system.actorOf(Props(new NodeGuardian(ssc, kafka, settings)), "node-guardian")
 
-  val client = system.actorOf(Props(new KillrClient(settings, ssc, guardian)), "client")
+  /* Drive demo activity */
+  val kafkaClient = system.actorOf(Props(new KafkaClient(settings, ssc, guardian)))
+  val queryClient = system.actorOf(Props(new KillrClient(settings, ssc, guardian)), "client")
 
   system.registerOnTermination {
     kafka.shutdown()
     ssc.stop(stopSparkContext = true, stopGracefully = true)
     guardian ! PoisonPill
   }
-
 }

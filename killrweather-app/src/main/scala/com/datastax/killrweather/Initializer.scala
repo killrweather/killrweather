@@ -34,8 +34,6 @@ private[killrweather] class Initializer(sc: SparkContext, settings: WeatherSetti
 
   /** Loads data from /data/load files (because this is for a runnable demo.
     * Because we run locally vs against a cluster as a demo app, we keep that file size data small.
-    * Using rdd.toLocalIterator will consume as much memory as the largest partition in this RDD,
-    * which in this use case is 360 or fewer (if current year before December 31) small Strings.
     *
     * @param clean For running IT tests.
     *              Set to false if you have run the cql create and load scripts

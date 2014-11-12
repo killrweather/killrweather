@@ -18,62 +18,104 @@ package com.datastax.killrweather.clients
 import java.util.concurrent.atomic.AtomicInteger
 
 import scala.concurrent.duration._
-import akka.actor.{ActorRef, Actor, ActorLogging, Props}
-import akka.cluster.Cluster
-import akka.cluster.ClusterEvent._
+import akka.actor._
 import org.apache.spark.streaming.StreamingContext
-import org.apache.spark.{SparkContext, SparkConf}
+import org.joda.time.{DateTimeZone, DateTime}
 import com.datastax.spark.connector.streaming._
-import com.datastax.spark.connector._
 import com.datastax.killrweather.KafkaConsumer
-import com.datastax.killrweather._
+import com.datastax.killrweather.{Weather, WeatherEvent, WeatherSettings}
 import com.datastax.spark.connector.embedded.{Assertions, ZookeeperConnectionString => zookeeper}
-
-
 
 class KillrClient(settings: WeatherSettings, ssc: StreamingContext, guardian: ActorRef)
   extends Actor with ActorLogging with Assertions {
+
   import WeatherEvent._
   import Weather._
   import settings._
+  import context.dispatcher
 
-  val cluster = Cluster(context.system)
+  var task = context.system.scheduler.schedule(30.seconds, 30.seconds) {
+    self ! QueryTask
+  }
+
+  var last: Day = Day("725030:14732", 2008, 12, 31) // just the initial one
+
+  override def preStart(): Unit = log.info("Starting.")
+
+  override def postStop(): Unit = task.cancel()
+
+  /** The API thus far: */
+  def receive: Actor.Receive = {
+    case e: GetCurrentWeather =>
+      log.info(s"Received {}", e)
+    case e: AnnualPrecipitation =>
+      log.info(s"Received {}", e)
+    case e: TopKPrecipitation =>
+      log.info(s"Received {}", e)
+    case e: DailyTemperature =>
+      log.info(s"Received {}", e)
+    case e: WeatherStation =>
+      log.info(s"Received {}", e)
+    case e: NoDataAvailable =>
+      log.info(s"No data found for query {}: {}", e.query, e)
+    case QueryTask => queries()
+  }
+
+  def queries(): Unit = {
+
+    val previous = (d: Day) => d.day == last.day && d.month == last.month
+
+    val sample = ssc.cassandraTable[Day](CassandraKeyspace, CassandraTableRaw)
+      .select("wsid", "year", "month", "day")
+      .toLocalIterator.toSeq.filterNot(previous).head
+
+    log.info(s"Requesting the current weather for weather station ${sample.wsid}")
+    // because we load from historic file data vs stream in the cloud for this sample app ;)
+    val timstamp = new DateTime(DateTimeZone.UTC).withYear(sample.year)
+      .withMonthOfYear(sample.month).withDayOfMonth(sample.day)
+    guardian ! GetCurrentWeather(sample.wsid, Some(timstamp))
+
+    log.info(s"Requesting annual precipitation for weather station ${sample.wsid} in year ${sample.year}")
+    guardian ! GetPrecipitation(sample.wsid, sample.year)
+
+    log.info(s"Requesting the current weather for weather station ${sample.wsid}")
+    guardian ! GetTopKPrecipitation(sample.wsid, sample.year, k = 10)
+
+    log.info(s"Requesting the current weather for weather station ${sample.wsid}")
+    guardian ! GetDailyTemperature(sample)
+
+    log.info(s"Requesting the current weather for weather station ${sample.wsid}")
+    guardian ! GetMonthlyHiLowTemperature(sample.wsid, sample.year, sample.month)
+
+    log.info(s"Requesting the current weather for weather station ${sample.wsid}")
+    guardian ! GetWeatherStation(sample.wsid)
+
+    last = sample
+  }
+}
+
+class KafkaClient(settings: WeatherSettings, ssc: StreamingContext, guardian: ActorRef)
+  extends Actor with ActorLogging {
+
+  import WeatherEvent._
+  import settings._
+  import context.dispatcher
 
   val atomic = new AtomicInteger(0)
   val consumer = new KafkaConsumer(zookeeper, KafkaTopicRaw, KafkaGroupId, 1, 10, atomic)
 
-  override def preStart(): Unit = {
-    log.info("Starting up.")
-    context.system.eventStream.subscribe(self, classOf[MemberUp])
-    context.system.eventStream.subscribe(self, classOf[NodeInitialized])
+  var task = context.system.scheduler.schedule(3.seconds, 3.seconds) {
+    self ! QueryTask
   }
 
-  override def postStop(): Unit =
-    context.system.eventStream.unsubscribe(self)
+  override def postStop(): Unit = task.cancel
 
   def receive: Actor.Receive = {
-    case MemberUp(member) if member.address == cluster.selfAddress => start()
-    case NodeInitialized(actor) =>
-    case a: AnnualPrecipitation =>
-    case a: TopKPrecipitation =>
-
+    case QueryTask => consumed()
   }
 
-  def start(): Unit = {
-    val data = ssc.cassandraTable[RawWeatherData](CassandraKeyspace, CassandraTableRaw)
-    // wait until we get 8000 at a minimum via kafka..
-    awaitCond(data.collect.size >= 8000, 30.seconds)
-    val sample = Day(data.first)
-
-
-    guardian ! GetPrecipitation(sample.wsid, sample.year)
-
-    guardian ! GetTopKPrecipitation(sample.wsid, sample.year, k = 10)
-
-    guardian ! GetDailyTemperature(sample)
-  }
-
-  def initialized(node: ActorRef): Unit = {
-    log.info(s"Kafka has received ${atomic.get} messages so far.")
+  def consumed(): Unit = {
+    log.info(s"Kafka message count [${atomic.get}]")
   }
 }
+

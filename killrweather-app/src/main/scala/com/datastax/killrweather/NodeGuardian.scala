@@ -98,17 +98,23 @@ class NodeGuardian(ssc: StreamingContext,
     context.system.eventStream.publish(NodeInitialized(self))
   }
 
- /* Loads data from /data/load files (because this is for a runnable demo.
+ /** Loads data from /data/load files (because this is for a runnable demo.
   * Because we run locally vs against a cluster as a demo app, we keep that file size data small.
   * Using rdd.toLocalIterator will consume as much memory as the largest partition in this RDD,
   * which in this use case is 360 or fewer (if current year before December 31) small Strings.
   *
-  * The ingested data is sent to the kafka actor for processing in the stream. */
+  * The ingested data is sent to the kafka actor for processing in the stream.
+  *
+  * RDD.toLocalIterator will consume as much memory as the largest partition in this RDD.
+  * RDD.toLocalIterator uses allowLocal = false flag. `allowLocal` specifies whether the
+  * scheduler can run the computation on the driver rather than shipping it out to the cluster
+  * for short actions like first().
+  */
   def start(): Unit = {
     import settings.{KafkaTopicRaw => topic, KafkaGroupId => group}
     import KafkaEvent._
 
-   val toActor = (data: String) => kafkaActor ! KafkaMessageEnvelope[String,String](topic, group, data)
+    val toActor = (data: String) => kafkaActor ! KafkaMessageEnvelope[String,String](topic, group, data)
 
     for (file <- IngestionData) {
       log.info(s"Ingesting $file")
