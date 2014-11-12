@@ -1,12 +1,11 @@
 # KillrWeather
 
 KillrWeather, powered by [DataStax](http://www.datastax.com), is a reference application (in progress) showing how to easily leverage and integrate [Apache Spark](http://spark.apache.org), 
-[Apache Cassandra](http://cassandra.apache.org), and [Apache Kafka](http://kafka.apache.org) for fast, streaming computations 
-on **time series data** in asynchronous [Akka](http://akka.io) event-driven environments. You can do this in Java as well as Scala.
+[Apache Cassandra](http://cassandra.apache.org), and [Apache Kafka](http://kafka.apache.org) for fast, streaming computations in asynchronous [Akka](http://akka.io) event-driven environments. This application focuses on the use case of  **time series data**.  
   
 ## Start Here
 * [KillrWeather Wiki](https://github.com/killrweather/killrweather/wiki) - full setup instructions and documentation.
-* The primary **Spark, Kafka and Cassandra code** starts (here)[https://github.com/killrweather/killrweather/tree/master/killrweather-app/src]
+* The primary (Spark, Kafka and Cassandra workers)[https://github.com/killrweather/killrweather/tree/master/killrweather-app/src]
 
 ## Setup
 1. [Environment Setup](https://github.com/killrweather/killrweather/wiki/1.-Environment-Setup)
