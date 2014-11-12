@@ -5,7 +5,7 @@ KillrWeather, powered by [DataStax](http://www.datastax.com), is a reference app
   
 ## Start Here
 * [KillrWeather Wiki](https://github.com/killrweather/killrweather/wiki) 
-* The primary (Spark, Kafka and Cassandra workers)[https://github.com/killrweather/killrweather/tree/master/killrweather-app/src]
+* The primary [Spark, Kafka and Cassandra workers](https://github.com/killrweather/killrweather/tree/master/killrweather-app/src)
 
 ## Setup
 1. [Environment Setup](https://github.com/killrweather/killrweather/wiki/1.-Environment-Setup)
