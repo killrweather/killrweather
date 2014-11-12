@@ -20,28 +20,44 @@ import akka.actor.{ActorLogging, Actor, ActorRef}
 import org.apache.spark.SparkContext
 import org.apache.spark.SparkContext._
 import com.datastax.spark.connector._
+import org.joda.time.DateTime
 
 /** For a given weather station id, retrieves the full station data. */
 class WeatherStationActor(sc: SparkContext, settings: WeatherSettings)
   extends WeatherActor with ActorLogging {
 
-  import settings.{CassandraKeyspace => keyspace}
+  import settings.{CassandraKeyspace => keyspace }
+  import settings.{CassandraTableRaw => rawtable}
   import settings.{CassandraTableStations => weatherstations}
   import WeatherEvent._
+  import Weather._
 
   def receive : Actor.Receive = {
-    case GetWeatherStation(sid) => weatherStation(sid, sender)
+    case GetCurrentWeather(wsid, dt) => current(wsid, dt, sender)
+    case GetWeatherStation(wsid)  => weatherStation(wsid, sender)
+  }
+
+  /** Computes and sends the current weather conditions for a given weather station,
+    * based on UTC time, to the `requester`.
+    */
+  def current(wsid: String, dt: Option[DateTime], requester: ActorRef): Unit = {
+    val day = Day(wsid, dt getOrElse timestamp)
+    (for {
+      now <- sc.cassandraTable[RawWeatherData](keyspace, rawtable)
+              .where("wsid = ? AND year = ? AND month = ? AND day = ?",
+                wsid, day.year, day.month, day.day)
+              .collectAsync()
+    } yield now.headOption) pipeTo requester
   }
 
   /** The reason we can not allow a `LIMIT 1` in the `where` function is that
     * the query is executed on each node, so the limit would applied in each
     * query invocation. You would probably receive about partitions_number * limit results.
     */
-  def weatherStation(sid: String, requester: ActorRef): Unit =
+  def weatherStation(wsid: String, requester: ActorRef): Unit =
     for {
       stations <- sc.cassandraTable[Weather.WeatherStation](keyspace, weatherstations)
-        .where("id = ?", sid)
-        .collectAsync
+                  .where("id = ?", wsid).collectAsync
       station <- stations.headOption
     } requester ! station
 

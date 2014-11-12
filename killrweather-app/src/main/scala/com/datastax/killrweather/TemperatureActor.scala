@@ -18,7 +18,6 @@ package com.datastax.killrweather
 import org.apache.spark.SparkContext
 import org.apache.spark.util.StatCounter
 
-import scala.concurrent.Future
 import akka.actor.{ActorLogging, Actor, ActorRef}
 import akka.pattern.pipe
 import org.apache.spark.SparkContext._
@@ -30,17 +29,19 @@ import com.datastax.spark.connector._
 class TemperatureActor(sc: SparkContext, settings: WeatherSettings)
   extends WeatherActor with ActorLogging {
 
-  import settings.{CassandraKeyspace => keyspace, CassandraTableDailyTemp => dailytable, CassandraTableRaw => rawtable }
+  import settings.{CassandraKeyspace => keyspace }
+  import settings.{CassandraTableDailyTemp => dailytable}
+  import settings.{CassandraTableRaw => rawtable}
   import WeatherEvent._
   import Weather._
 
   def receive : Actor.Receive = {
-    case e: GetDailyTemperature   => daily(e, sender)
+    case e: GetDailyTemperature   => daily(e.day, sender)
     case e: DailyTemperature      => store(e)
     case e: GetMonthlyTemperature => monthly(e, sender)
   }
 
-  /** Returns a future value to the `requester` actor.
+  /** Computes and sends the daily aggregation to the `requester` actor.
     * We aggregate this data on-demand versus in the stream.
     *
     * For the given day of the year, aggregates 0 - 23 temp values to statistics:
@@ -52,40 +53,47 @@ class TemperatureActor(sc: SparkContext, settings: WeatherSettings)
     * we look for historic data for hours 0-23 that may or may not already exist yet
     * and create stats on does exist at the time of request.
     */
-  def daily(e: GetDailyTemperature, requester: ActorRef): Future[Option[DailyTemperature]] =
+  def daily(day: Day, requester: ActorRef): Unit =
     (for {
-      a <- sc.cassandraTable[Double](keyspace, rawtable)
-              .select("temperature").where("wsid = ? AND year = ? AND month = ? AND day = ?",
-                 e.wsid, e.year, e.month, e.day)
-              .collectAsync
-    } yield forDay(DayKey(e.wsid, e.year, e.month, e.day), a)) pipeTo requester
+      aggregate <- sc.cassandraTable[Double](keyspace, rawtable)
+                   .select("temperature").where("wsid = ? AND year = ? AND month = ? AND day = ?",
+                      day.wsid, day.year, day.month, day.day)
+                   .collectAsync()
+    } yield forDay(day, aggregate)) pipeTo requester
 
-  /** Stores the daily temperature aggregates asynchronously which are triggered
-    * by on-demand requests during the `forDay` function's `self ! data`
-    * to the daily temperature aggregation table. */
-  def store(e: DailyTemperature): Unit =
-    sc.makeRDD(Seq(e)).saveToCassandra(keyspace, dailytable)
-
-  /** Returns a future value to the `requester` actor. */
-  def monthly(e: GetMonthlyTemperature, requester: ActorRef): Future[Option[MonthlyTemperature]] =
+  /**
+   * Computes and sends the monthly aggregation to the `requester` actor.
+   */
+  def monthly(e: GetMonthlyTemperature, requester: ActorRef): Unit =
     (for {
       a <- sc.cassandraTable[DailyTemperature](keyspace, dailytable)
               .where("wsid = ? AND year = ? AND month = ?", e.wsid, e.year, e.month)
-              .collectAsync
+              .collectAsync()
     } yield forMonth(e.wsid, e.year, e.month, a)) pipeTo requester
 
-  def forDay(key: DayKey, temps: Seq[Double]): Option[DailyTemperature] =
+  /** Stores the daily temperature aggregates asynchronously which are triggered
+    * by on-demand requests during the `forDay` function's `self ! data`
+    * to the daily temperature aggregation table.
+    */
+  private def store(e: DailyTemperature): Unit =
+    sc.makeRDD(Seq(e)).saveToCassandra(keyspace, dailytable)
+
+  private def forDay(key: Day, temps: Seq[Double]): Option[DailyTemperature] =
     if (temps.nonEmpty) {
-      val aggregate = sc.parallelize(temps)
+      val stats = sc.parallelize(temps)
         .map { case temp => StatCounter(Seq(temp)) }
         .reduce(_ merge _) // would only ever be 0-23 small items
 
-      val data = DailyTemperature(key, aggregate)
+      val data = DailyTemperature(
+        key.wsid, key.year, key.month, key.day,
+        high = stats.max, low = stats.min,
+        mean = stats.mean, variance = stats.variance, stdev = stats.stdev)
+
       self ! data
       Some(data)
     } else None
 
-  def forMonth(wsid: String, year: Int, month: Int, temps: Seq[DailyTemperature]): Option[MonthlyTemperature] =
+  private def forMonth(wsid: String, year: Int, month: Int, temps: Seq[DailyTemperature]): Option[MonthlyTemperature] =
     if (temps.nonEmpty) {
       val rdd = sc.parallelize(temps)
       val high = rdd.map(_.high).max

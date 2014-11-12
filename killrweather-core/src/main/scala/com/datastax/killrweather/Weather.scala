@@ -16,6 +16,7 @@
 package com.datastax.killrweather
 
 import org.apache.spark.util.StatCounter
+import org.joda.time.DateTime
 
 object Weather {
 
@@ -99,19 +100,20 @@ object Weather {
     def year: Int
   }
 
-  case class HourKey(wsid: String, year: Int, month: Int, day: Int, hour: Int) extends WeatherAggregate
-  case class DayKey(wsid: String, year: Int, month: Int, day: Int) extends WeatherAggregate
-  object DayKey {
-    def apply(t: RawWeatherData): DayKey =
-      DayKey(t.wsid, t.year, t.month, t.day)
-    def apply(t: (String, Int, Int, Int)): DayKey =
-      DayKey(t._1,t._2,t._3,t._4)
+  case class Hour(wsid: String, year: Int, month: Int, day: Int, hour: Int) extends WeatherAggregate
+
+  case class Day(wsid: String, year: Int, month: Int, day: Int) extends WeatherAggregate
+
+  object Day {
+    def apply(d: RawWeatherData): Day =
+      Day(d.wsid, d.year, d.month, d.day)
+
+    def apply(wsid: String, utcTimestamp: DateTime): Day =
+      Day(wsid, utcTimestamp.getYear, utcTimestamp.getMonthOfYear, utcTimestamp.getDayOfMonth)
   }
 
-  trait Precipitation extends WeatherAggregate {
-    def wsid: String
-    def year: Int
-  }
+  /* Precipitation */
+  trait Precipitation extends WeatherAggregate
 
   case class DailyPrecipitation(wsid: String,
                                 year: Int,
@@ -119,9 +121,23 @@ object Weather {
                                 day: Int,
                                 precipitation: Double) extends Precipitation
 
-  case class AnnualPrecipitation(wsid: String, year: Int, total: Double) extends Precipitation
+  case class AnnualPrecipitation(wsid: String,
+                                 year: Int,
+                                 total: Double) extends Precipitation
 
-  case class HourlyTemperature(wsid: String, year: Int, month: Int, day: Int, hour: Int, temperature: Double) extends WeatherAggregate
+  case class TopKPrecipitation(wsid: String,
+                               year: Int,
+                               top: Seq[Double]) extends WeatherAggregate
+
+  /* Temperature */
+  trait Temperature extends WeatherAggregate
+
+  case class HourlyTemperature(wsid: String,
+                               year: Int,
+                               month: Int,
+                               day: Int,
+                               hour: Int,
+                               temperature: Double) extends Temperature
 
   case class DailyTemperature(wsid: String,
                               year: Int,
@@ -131,10 +147,10 @@ object Weather {
                               low: Double,
                               mean: Double,
                               variance: Double,
-                              stdev: Double) extends WeatherAggregate
+                              stdev: Double) extends Temperature
 
   object DailyTemperature {
-    def apply(key:DayKey, stats: StatCounter): DailyTemperature =
+    def apply(key:Day, stats: StatCounter): DailyTemperature =
       DailyTemperature(
         key.wsid,
         key.year,
@@ -151,9 +167,6 @@ object Weather {
                          year: Int,
                          month: Int,
                          high: Double,
-                         low: Double) extends WeatherAggregate
+                         low: Double) extends Temperature
 
-  case class TopKPrecipitation(wsid: String, year: Int, seq: Seq[Double]) extends WeatherAggregate
-
-  case class UriYearPartition(year: Int, uri: String) extends WeatherModel
 }

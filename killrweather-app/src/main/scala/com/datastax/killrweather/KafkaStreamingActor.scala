@@ -69,25 +69,12 @@ class KafkaStreamingActor(kafkaParams: Map[String, String],
     * This new functionality in Cassandra 2.1.1 is going to make time series work even faster:
     * https://issues.apache.org/jira/browse/CASSANDRA-6602
     */
-  kafkaStream.map { hourForWsid =>
-    (hourForWsid.wsid, hourForWsid.year, hourForWsid.month, hourForWsid.day, hourForWsid.oneHourPrecip)
+  kafkaStream.map { weather =>
+    (weather.wsid, weather.year, weather.month, weather.day, weather.oneHourPrecip)
   }.saveToCassandra(CassandraKeyspace, CassandraTableDailyPrecip)
 
   /** Notifies the supervisor that the Spark Streams have been created and defined.
     * Now the [[StreamingContext]] can be started. */
   listener ! OutputStreamInitialized
 
-}
-
-import com.esotericsoftware.kryo.Kryo
-import org.apache.spark.serializer.KryoRegistrator
-
-class KillrKryoRegistrator extends KryoRegistrator {
-
-  import WeatherEvent._
-  import Weather._
-
-  override def registerClasses(kryo: Kryo) {
-    kryo.register(classOf[RawWeatherData])
-  }
 }

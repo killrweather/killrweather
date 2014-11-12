@@ -54,8 +54,8 @@ class NodeGuardian(ssc: StreamingContext,
 
   implicit val timeout = Timeout(5.seconds)
 
-  /* Creates the Kafka actors: */
-  context.actorOf(Props(new KafkaStreamingActor(
+  /* Creates the Kafka actor: */
+  val kafkaActor = context.actorOf(Props(new KafkaStreamingActor(
     kafka.kafkaParams, brokers, ssc, settings, self)), "kafka")
 
   /* The Spark/Cassandra computation actors: For the tutorial we just use 2005 for now. */
@@ -73,32 +73,45 @@ class NodeGuardian(ssc: StreamingContext,
   override def receive = uninitialized orElse super.receive
 
   /** When [[OutputStreamInitialized]] is received from the [[KafkaStreamingActor]] after
-    *   it creates and defines the [[KafkaInputDStream]], at which point the
-      * - streaming checkpoint can be set
-      * - the [[StreamingContext]] can be started
-    * At this point, the actor changes state from [[uninitialized]] to [[initialized]]
-    *   with [[ActorContext.become()]].
+    * it creates and defines the [[KafkaInputDStream]], at which point the streaming
+    * checkpoint can be set, the [[StreamingContext]] can be started, and the actor
+    * moves from [[uninitialized]] to [[initialized]]with [[ActorContext.become()]].
     */
   def uninitialized: Actor.Receive = {
     case OutputStreamInitialized => initialize()
   }
 
   def initialized: Actor.Receive = {
-    case e: GetMonthlyTemperature => ??? //temperature forward e
-    case e: GetPrecipitation      => precipitation forward e
-    case e: GetWeatherStation     => station forward e
-    case e: GetSkyConditionLookup => ???
+    case e: TemperatureRequest    => temperature forward e
+    case e: PrecipitationRequest  => precipitation forward e
+    case e: WeatherStationRequest => station forward e
     case PoisonPill               => gracefulShutdown()
   }
 
   def initialize(): Unit = {
+    log.info(s"Node is transitioning from 'uninitialized' to 'initialized'")
     ssc.checkpoint(SparkCheckpointDir)
-    ssc.start() // can not add more dstreams after this is started
-
+    ssc.start() // currently can not add more dstreams once started
+    start()
     context become initialized
 
-    log.info(s"Node is transitioning from 'uninitialized' to 'initialized'")
     context.system.eventStream.publish(NodeInitialized(self))
+  }
+
+ /* Loads data from /data/load files (because this is for a runnable demo.
+  * Because we run locally vs against a cluster as a demo app, we keep that file size data small.
+  * Using rdd.toLocalIterator will consume as much memory as the largest partition in this RDD,
+  * which in this use case is 360 or fewer (if current year before December 31) small Strings.
+  *
+  * The ingested data is sent to the kafka actor for processing in the stream. */
+  def start(): Unit = {
+    import settings.{KafkaTopicRaw => topic, KafkaGroupId => group}
+    import KafkaEvent._
+
+   val toActor = (data: String) => kafkaActor ! KafkaMessageEnvelope[String,String](topic, group, data)
+
+    for (file <- IngestionData)
+      ssc.sparkContext.textFile(file).flatMap(_.split("\\n")).toLocalIterator.foreach(toActor)
   }
 
   def gracefulShutdown(): Unit = {

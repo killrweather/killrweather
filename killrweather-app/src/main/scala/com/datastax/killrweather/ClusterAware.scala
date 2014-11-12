@@ -6,17 +6,27 @@ import akka.cluster.ClusterEvent._
 
 class ClusterAware extends Actor with ActorLogging {
 
-  //val cluster = Cluster(context.system)
+  val cluster = Cluster(context.system)
+
+  val subscriptions = Set(
+    classOf[MemberEvent],
+    classOf[UnreachableMember],
+    classOf[MemberRemoved],
+    classOf[LeaderChanged],
+    classOf[ClusterMetricsChanged])
 
   /** subscribe to cluster changes, re-subscribe when restart. */
-  /*override def preStart(): Unit = {
-    cluster.subscribe(self, initialStateMode = InitialStateAsEvents,
-      classOf[MemberEvent], classOf[UnreachableMember])
-  }
+   override def preStart(): Unit =
+    subscriptions foreach (cluster.subscribe(self, _))
 
   override def postStop(): Unit = cluster.unsubscribe(self)
-  */
-  def receive = {
+
+  def receive : Actor.Receive = {
+    case LeaderChanged(leader) =>
+      log.info("Leader changed to {}", leader)
+    case ClusterMetricsChanged(forNode) =>
+      log.info("Cluster metrics update:")
+      forNode foreach println
     case MemberUp(member) =>
       log.info("Member is Up: {}", member.address)
     case UnreachableMember(member) =>

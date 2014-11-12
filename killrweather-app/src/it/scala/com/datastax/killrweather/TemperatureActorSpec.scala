@@ -20,39 +20,45 @@ import akka.actor._
 import com.datastax.spark.connector._
 
 class TemperatureActorSpec extends ActorSparkSpec {
+
   import WeatherEvent._
   import Weather._
   import settings._
 
-  val year = 2005
-
-  val sid = "010010:99999"
-
   val temperature = system.actorOf(Props(new TemperatureActor(sc, settings)))
 
-  "TemperatureActor" must {
-    start()
-     s"aggregate hourly wsid temperatures for a given day and year and asynchronously store in $CassandraTableDailyTemp" in {
-       temperature ! GetDailyTemperature(sid, year, 1, 10)
-       val aggregate = expectMsgPF[DailyTemperature](timeout.duration) {
-         case Some(e) => e.asInstanceOf[DailyTemperature]
-       }
+  start(clean = true)
 
-       val tableData = sc.cassandraTable[DailyTemperature](CassandraKeyspace, CassandraTableDailyTemp)
-         .where("wsid = ? AND year = ? AND month = ? AND day = ?",
-           aggregate.wsid, aggregate.year, aggregate.month, aggregate.day)
-       awaitCond(tableData.toLocalIterator.toSeq.headOption.nonEmpty, 10.seconds)
-       println(tableData.toLocalIterator.toSeq.headOption)
+  "TemperatureActor" must {
+    "aggregate hourly wsid temperatures for a given day and year" in {
+      temperature ! GetDailyTemperature(sample)
+      val aggregate = expectMsgPF(timeout.duration) {
+        case Some(e) => e.asInstanceOf[DailyTemperature]
+      }
+      validate(Day(aggregate.wsid, aggregate.year, aggregate.month, aggregate.day))
+    }
+    s"asynchronously store DailyTemperature data in $CassandraTableDailyTemp" in {
+      val tableData = sc.cassandraTable[DailyTemperature](CassandraKeyspace, CassandraTableDailyTemp)
+        .where("wsid = ? AND year = ? AND month = ? AND day = ?",
+          sample.wsid, sample.year, sample.month, sample.day)
+
+      awaitCond(tableData.toLocalIterator.toSeq.headOption.nonEmpty, 10.seconds)
+      val aggregate = tableData.toLocalIterator.toSeq.head
+      validate(Day(aggregate.wsid, aggregate.year, aggregate.month, aggregate.day))
     }
     "compute daily temperature rollups per weather station to monthly statistics." in {
-      temperature ! GetMonthlyTemperature(sid, year, 1)
+      temperature ! GetMonthlyTemperature(sample.wsid, sample.year, sample.month)
       val aggregate = expectMsgPF(timeout.duration) {
         case Some(e) => e.asInstanceOf[MonthlyTemperature]
       }
-      aggregate.wsid should be (sid)
-      aggregate.year should be (year)
-      aggregate.month should be (1)
-      println(s"For month: low=${aggregate.low} high=${aggregate.high}")
+      validate(Day(aggregate.wsid, aggregate.year, aggregate.month, sample.day))
     }
+  }
+
+  def validate(aggregate: Day): Unit = {
+    aggregate.wsid should be(sample.wsid)
+    aggregate.year should be(sample.year)
+    aggregate.month should be(sample.month)
+    aggregate.day should be(sample.day)
   }
 }

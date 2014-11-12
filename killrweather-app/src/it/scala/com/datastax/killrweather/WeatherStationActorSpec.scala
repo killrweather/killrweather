@@ -15,26 +15,38 @@
  */
 package com.datastax.killrweather
 
+import org.joda.time.{DateTimeZone, DateTime}
+
 import akka.actor._
 
+/** This test requires that you have already run these in the cql shell:
+  * cqlsh> source 'create-timeseries.cql';
+  * cqlsh> source 'load-timeseries.cql';
+  *
+  * See: https://github.com/killrweather/killrweather/wiki/2.%20Code%20and%20Data%20Setup#data-setup
+  */
 class WeatherStationActorSpec extends ActorSparkSpec {
-  import com.datastax.killrweather.WeatherEvent._
+  import WeatherEvent._
+  import Weather._
 
-  val sid = "252860:99999"
+  start(clean = false)
 
-  val expected = 19703 // the total count stations
-
-  val station = system.actorOf(Props(new WeatherStationActor(sc, settings)), "weather-station")
-
-  start()
+  val weatherStations = system.actorOf(Props(new WeatherStationActor(sc, settings)), "weather-station")
 
   "WeatherStationActor" must {
     "return a weather station" in {
-      station ! GetWeatherStation(sid)
+      weatherStations ! GetWeatherStation(sample.wsid)
       expectMsgPF() {
-        case e: Weather.WeatherStation =>
-          log.info(s"Received weather station: $e")
-          e.id should be(sid)
+        case e: WeatherStation =>
+          e.id should be(sample.wsid)
+      }
+    }
+    "get the current weather for a given weather station, based on UTC" in {
+      val timstamp = new DateTime(DateTimeZone.UTC).withYear(sample.year).withMonthOfYear(sample.month).withDayOfMonth(sample.day)
+      weatherStations ! GetCurrentWeather(sample.wsid, Some(timstamp))
+      expectMsgPF() {
+        case Some(e) =>
+          e.asInstanceOf[RawWeatherData].wsid should be(sample.wsid)
       }
     }
   }

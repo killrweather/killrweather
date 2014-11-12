@@ -25,7 +25,7 @@ object KillrWeatherBuild extends Build {
     id = "root",
     base = file("."),
     settings = parentSettings,
-    aggregate = Seq(core, app)
+    aggregate = Seq(core, app, client)
   )
 
   lazy val core = Project(
@@ -41,6 +41,13 @@ object KillrWeatherBuild extends Build {
     settings = defaultSettings ++ withSigar ++
       Seq(libraryDependencies ++= Dependencies.app)
   ) configs IntegrationTest
+
+  lazy val client = Project(
+    id = "client",
+    base = file("./killrweather-client"),
+    dependencies = Seq(core),
+    settings = defaultSettings ++ Seq(libraryDependencies ++= Dependencies.core)
+  )
 
 }
 

@@ -134,7 +134,7 @@ final class WeatherSettings(conf: Option[Config] = None) extends Settings with L
     val NumberPattern = "([0-9]+)".r
     CassandraWriteBatchSizeRows match {
       case "auto"           => None
-      case NumberPattern(x) ⇒ Some(x.toInt)
+      case NumberPattern(x) => Some(x.toInt)
       case other =>
         throw new IllegalArgumentException(
           s"Invalid value for 'cassandra.output.batch.size.rows': $other. Number or 'auto' expected")
@@ -156,17 +156,20 @@ final class WeatherSettings(conf: Option[Config] = None) extends Settings with L
   val CassandraTableSky = killrweather.getString("cassandra.table.sky")
   val CassandraTableStations = killrweather.getString("cassandra.table.stations")
   val DataLoadPath = killrweather.getString("data.load.path")
-  val HistoricDataYearRange: Range = {
-    val s = killrweather.getInt("data.raw.year.start")
-    val e = killrweather.getInt("data.raw.year.end")
-    s to e
+  val DataFileExtension = killrweather.getString("data.file.extension")
+
+  val IngestionData: Set[String] = {
+    import java.io.{File => JFile}
+
+    val files = new JFile(s"$DataLoadPath").list.collect {
+      case name if name.endsWith(s"$DataFileExtension") =>
+        val path = s"$DataLoadPath/$name".replace("./", "")
+        new JFile(path).getAbsolutePath
+    }.toSet
+
+    log.info(s"Found ${files.size} data files to load.")
+    files.toSet
   }
-
-  import Weather.UriYearPartition
-  val ByYearPartitions: Seq[UriYearPartition] =
-    for (year <- HistoricDataYearRange) yield
-      UriYearPartition(year, s"$DataLoadPath/$year.csv.gz") //2005-us.csv
-
 
   /** Attempts to acquire from environment, then java system properties. */
   def withFallback[T](env: Try[T], key: String): Option[T] = env match {

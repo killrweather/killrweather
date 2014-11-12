@@ -39,7 +39,7 @@ abstract class KafkaProducerActor[K, V](brokers: Set[String], settings: Settings
     producer.close()
   }
 
-  def receive = {
+  def receive : Actor.Receive = {
     case e: KafkaMessageEnvelope[K,V] => producer.send(e)
   }
 }

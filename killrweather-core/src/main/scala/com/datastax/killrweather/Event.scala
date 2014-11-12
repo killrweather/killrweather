@@ -16,8 +16,10 @@
 package com.datastax.killrweather
 
 import akka.actor.ActorRef
+import org.joda.time.DateTime
 
 object WeatherEvent {
+  import Weather._
 
   /** Base marker trait. */
   @SerialVersionUID(1L)
@@ -30,13 +32,20 @@ object WeatherEvent {
   case object TaskCompleted extends LifeCycleEvent
 
   sealed trait WeatherRequest extends WeatherEvent
-  sealed trait WeatherResponse extends WeatherEvent
 
-  case class GetWeatherStation(sid: String) extends WeatherRequest
-  case class GetDailyTemperature(wsid: String, year: Int, month: Int, day: Int) extends WeatherRequest
-  case class GetMonthlyTemperature(wsid: String, year: Int, month: Int) extends WeatherRequest
-  case class GetPrecipitation(wsid: String, year: Int) extends WeatherRequest
-  case class GetTopKPrecipitation(wsid: String,year: Int) extends WeatherRequest
+  trait WeatherStationRequest extends WeatherRequest
+  case class GetWeatherStation(sid: String) extends WeatherStationRequest
+  case class GetCurrentWeather(wsid: String, timestamp: Option[DateTime]= None) extends WeatherStationRequest
+
+  trait PrecipitationRequest extends WeatherRequest
+  case class GetPrecipitation(wsid: String, year: Int) extends PrecipitationRequest
+  case class GetTopKPrecipitation(wsid: String, year: Int, k: Int) extends PrecipitationRequest
+
+  trait TemperatureRequest extends WeatherRequest
+  case class GetDailyTemperature(day: Day) extends TemperatureRequest
+  case class GetMonthlyTemperature(wsid: String, year: Int, month: Int) extends TemperatureRequest
+
+
 
   /**
    * Quick access lookup table for sky_condition. Useful for potential analytics.

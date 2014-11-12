@@ -17,14 +17,20 @@ package com.datastax.killrweather
 
 import org.apache.spark.streaming.{Seconds, StreamingContext}
 import org.apache.spark.{SparkContext, SparkConf}
+import com.datastax.spark.connector.embedded.EmbeddedKafka
 
 /** Runnable. */
 object KillrWeatherApp extends App {
   import akka.actor.{ActorSystem, PoisonPill, Props}
-  import com.datastax.spark.connector.embedded.EmbeddedKafka
 
   val settings = new WeatherSettings
   import settings._
+
+  /** Starts the Kafka broker and Zookeeper. */
+  val kafka = new EmbeddedKafka
+
+  /** Creates the raw data topic. */
+  kafka.createTopic(settings.KafkaTopicRaw)
 
   /** Configures Spark.
     * The appName parameter is a name for your application to show on the cluster UI.
@@ -37,38 +43,23 @@ object KillrWeatherApp extends App {
     * Note that this internally creates a SparkContext (starting point of all Spark functionality)
     * which can be accessed as ssc.sparkContext.
     */
-  lazy val conf = new SparkConf().setAppName(getClass.getSimpleName).setMaster(SparkMaster)
-    .set("spark.cassandra.connection.host", CassandraHosts)
-    .set("spark.cleaner.ttl", SparkCleanerTtl.toString)
+  lazy val conf = new SparkConf().setAppName(getClass.getSimpleName)
+    .setMaster(settings.SparkMaster)
+    .set("spark.cassandra.connection.host", settings.CassandraHosts)
+    .set("spark.serializer", "org.apache.spark.serializer.KryoSerializer")
+    .set("spark.kryo.registrator", "com.datastax.killrweather.KillrKryoRegistrator")
+    .set("spark.cleaner.ttl", settings.SparkCleanerTtl.toString)
 
   lazy val sc = new SparkContext(conf)
 
   /** Creates the Spark Streaming context. */
-  lazy val ssc =  new StreamingContext(sc, Seconds(SparkStreamingBatchInterval))
-
-  /** Starts the Kafka broker and Zookeeper. */
-  lazy val kafka = new EmbeddedKafka
-
+  lazy val ssc = new StreamingContext(sc, Seconds(settings.SparkStreamingBatchInterval))
+ 
   /** Creates the ActorSystem. */
-  val system = ActorSystem(settings.AppName)
-
-  /** Creates the raw data topic.
-    *
-    * For time series data you want to randomize the messages on partitions.
-    * - If you are using the null partitioner and the 0.8.1.1 (or below) producer, watch out for this,
-    *   which is improved in the 0.8.2 producer: http://tinyurl.com/kln5rrv (from https://cwiki.apache.org)
-    * - You could use timeUUID as the key (for the partition which you will have that back in your consumer
-    *   if you can access the MessageAndMetaData
-    *   https://github.com/apache/kafka/blob/trunk/core/src/main/scala/kafka/message/MessageAndMetadata.scala ),
-    *   and then have that as part of the insert in a clustered column to cassandra for the other fields for
-    *   your partition key.
-    */
-  kafka.createTopic(settings.KafkaTopicRaw)
-
-  val brokers = Set(s"${kafka.kafkaConfig.hostName}:${kafka.kafkaConfig.port}") // TODO the right way
+  val system = ActorSystem(AppName)
 
   /* The root supervisor Actor of our app. */
-  val guardian = system.actorOf(Props(new NodeGuardian(ssc, kafka, brokers, settings)), "node-guardian")
+  val guardian = system.actorOf(Props(new NodeGuardian(ssc, kafka, settings)), "node-guardian")
 
   system.registerOnTermination {
     kafka.shutdown()
@@ -76,5 +67,4 @@ object KillrWeatherApp extends App {
     guardian ! PoisonPill
   }
 
-  ssc.awaitTermination()
 }
