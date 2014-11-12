@@ -57,7 +57,7 @@ class KafkaStreamingActorSpec extends ActorSparkSpec {
 
   "KafkaStreamingActor" must {
     "transforms annual weather .gz files to line data and publish to a Kafka topic" in {
-      awaitCond(atomic.get >= publishedToKafka, duration) // assert process of publishing has started, continues to consume 
+      awaitCond(atomic.get >= publishedToKafka, duration) // assert process of publishing has started, continues to consume
     }
     s"streams in data from kafka, transforms it, and saves it to $CassandraTableRaw" in {
       val tableData = ssc.cassandraTable(CassandraKeyspace, CassandraTableRaw)

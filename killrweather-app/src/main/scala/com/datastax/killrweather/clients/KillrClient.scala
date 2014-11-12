@@ -34,7 +34,7 @@ class KillrClient(settings: WeatherSettings, ssc: StreamingContext, guardian: Ac
   import settings._
   import context.dispatcher
 
-  var task = context.system.scheduler.schedule(30.seconds, 30.seconds) {
+  var task = context.system.scheduler.schedule(20.seconds, 30.seconds) {
     self ! QueryTask
   }
 
@@ -102,6 +102,7 @@ class KafkaClient(settings: WeatherSettings, ssc: StreamingContext, guardian: Ac
   import context.dispatcher
 
   val atomic = new AtomicInteger(0)
+
   val consumer = new KafkaConsumer(zookeeper, KafkaTopicRaw, KafkaGroupId, 1, 10, atomic)
 
   var task = context.system.scheduler.schedule(3.seconds, 3.seconds) {
@@ -111,11 +112,8 @@ class KafkaClient(settings: WeatherSettings, ssc: StreamingContext, guardian: Ac
   override def postStop(): Unit = task.cancel
 
   def receive: Actor.Receive = {
-    case QueryTask => consumed()
-  }
-
-  def consumed(): Unit = {
-    log.info(s"Kafka message count [${atomic.get}]")
+    case QueryTask =>
+      log.info(s"Kafka message count [${atomic.get}]")
   }
 }
 
