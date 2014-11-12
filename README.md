@@ -14,7 +14,7 @@ KillrWeather is a reference application (work in progress) written in [Scala](ht
 
 ## Setup
 1. [Environment Setup](https://github.com/killrweather/killrweather/wiki/1.-Environment-Setup)
-2. [Create the Cassandra Schema](https://github.com/killrweather/killrweather/wiki/2.-Code-and-Data-Setup)
+2. [Code and Data Setup](https://github.com/killrweather/killrweather/wiki/2.-Code-and-Data-Setup)
 3. [About The App](https://github.com/killrweather/killrweather/wiki/3.-About-The-App)
 4. [The Time Series Data Model](https://github.com/killrweather/killrweather/wiki/4.-Time-Series-Data-Model)
  
