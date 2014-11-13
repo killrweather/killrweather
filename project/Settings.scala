@@ -48,10 +48,6 @@ object Settings extends Build {
     ivyLoggingLevel in ThisBuild := UpdateLogging.Quiet,
     parallelExecution in ThisBuild := false,
     parallelExecution in Global := false
-    // have to force override of old from spark
-    /*ivyXML := <dependencies>
-      <exclude org="com.typesafe" module="config-1.0.2"/>
-    </dependencies>*/
   )
 
   val tests = inConfig(Test)(Defaults.testTasks) ++ inConfig(IntegrationTest)(Defaults.itSettings)
