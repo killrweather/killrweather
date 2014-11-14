@@ -174,7 +174,7 @@ final class WeatherSettings(conf: Option[Config] = None) extends Settings with L
 
   /** Attempts to acquire from environment, then java system properties. */
   def withFallback[T](env: Try[T], key: String): Option[T] = env match {
-    case null  => sys.props.get(key) map (_.asInstanceOf[T])
+    case null  => None
     case value => value.toOption
   }
 }
