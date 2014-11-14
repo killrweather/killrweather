@@ -17,7 +17,7 @@ package com.datastax.killrweather
 
 import akka.actor.{ActorSystem, PoisonPill, Props}
 import com.datastax.killrweather.clients.{KafkaClient, KillrClient}
-import org.apache.spark.streaming.{Seconds, StreamingContext}
+import org.apache.spark.streaming.{Milliseconds, Seconds, StreamingContext}
 import org.apache.spark.{SparkContext, SparkConf}
 import com.datastax.spark.connector.embedded.EmbeddedKafka
 
@@ -38,7 +38,7 @@ object KillrWeatherApp extends App {
   val kafka = new EmbeddedKafka
 
   /** Creates the raw data topic. */
-  kafka.createTopic(settings.KafkaTopicRaw)
+  kafka.createTopic(KafkaTopicRaw)
 
   /** Configures Spark.
     * The appName parameter is a name for your application to show on the cluster UI.
@@ -52,16 +52,16 @@ object KillrWeatherApp extends App {
     * which can be accessed as ssc.sparkContext.
     */
   lazy val conf = new SparkConf().setAppName(getClass.getSimpleName)
-    .setMaster(settings.SparkMaster)
-    .set("spark.cassandra.connection.host", settings.CassandraHosts)
+    .setMaster(SparkMaster)
+    .set("spark.cassandra.connection.host", CassandraHosts)
     .set("spark.serializer", "org.apache.spark.serializer.KryoSerializer")
     .set("spark.kryo.registrator", "com.datastax.killrweather.KillrKryoRegistrator")
-    .set("spark.cleaner.ttl", settings.SparkCleanerTtl.toString)
+    .set("spark.cleaner.ttl", SparkCleanerTtl.toString)
 
   lazy val sc = new SparkContext(conf)
 
   /** Creates the Spark Streaming context. */
-  lazy val ssc = new StreamingContext(sc, Seconds(settings.SparkStreamingBatchInterval))
+  lazy val ssc = new StreamingContext(sc, Milliseconds(500))
  
   /** Creates the ActorSystem. */
 

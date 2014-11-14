@@ -67,7 +67,7 @@ final class WeatherSettings(conf: Option[Config] = None) extends Settings with L
   val SparkCheckpointDir = killrweather.getString("spark.checkpoint.dir")
 
   val CassandraHosts = withFallback[String](Try(cassandra.getString("connection.host")),
-    "spark.cassandra.connection.host") getOrElse "127.0.0.1"//InetAddress.getLocalHost.getHostAddress
+    "spark.cassandra.connection.host") getOrElse "127.0.0.1"
 
   logInfo(s"Starting up with spark master '$SparkMaster' cassandra hosts '$CassandraHosts'")
 
@@ -98,7 +98,7 @@ final class WeatherSettings(conf: Option[Config] = None) extends Settings with L
   /* Tuning */
 
   val CassandraKeepAlive = withFallback[Int](Try(cassandra.getInt("connection.keep-alive")),
-    "spark.cassandra.connection.keep_alive_ms") getOrElse 250
+    "spark.cassandra.connection.keep_alive_ms") getOrElse 1000
 
   val CassandraRetryCount = withFallback[Int](Try(cassandra.getInt("connection.query.retry-count")),
     "spark.cassandra.query.retry.count") getOrElse 10
