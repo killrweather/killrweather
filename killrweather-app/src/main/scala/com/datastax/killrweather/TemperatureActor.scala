@@ -80,7 +80,7 @@ class TemperatureActor(sc: SparkContext, settings: WeatherSettings)
     sc.parallelize(Seq(e)).saveToCassandra(keyspace, dailytable)
 
   /**
-   * Would only be handling handles 0-23 small items or fewer.
+   * Would only be handling handles 0-23 small items.
    */
   private def forDay(key: Day, temps: Seq[Double]): WeatherAggregate  =
     if (temps.nonEmpty) {
@@ -90,6 +90,7 @@ class TemperatureActor(sc: SparkContext, settings: WeatherSettings)
         high = stats.max, low = stats.min,
         mean = stats.mean, variance = stats.variance, stdev = stats.stdev)
 
+      /* We do this async to return the data right away vs make client wait. */
       self ! data
       data
     } else NoDataAvailable(key.wsid, key.year, classOf[DailyTemperature])

@@ -52,7 +52,7 @@ class PrecipitationActor(ssc: StreamingContext, settings: WeatherSettings)
               .where("wsid = ? AND year = ?", wsid, year)
               .collectAsync()
     } yield {
-      val top = ssc.sparkContext.makeRDD(aggregate).top(k).toSeq
+      val top = ssc.sparkContext.parallelize(aggregate).top(k).toSeq
       TopKPrecipitation(wsid, year, top)
     }) pipeTo requester
   }
