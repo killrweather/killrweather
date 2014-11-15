@@ -81,22 +81,23 @@ class TemperatureActor(sc: SparkContext, settings: WeatherSettings)
 
   /**
    * Would only be handling handles 0-23 small items.
+   * We do 'self ! data' to async in order to return the data
+   * right away to the requester, vs make client wait.
+   *
+   * @return If no hourly data available, returns [[NoDataAvailable]]
+   *         else [[DailyTemperature]] with mean, variance,stdev,hi,low stats.
    */
   private def forDay(key: Day, temps: Seq[Double]): WeatherAggregate  =
-    if (temps.nonEmpty) {
-      val stats = StatCounter(temps)
-      val data = DailyTemperature(
-        key.wsid, key.year, key.month, key.day,
-        high = stats.max, low = stats.min,
-        mean = stats.mean, variance = stats.variance, stdev = stats.stdev)
-
-      /* We do this async to return the data right away vs make client wait. */
+    if (temps.nonEmpty) { 
+      val data = DailyTemperature(key, StatCounter(temps))
       self ! data
       data
     } else NoDataAvailable(key.wsid, key.year, classOf[DailyTemperature])
 
   private def forMonth(wsid: String, year: Int, month: Int, temps: Seq[DailyTemperature]): WeatherAggregate =
-    if (temps.nonEmpty) MonthlyTemperature(wsid, year, month, temps.map(_.high).max, temps.map(_.low).min)
-    else NoDataAvailable(wsid, year, classOf[MonthlyTemperature])
+    if (temps.nonEmpty)
+      MonthlyTemperature(wsid, year, month, temps.map(_.high).max, temps.map(_.low).min)
+    else
+      NoDataAvailable(wsid, year, classOf[MonthlyTemperature])
 
 }
