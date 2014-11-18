@@ -15,6 +15,8 @@
  */
 package com.datastax.killrweather
 
+import com.twitter.algebird.Min
+import com.twitter.algebird.statistics.StatisticsMonoid
 import org.apache.spark.util.StatCounter
 import org.joda.time.DateTime
 
@@ -134,13 +136,6 @@ object Weather {
   /* Temperature */
   trait Temperature extends WeatherAggregate
 
-  case class HourlyTemperature(wsid: String,
-                               year: Int,
-                               month: Int,
-                               day: Int,
-                               hour: Int,
-                               temperature: Double) extends Temperature
-
   case class DailyTemperature(wsid: String,
                               year: Int,
                               month: Int,
@@ -152,6 +147,15 @@ object Weather {
                               stdev: Double) extends Temperature
 
   object DailyTemperature {
+    /*def apply(key:Day, values: Seq[Double]): DailyTemperature = {
+
+      val min = Min.aggregator[Double]
+      val max = Min.aggregator[Double]
+      val statsMonoid = new StatisticsMonoid[Double]
+      min(values)
+      max(values)
+
+    }*/
     def apply(key:Day, stats: StatCounter): DailyTemperature =
       DailyTemperature(
         key.wsid,

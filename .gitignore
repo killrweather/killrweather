@@ -20,3 +20,6 @@ project/plugins/project/
 /tmp
 spark-cassandra-timeseries/tmp/
 test-output
+
+diagrams/*.graffle
+*.suml*

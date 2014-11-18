@@ -33,7 +33,7 @@ class KafkaStreamingActor(kafkaParams: Map[String, String],
                           ssc: StreamingContext,
                           settings: WeatherSettings,
                           listener: ActorRef)
-  extends KafkaProducerActor[String, String](brokers, settings) with WeatherActor {
+  extends KafkaProducerActor[String, String](brokers, settings) with AggregationActor {
 
   def this(kafkaParams: Map[String, String],
            config: KafkaConfig,

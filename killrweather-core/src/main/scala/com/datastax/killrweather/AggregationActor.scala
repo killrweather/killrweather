@@ -23,12 +23,11 @@ import akka.util.Timeout
 import org.apache.spark.SparkException
 import org.joda.time.format.DateTimeFormat
 import org.joda.time.{DateTime, DateTimeZone}
-import com.datastax.driver.core.utils.UUIDs
 
 import scala.concurrent.duration._
 
 /** A base actor for weather data computation. */
-trait WeatherActor extends Actor {
+private[killrweather] trait AggregationActor extends Actor {
 
   implicit val timeout = Timeout(5.seconds)
 

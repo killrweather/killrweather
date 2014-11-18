@@ -22,13 +22,11 @@ import org.apache.spark.util.StatCounter
 import org.apache.spark.SparkContext._
 import com.datastax.spark.connector._
 
-import scala.util.Try
-
 /** The TemperatureActor reads the daily temperature rollup data from Cassandra,
   * and for a given weather station, computes temperature statistics by month for a given year.
   */
 class TemperatureActor(sc: SparkContext, settings: WeatherSettings)
-  extends WeatherActor with ActorLogging {
+  extends AggregationActor with ActorLogging {
 
   import settings.{CassandraKeyspace => keyspace }
   import settings.{CassandraTableDailyTemp => dailytable}
@@ -81,14 +79,14 @@ class TemperatureActor(sc: SparkContext, settings: WeatherSettings)
 
   /**
    * Would only be handling handles 0-23 small items.
-   * We do 'self ! data' to async in order to return the data
-   * right away to the requester, vs make client wait.
+   * We do 'self ! data' to async persist the aggregated data
+   * but still return it immediately to the requester, vs make client wait.
    *
    * @return If no hourly data available, returns [[NoDataAvailable]]
    *         else [[DailyTemperature]] with mean, variance,stdev,hi,low stats.
    */
   private def forDay(key: Day, temps: Seq[Double]): WeatherAggregate  =
-    if (temps.nonEmpty) { 
+    if (temps.nonEmpty) {
       val data = DailyTemperature(key, StatCounter(temps))
       self ! data
       data

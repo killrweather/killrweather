@@ -24,7 +24,7 @@ import org.joda.time.DateTime
 
 /** For a given weather station id, retrieves the full station data. */
 class WeatherStationActor(sc: SparkContext, settings: WeatherSettings)
-  extends WeatherActor with ActorLogging {
+  extends AggregationActor with ActorLogging {
 
   import settings.{CassandraKeyspace => keyspace }
   import settings.{CassandraTableRaw => rawtable}

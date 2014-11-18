@@ -38,8 +38,7 @@ object KillrWeatherBuild extends Build {
     id = "app",
     base = file("./killrweather-app"),
     dependencies = Seq(core),
-    settings = defaultSettings ++ withSigar ++
-      Seq(libraryDependencies ++= Dependencies.app)
+    settings = defaultSettings ++ withSigar ++ Seq(libraryDependencies ++= Dependencies.app)
   ) configs IntegrationTest
 
 }
@@ -57,9 +56,10 @@ object Dependencies {
     val akkaContrib       = "com.typesafe.akka"   %% "akka-contrib"                       % Akka    force() // ApacheV2
     val akkaRemote        = "com.typesafe.akka"   %% "akka-remote"                        % Akka    force() // ApacheV2
     val akkaSlf4j         = "com.typesafe.akka"   %% "akka-slf4j"                         % Akka    force() // ApacheV2
-    val bijection         = "com.twitter"         %% "bijection-core"                     % "0.7.0"
-    val cassandraDriver   = "com.datastax.cassandra"  % "cassandra-driver-core"           % CassandraDriver  exclude("com.google.guava", "guava")            withSources()
-    val chillAkka         = "tv.cntt"             %% "chill-akka"                         % "1.1"
+    val algebird          = "com.twitter"         %% "algebird-core"                      % Albebird
+    val bijection         = "com.twitter"         %% "bijection-core"                     % Bijection
+    val driver            = "com.datastax.cassandra" % "cassandra-driver-core"            % CassandraDriver  exclude("com.google.guava", "guava")            withSources()
+    val chillAkka         = "tv.cntt"             %% "chill-akka"                         % Chill
     val jodaTime          = "joda-time"           % "joda-time"                           % JodaTime        // ApacheV2
     val jodaConvert       = "org.joda"            % "joda-convert"                        % JodaConvert     // ApacheV2
     val json4sCore        = "org.json4s"          %% "json4s-core"                        % Json4s          // ApacheV2
@@ -92,7 +92,7 @@ object Dependencies {
 
   val akka = Seq(akkaActor, akkaCluster, akkaContrib, akkaRemote)
 
-  val connector = Seq(cassandraDriver, sparkCassandra, sparkCassandraEmb)
+  val connector = Seq(driver, sparkCassandra, sparkCassandraEmb)
 
   val json = Seq(json4sCore, json4sJackson, json4sNative)
 
@@ -105,7 +105,7 @@ object Dependencies {
   val test = Seq(Test.akkaTestKit, Test.scalatest, Test.sigar)
 
   /** Module deps */
-  val core = connector ++ akka ++ json ++ scalaz ++ logging ++ Seq(chillAkka, kafka)
+  val core = connector ++ akka ++ json ++ scalaz ++ logging ++ Seq(algebird, chillAkka, kafka)
 
   val app = core ++ time ++ test ++ Seq(kafkaStreaming, sparkML, sparkSQL)
 
