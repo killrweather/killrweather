@@ -6,7 +6,7 @@ import org.apache.spark.{SparkContext, SparkConf}
 import com.datastax.spark.connector._
 
 /**
- * Very simple example fo how to connect Spark and Cassandra.
+ * Very simple example of how to connect Spark and Cassandra.
  *
  */
 object SimpleSparkJob {
@@ -26,6 +26,8 @@ object SimpleSparkJob {
 
     // keyspace & table
     val table: CassandraRDD[CassandraRow] = sc.cassandraTable("isd_weather_data", "raw_weather_data")
+      // Add this to drill further into the data
+      //.where("wsid='725030:14732'")
 
     // get a simple count of all the rows in the demo table
     val rowCount = table.count()
