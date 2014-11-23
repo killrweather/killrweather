@@ -17,7 +17,7 @@ object SimpleSparkJob {
 
     // "local" here is the master, meaning we don't explicitly have a spark master set up
     val sc = new SparkContext("local", "weather", conf)
- 
+
     // keyspace & table
     val table: CassandraRDD[CassandraRow] = sc.cassandraTable("isd_weather_data", "raw_weather_data")
       // Add this to drill further into the data

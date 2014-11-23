@@ -12,6 +12,7 @@ KillrWeather is a reference application (which we are constantly improving) show
     git clone https://github.com/killrweather/killrweather.git
     cd killrweather
 
+
 ### Build the code 
 If this is your first time running SBT, you will be downloading the internet.
 
@@ -23,14 +24,17 @@ If this is your first time running SBT, you will be downloading the internet.
 ### Setup - 3 Steps
 1. [Download the latest Cassandra](http://cassandra.apache.org/download/) and open the compressed file.
 
+
     Optional: open /apache-cassandra-{latest.version}/conf/cassandra.yaml and increase batch_size_warn_threshold_in_kb to 64
 
 2. Start Cassandra - you may need to prepend with sudo, or chown /var/lib/cassandra. On the command line:
+
 
     ./apache-cassandra-{latest.version}/bin/cassandra -f
 
 3. Run the setup cql scripts to create the schema and populate the weather stations table.
 On the command line start a cqlsh shell:
+
 
     cd /path/to/killrweather
     ~/apache-cassandra-{latest.version}/bin/cqlsh
