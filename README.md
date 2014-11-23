@@ -7,9 +7,63 @@ KillrWeather is a reference application (which we are constantly improving) show
 * [KillrWeather Wiki](https://github.com/killrweather/killrweather/wiki) 
 * com.datastax.killrweather [Spark, Kafka and Cassandra workers](https://github.com/killrweather/killrweather/tree/master/killrweather-app/src)
 
-## Setup
-1. [Environment Setup](https://github.com/killrweather/killrweather/wiki/1.-Environment-Setup)
-2. [Code and Data Setup](https://github.com/killrweather/killrweather/wiki/2.-Code-and-Data-Setup)
-3. [About The App](https://github.com/killrweather/killrweather/wiki/3.-About-The-App)
-4. [The Time Series Data Model](https://github.com/killrweather/killrweather/wiki/4.-Time-Series-Data-Model)
+## Clone the repo
+
+    git clone https://github.com/killrweather/killrweather.git
+    cd killrweather
+
+## Build the code 
+If this is your first time running SBT, you will be downloading the internet.
+
+    cd killrweather
+    sbt compile
+    # For IntelliJ users, this creates Intellij project files
+    sbt gen-idea
+
+## Setup - 3 Steps
+1. [Download the latest Cassandra](http://cassandra.apache.org/download/) and open the compressed file.
+
+        Optional: open /apache-cassandra-{latest.version}/conf/cassandra.yaml and increase batch_size_warn_threshold_in_kb to 64
+
+2. Start Cassandra - you may need to prepend with sudo, or chown /var/lib/cassandra. On the command line:
+
+    ./apache-cassandra-{latest.version}/bin/cassandra -f
+
+3. Run the setup cql scripts to create the schema and populate the weather stations table.
+
+On the command line start a cqlsh shell:
+
+    cd /path/to/reference-apps/timeseries/scala/data
+    ~/apache-cassandra-{latest.version}/bin/cqlsh
+
+You should see:
+
+    Connected to Test Cluster at 127.0.0.1:9042.
+    [cqlsh {latest.version} | Cassandra {latest.version} | CQL spec {latest.version} | Native protocol {latest.version}]
+    Use HELP for help.
+    cqlsh>
+
+Run the script:
+
+    cqlsh> source 'create-timeseries.cql';
+    cqlsh> source 'load-timeseries.cql';
+    cqlsh> quit;
  
+## Run the app and client app: runnable by command line or in an IDE
+### To Run from an IDE
+First start com.datastax.killrweather.KillrWeatherApp, then  com.datastax.killrweather.KillrWeatherClientApp.
+
+### To Run from Command Line
+
+    cd /path/to/killrweather
+    sbt app/run
+
+You should see:
+
+    Multiple main classes detected, select one to run:
+
+    [1] com.datastax.killrweather.SimpleSparkJob
+    [2] com.datastax.killrweather.KillrWeatherClientApp
+    [3] com.datastax.killrweather.KillrWeatherApp
+
+Select 3, then open a new window, do the same and select 2.
