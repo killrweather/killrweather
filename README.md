@@ -7,12 +7,12 @@ KillrWeather is a reference application (which we are constantly improving) show
 * [KillrWeather Wiki](https://github.com/killrweather/killrweather/wiki) 
 * com.datastax.killrweather [Spark, Kafka and Cassandra workers](https://github.com/killrweather/killrweather/tree/master/killrweather-app/src)
 
-## Clone the repo
+### Clone the repo
 
     git clone https://github.com/killrweather/killrweather.git
     cd killrweather
 
-## Build the code 
+### Build the code 
 If this is your first time running SBT, you will be downloading the internet.
 
     cd killrweather
@@ -20,20 +20,19 @@ If this is your first time running SBT, you will be downloading the internet.
     # For IntelliJ users, this creates Intellij project files
     sbt gen-idea
 
-## Setup - 3 Steps
+### Setup - 3 Steps
 1. [Download the latest Cassandra](http://cassandra.apache.org/download/) and open the compressed file.
 
-        Optional: open /apache-cassandra-{latest.version}/conf/cassandra.yaml and increase batch_size_warn_threshold_in_kb to 64
+    Optional: open /apache-cassandra-{latest.version}/conf/cassandra.yaml and increase batch_size_warn_threshold_in_kb to 64
 
 2. Start Cassandra - you may need to prepend with sudo, or chown /var/lib/cassandra. On the command line:
 
     ./apache-cassandra-{latest.version}/bin/cassandra -f
 
 3. Run the setup cql scripts to create the schema and populate the weather stations table.
-
 On the command line start a cqlsh shell:
 
-    cd /path/to/reference-apps/timeseries/scala/data
+    cd /path/to/killrweather
     ~/apache-cassandra-{latest.version}/bin/cqlsh
 
 You should see:
@@ -43,17 +42,17 @@ You should see:
     Use HELP for help.
     cqlsh>
 
-Run the script:
+Run the scripts:
 
     cqlsh> source 'create-timeseries.cql';
     cqlsh> source 'load-timeseries.cql';
     cqlsh> quit;
  
-## Run the app and client app: runnable by command line or in an IDE
-### To Run from an IDE
+### Run 
+#### To Run from an IDE
 First start com.datastax.killrweather.KillrWeatherApp, then  com.datastax.killrweather.KillrWeatherClientApp.
 
-### To Run from Command Line
+#### To Run from Command Line
 
     cd /path/to/killrweather
     sbt app/run
