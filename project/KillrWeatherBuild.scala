@@ -51,41 +51,36 @@ object Dependencies {
   import Versions._
 
   object Compile {
-    val akkaActor         = "com.typesafe.akka"   %% "akka-actor"                         % Akka    force() // ApacheV2
-    val akkaCluster       = "com.typesafe.akka"   %% "akka-cluster"                       % Akka    force() // ApacheV2
-    val akkaContrib       = "com.typesafe.akka"   %% "akka-contrib"                       % Akka    force() // ApacheV2
-    val akkaRemote        = "com.typesafe.akka"   %% "akka-remote"                        % Akka    force() // ApacheV2
-    val akkaSlf4j         = "com.typesafe.akka"   %% "akka-slf4j"                         % Akka    force() // ApacheV2
+    val akkaActor         = "com.typesafe.akka"   %% "akka-actor"                         % Akka           // ApacheV2
+    val akkaCluster       = "com.typesafe.akka"   %% "akka-cluster"                       % Akka           // ApacheV2
+    val akkaContrib       = "com.typesafe.akka"   %% "akka-contrib"                       % Akka           // ApacheV2
+    val akkaRemote        = "com.typesafe.akka"   %% "akka-remote"                        % Akka           // ApacheV2
+    val akkaSlf4j         = "com.typesafe.akka"   %% "akka-slf4j"                         % Akka           // ApacheV2
     val algebird          = "com.twitter"         %% "algebird-core"                      % Albebird
     val bijection         = "com.twitter"         %% "bijection-core"                     % Bijection
-    val driver            = "com.datastax.cassandra" % "cassandra-driver-core"            % CassandraDriver  exclude("com.google.guava", "guava")            withSources()
-    val chillAkka         = "tv.cntt"             %% "chill-akka"                         % Chill
-    val jodaTime          = "joda-time"           % "joda-time"                           % JodaTime        // ApacheV2
-    val jodaConvert       = "org.joda"            % "joda-convert"                        % JodaConvert     // ApacheV2
+    val driver            = "com.datastax.cassandra" % "cassandra-driver-core"            % CassandraDriver exclude("com.google.guava", "guava") excludeAll(ExclusionRule("org.slf4j"))
+    val jodaTime          = "joda-time"           % "joda-time"                           % JodaTime % "compile;runtime"       // ApacheV2
+    val jodaConvert       = "org.joda"            % "joda-convert"                        % JodaConvert % "compile;runtime"    // ApacheV2
     val json4sCore        = "org.json4s"          %% "json4s-core"                        % Json4s          // ApacheV2
     val json4sJackson     = "org.json4s"          %% "json4s-jackson"                     % Json4s          // ApacheV2
     val json4sNative      = "org.json4s"          %% "json4s-native"                      % Json4s          // ApacheV2
-    val kafka             = "org.apache.kafka"    %% "kafka"                              % Kafka           // ApacheV2
-    val kafkaStreaming    = "org.apache.spark"    %% "spark-streaming-kafka" % Spark exclude("com.google.guava", "guava") exclude("org.apache.spark", "spark-core") // ApacheV2
+    val kafka             = "org.apache.kafka"    %% "kafka"                              % Kafka excludeAll(ExclusionRule("org.slf4j")) // ApacheV2
+    val kafkaStreaming    = "org.apache.spark"    %% "spark-streaming-kafka"              % Spark exclude("com.google.guava", "guava") exclude("org.apache.spark", "spark-core") // ApacheV2
+    val logback           = "ch.qos.logback"      % "logback-classic"                     % Logback % "runtime"
     val scalazContrib     = "org.typelevel"       %% "scalaz-contrib-210"                 % ScalazContrib   // MIT
     val scalazContribVal  = "org.typelevel"       %% "scalaz-contrib-validation"          % ScalazContrib   // MIT
-    val scalazContribUndo = "org.typelevel"       %% "scalaz-contrib-undo"                % ScalazContrib   // MIT
-    val scalazNst         = "org.typelevel"       %% "scalaz-nscala-time"                 % ScalazContrib   // MIT
-    val scalazSpire       = "org.typelevel"       %% "scalaz-spire"                       % ScalazContrib   // MIT
     val scalazStream      = "org.scalaz.stream"   %% "scalaz-stream"                      % ScalazStream    // MIT
     val slf4jApi          = "org.slf4j"           % "slf4j-api"                           % Slf4j           // MIT
     val sparkML           = "org.apache.spark"    %% "spark-mllib"                        % Spark           // ApacheV2
     val sparkSQL          = "org.apache.spark"    %% "spark-sql"                          % Spark           // ApacheV2
-    // for spark, streaming, sql and ml
-    val sparkCassandra    = "com.datastax.spark"  %% "spark-cassandra-connector"          % SparkCassandra  // ApacheV2
-    val sparkCassandraEmb = "com.datastax.spark"  %% "spark-cassandra-connector-embedded" % SparkCassandra  // ApacheV2
-
+    val sparkCassandra    = "com.datastax.spark"  %% "spark-cassandra-connector"          % SparkCassandra  excludeAll(ExclusionRule("org.slf4j"))// ApacheV2
+    val sparkCassandraEmb = "com.datastax.spark"  %% "spark-cassandra-connector-embedded" % SparkCassandra  excludeAll(ExclusionRule("org.slf4j"))// ApacheV2
+    val sigar             = "org.fusesource"      % "sigar"                               % Sigar
   }
 
   object Test {
     val akkaTestKit     = "com.typesafe.akka"     %% "akka-testkit"                       % Akka         % "test,it" // ApacheV2
     val scalatest       = "org.scalatest"         %% "scalatest"                          % ScalaTest    % "test,it"
-    val sigar           = "org.fusesource"        % "sigar"                               % Sigar        % "test,it"
   }
 
   import Compile._
@@ -96,17 +91,17 @@ object Dependencies {
 
   val json = Seq(json4sCore, json4sJackson, json4sNative)
 
-  val logging = Seq(akkaSlf4j, slf4jApi)
+  val logging = Seq(akkaSlf4j, logback)
 
-  val scalaz = Seq(scalazContrib, scalazContribVal, scalazContribUndo, scalazNst, scalazSpire, scalazStream)
+  val scalaz = Seq(scalazContrib, scalazContribVal, scalazStream)
 
   val time = Seq(jodaConvert, jodaTime)
 
-  val test = Seq(Test.akkaTestKit, Test.scalatest, Test.sigar)
+  val test = Seq(Test.akkaTestKit, Test.scalatest)
 
   /** Module deps */
-  val core = connector ++ akka ++ json ++ scalaz ++ logging ++ Seq(algebird, chillAkka, kafka)
+  val core = connector ++ akka ++ time ++ json ++ scalaz ++ logging ++ Seq(algebird, kafka, sigar)
 
-  val app = core ++ time ++ test ++ Seq(kafkaStreaming, sparkML, sparkSQL)
+  val app = core ++ test ++ Seq(kafkaStreaming, sparkML, sparkSQL)
 
 }

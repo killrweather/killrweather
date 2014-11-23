@@ -15,9 +15,13 @@
  */
 package com.datastax.killrweather
 
-import akka.actor.ActorRef
-import kafka.server.KafkaConfig
+import akka.actor.{Actor, ActorRef}
+import akka.cluster.Cluster
+import com.datastax.spark.connector.embedded.KafkaEvent.KafkaMessageEnvelope
+import com.datastax.spark.connector.embedded.{KafkaEvent, KafkaProducerActor}
+import kafka.producer.ProducerConfig
 import kafka.serializer.StringDecoder
+import org.apache.spark.SparkContext
 import org.apache.spark.streaming.StreamingContext
 import org.apache.spark.storage.StorageLevel
 import org.apache.spark.streaming.kafka.KafkaUtils
@@ -29,18 +33,9 @@ import com.datastax.spark.connector.streaming._
   * and saves the new data to the cassandra table as it arrives.
   */
 class KafkaStreamingActor(kafkaParams: Map[String, String],
-                          brokers: Set[String],
                           ssc: StreamingContext,
                           settings: WeatherSettings,
-                          listener: ActorRef)
-  extends KafkaProducerActor[String, String](brokers, settings) with AggregationActor {
-
-  def this(kafkaParams: Map[String, String],
-           config: KafkaConfig,
-           ssc: StreamingContext,
-           settings: WeatherSettings,
-           listener: ActorRef) = this(
-    kafkaParams, Set(s"${config.hostName}:${config.port}"), ssc, settings, listener)
+                          listener: ActorRef) extends AggregationActor {
 
   import settings._
   import WeatherEvent._
@@ -76,5 +71,46 @@ class KafkaStreamingActor(kafkaParams: Map[String, String],
   /** Notifies the supervisor that the Spark Streams have been created and defined.
     * Now the [[StreamingContext]] can be started. */
   listener ! OutputStreamInitialized
+
+  def receive : Actor.Receive = {
+    case e => // ignore
+  }
+}
+
+
+/** The KafkaPublisherActor loads data from /data/load files on startup (because this
+  * is for a runnable demo) and also receives [[KafkaMessageEnvelope]] messages and
+  * publishes them to Kafka on a sender's behalf.
+  *
+  * [[KafkaMessageEnvelope]] messages sent to this actor are handled by the [[KafkaProducerActor]]
+  * which it extends.
+  */
+class KafkaPublisherActor(val producerConfig: ProducerConfig,
+                          sc: SparkContext,
+                          settings: WeatherSettings) extends KafkaProducerActor[String, String] {
+
+  import settings.{KafkaTopicRaw => topic, KafkaGroupId => group}
+  import settings._
+  import KafkaEvent._
+
+  log.info("Starting data file ingestion on {}", Cluster(context.system).selfAddress)
+
+  val toActor = (data: String) => self ! KafkaMessageEnvelope[String,String](topic, group, data)
+
+  /** Because we run locally vs against a cluster as a demo app, we keep that file size data small.
+    * Using rdd.toLocalIterator will consume as much memory as the largest partition in this RDD,
+    * which in this use case is 360 or fewer (if current year before December 31) small Strings.
+    *
+    * The ingested data is sent to the kafka actor for processing in the stream.
+    *
+    * RDD.toLocalIterator will consume as much memory as the largest partition in this RDD.
+    * RDD.toLocalIterator uses allowLocal = false flag. `allowLocal` specifies whether the
+    * scheduler can run the computation on the driver rather than shipping it out to the cluster
+    * for short actions like first().
+    */
+  for (file <- IngestionData) {
+    log.info(s"Ingesting $file")
+    sc.textFile(file).flatMap(_.split("\\n")).toLocalIterator.foreach(toActor)
+  }
 
 }

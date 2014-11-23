@@ -17,14 +17,13 @@ package com.datastax.killrweather
 
 import java.util.concurrent.atomic.AtomicInteger
 
-import org.joda.time.{DateTimeZone, DateTime}
-
 import scala.concurrent.duration._
 import akka.actor.Props
+import org.joda.time.{DateTimeZone, DateTime}
 import org.apache.spark.streaming.{Seconds, StreamingContext}
 import com.datastax.spark.connector.streaming._
 import com.datastax.spark.connector._
-import com.datastax.spark.connector.embedded.EmbeddedKafka
+import com.datastax.spark.connector.embedded.{KafkaConsumer, EmbeddedKafka}
 
 class NodeGuardianSpec extends ActorSparkSpec {
   import WeatherEvent._
@@ -51,7 +50,8 @@ class NodeGuardianSpec extends ActorSparkSpec {
 
   val consumer = new KafkaConsumer(kafka.kafkaConfig.zkConnect, KafkaTopicRaw, KafkaGroupId, 1, 10, atomic)
 
-  val guardian = system.actorOf(Props(new NodeGuardian(ssc, kafka, settings)), "node-guardian")
+  val guardian = system.actorOf(Props(
+    new NodeGuardian(ssc, kafka, settings)), "node-guardian")
 
   "NodeGuardian" must {
     "publish a NodeInitialized to the event stream on initialization" in {

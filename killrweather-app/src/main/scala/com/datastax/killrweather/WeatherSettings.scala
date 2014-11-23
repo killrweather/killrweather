@@ -52,7 +52,6 @@ final class WeatherSettings(conf: Option[Config] = None) extends Settings with L
 
   protected val spark = rootConfig.getConfig("spark")
   protected val cassandra = rootConfig.getConfig("cassandra")
-  protected val akka = rootConfig.getConfig("akka")
   protected val killrweather = rootConfig.getConfig("killrweather")
 
   val SparkMaster = withFallback[String](Try(spark.getString("master")),

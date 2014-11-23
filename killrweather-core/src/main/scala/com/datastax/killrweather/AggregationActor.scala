@@ -38,7 +38,6 @@ private[killrweather] trait AggregationActor extends Actor {
       case _: SparkException           => Stop
       case _: ActorInitializationException => Stop
       case _: IllegalArgumentException => Stop
-      case _: NullPointerException     => Resume
       case _: IllegalStateException    => Restart
       case _: TimeoutException         => Escalate
       case _: Exception                => Escalate

@@ -32,7 +32,8 @@ object WeatherEvent {
   case object Shutdown extends LifeCycleEvent
   case object TaskCompleted extends LifeCycleEvent
 
-  case object QueryTask extends WeatherEvent
+  sealed trait Task extends WeatherEvent
+  case object QueryTask extends Task
 
   sealed trait WeatherRequest extends WeatherEvent
 
@@ -57,8 +58,4 @@ object WeatherEvent {
    */
   case class GetSkyConditionLookup(code: Int) extends WeatherRequest
 
-}
-
-object KafkaEvent {
-  case class KafkaMessageEnvelope[K,V](topic: String, key: K, messages: V*)
 }

@@ -102,8 +102,6 @@ object Weather {
     def year: Int
   }
 
-  case class Hour(wsid: String, year: Int, month: Int, day: Int, hour: Int) extends WeatherAggregate
-
   case class Day(wsid: String, year: Int, month: Int, day: Int) extends WeatherAggregate
 
   object Day {
@@ -112,6 +110,12 @@ object Weather {
 
     def apply(wsid: String, utcTimestamp: DateTime): Day =
       Day(wsid, utcTimestamp.getYear, utcTimestamp.getMonthOfYear, utcTimestamp.getDayOfMonth)
+
+    /** Tech debt */
+    def apply(line: String): Day = {
+      val array = line.split(",")
+      Day(wsid = array(0), year = array(1).toInt, month = array(2).toInt, day = array(3).toInt)
+    }
   }
 
   case class NoDataAvailable(wsid: String, year: Int, query: Class[_ <: WeatherAggregate]) extends WeatherAggregate

@@ -20,7 +20,7 @@ import java.util.concurrent.atomic.AtomicInteger
 import scala.concurrent.duration._
 import akka.actor.Props
 import org.apache.spark.streaming.{Seconds, StreamingContext}
-import com.datastax.spark.connector.embedded.EmbeddedKafka
+import com.datastax.spark.connector.embedded.{KafkaConsumer, EmbeddedKafka}
 import com.datastax.spark.connector.streaming._
 
 class KafkaStreamingActorSpec extends ActorSparkSpec {
@@ -45,7 +45,7 @@ class KafkaStreamingActorSpec extends ActorSparkSpec {
   val ssc = new StreamingContext(sc, Seconds(SparkStreamingBatchInterval))
 
   override val kafkaActor = Some(system.actorOf(Props(new KafkaStreamingActor(
-    kafka.kafkaParams, kafka.kafkaConfig, ssc, settings, self)), "kafka-stream")) //.withDispatcher("killrweather.kafka-dispatcher")
+    kafka.kafkaParams, ssc, settings, self)), "kafka-stream")) //.withDispatcher("killrweather.kafka-dispatcher")
 
   val consumer = new KafkaConsumer(kafka.kafkaConfig.zkConnect, KafkaTopicRaw, KafkaGroupId, 1, 10, atomic)
 

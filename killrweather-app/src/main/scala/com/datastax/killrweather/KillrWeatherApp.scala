@@ -16,8 +16,7 @@
 package com.datastax.killrweather
 
 import akka.actor.{ActorSystem, PoisonPill, Props}
-import com.datastax.killrweather.clients.{KafkaClient, KillrClient}
-import org.apache.spark.streaming.{Milliseconds, Seconds, StreamingContext}
+import org.apache.spark.streaming.{Milliseconds, StreamingContext}
 import org.apache.spark.{SparkContext, SparkConf}
 import com.datastax.spark.connector.embedded.EmbeddedKafka
 
@@ -40,17 +39,7 @@ object KillrWeatherApp extends App {
   /** Creates the raw data topic. */
   kafka.createTopic(KafkaTopicRaw)
 
-  /** Configures Spark.
-    * The appName parameter is a name for your application to show on the cluster UI.
-    * master is a Spark, Mesos or YARN cluster URL, or a special “local[*]” string to run in local mode.
-    *
-    * When running on a cluster, you will not want to launch the application with spark-submit and receive it there.
-    * For local testing and unit tests, you can pass 'local[*]' to run Spark Streaming in-process
-    * (detects the number of cores in the local system).
-    *
-    * Note that this internally creates a SparkContext (starting point of all Spark functionality)
-    * which can be accessed as ssc.sparkContext.
-    */
+  /** Configures Spark. */
   lazy val conf = new SparkConf().setAppName(getClass.getSimpleName)
     .setMaster(SparkMaster)
     .set("spark.cassandra.connection.host", CassandraHosts)
@@ -64,15 +53,10 @@ object KillrWeatherApp extends App {
   lazy val ssc = new StreamingContext(sc, Milliseconds(500))
  
   /** Creates the ActorSystem. */
-
   val system = ActorSystem(AppName, rootConfig)
 
-  /* The root supervisor Actor of our app. */
+  /* The root supervisor and traffic controller of the app. All inbound messages go through this actor. */
   val guardian = system.actorOf(Props(new NodeGuardian(ssc, kafka, settings)), "node-guardian")
-
-  /* Drive demo activity */
-  val kafkaClient = system.actorOf(Props(new KafkaClient(settings, ssc, guardian)))
-  val queryClient = system.actorOf(Props(new KillrClient(settings, ssc, guardian)), "client")
 
   system.registerOnTermination {
     kafka.shutdown()

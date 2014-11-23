@@ -16,10 +16,10 @@
 package com.datastax.killrweather
 
 import akka.actor.ActorRef
-import org.apache.spark.SparkContext
-import com.datastax.spark.connector.util.Logging
-import com.datastax.spark.connector.cql.CassandraConnector
 import com.datastax.spark.connector._
+import com.datastax.spark.connector.cql.CassandraConnector
+import com.datastax.spark.connector.util.Logging
+import org.apache.spark.SparkContext
 import org.apache.spark.rdd.RDD
 
 /**
@@ -29,7 +29,7 @@ import org.apache.spark.rdd.RDD
 private[killrweather] class Initializer(sc: SparkContext, settings: WeatherSettings)
   extends Serializable with Logging {
 
-  import Weather._
+  import com.datastax.killrweather.Weather._
   import settings._
 
   /** Loads data from /data/load files (because this is for a runnable demo.
@@ -50,9 +50,7 @@ private[killrweather] class Initializer(sc: SparkContext, settings: WeatherSetti
   }
 
   private def loadDataFiles(kafkaActor: Option[ActorRef]): Unit = {
-    import settings.{CassandraKeyspace => keyspace, CassandraTableRaw => table}
-    import settings.{KafkaTopicRaw => topic, KafkaGroupId => group}
-    import KafkaEvent._
+    import settings.{CassandraKeyspace => keyspace, CassandraTableRaw => table, KafkaGroupId => group, KafkaTopicRaw => topic}
 
     def toLines(file: String): RDD[String] = {
       log.info(s"Processing $file")

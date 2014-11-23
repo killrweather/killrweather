@@ -28,7 +28,7 @@ object Versions {
   val Json4s         = "3.2.10"
   val Kafka          = "0.8.0"// TODO issues w encoder/decoder ATM "0.8.1.2"
   val Kryo           = "3.0.0"
-  val Lzf            = "0.8.4"
+  val Logback        = "1.0.0"
   val Scala          = "2.10.4"
   val ScalaTest      = "2.2.1"
   val Scalaz         = "7.1.0"
@@ -37,5 +37,5 @@ object Versions {
   val Sigar          = "1.6.4"
   val Slf4j          = "1.7.7"
   val Spark          = "1.1.0"
-  val SparkCassandra = "1.1.0-beta2"
+  val SparkCassandra = "1.1.0-rc1"
 }

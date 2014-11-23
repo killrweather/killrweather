@@ -19,7 +19,6 @@ class ClusterAware extends Actor with ActorLogging {
       log.info("Leader changed to {}", leader)
     case ClusterMetricsChanged(forNode) =>
       log.info("Cluster metrics update:")
-      forNode foreach println
     case MemberUp(member) =>
       log.info("Member is Up: {}", member.address)
     case UnreachableMember(member) =>

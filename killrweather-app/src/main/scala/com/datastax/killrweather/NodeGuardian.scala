@@ -15,13 +15,13 @@
  */
 package com.datastax.killrweather
 
-import scala.concurrent.duration._
+import scala.collection.immutable
 import akka.actor._
 import akka.pattern.gracefulStop
-import akka.util.Timeout
 import org.apache.spark.streaming.kafka.KafkaInputDStream
 import org.apache.spark.streaming.StreamingContext
-import com.datastax.spark.connector.embedded.{Assertions, EmbeddedKafka}
+import com.datastax.spark.connector.embedded.{KafkaProducer, Assertions, EmbeddedKafka}
+import com.datastax.spark.connector.embedded.KafkaEvent.KafkaMessageEnvelope
 
 /**
  * The `NodeGuardian` is the root of the primary KillrWeather deployed application.
@@ -34,43 +34,38 @@ import com.datastax.spark.connector.embedded.{Assertions, EmbeddedKafka}
  *    via Spark, which streams the raw data from Kafka, transforms each line of data to
  *    a [[com.datastax.killrweather.Weather.RawWeatherData]] (hourly per weather station),
  *    and saves the new data to the cassandra raw data table as it arrives.
- *
- * NOTE: if `NodeGuardian` is ever put on an Akka router, multiple instances of the stream will
- * exist on the node. Might want to call 'union' on the streams in that case.
  */
 class NodeGuardian(ssc: StreamingContext,
                    kafka: EmbeddedKafka,
-                   brokers: Set[String],
                    settings: WeatherSettings)
-  extends ClusterAware with Assertions with ActorLogging {
-
-  def this(ssc: StreamingContext,
-           kafka: EmbeddedKafka,
-           settings: WeatherSettings) = this(
-    ssc, kafka, Set(s"${kafka.kafkaConfig.hostName}:${kafka.kafkaConfig.port}"), settings)
+  extends ClusterAware with AggregationActor with Assertions with ActorLogging {
 
   import WeatherEvent._
   import settings._
 
-  implicit val timeout = Timeout(5.seconds)
+  /* Creates the Kafka actors: */
+  context.actorOf(Props(new KafkaStreamingActor(kafka.kafkaParams, ssc, settings, self)), "kafka-stream")
 
-  /* Creates the Kafka actor: */
-  val kafkaActor = context.actorOf(Props(new KafkaStreamingActor(
-    kafka.kafkaParams, brokers, ssc, settings, self)), "kafka")
+  val publisher = context.actorOf(Props(new KafkaPublisherActor(
+    KafkaProducer.defaultConfig(kafka.kafkaConfig), ssc.sparkContext, settings)), "kafka-publisher")
 
   /* The Spark/Cassandra computation actors: For the tutorial we just use 2005 for now. */
   val temperature = context.actorOf(Props(new TemperatureActor(ssc.sparkContext, settings)), "temperature")
   val precipitation = context.actorOf(Props(new PrecipitationActor(ssc, settings)), "precipitation")
   val station = context.actorOf(Props(new WeatherStationActor(ssc.sparkContext, settings)), "weather-station")
 
-  override def preStart(): Unit =
-    log.info("Starting at {} as {}", cluster.selfAddress, self)
+  override def preStart(): Unit = {
+    log.info("Starting at {}", cluster.selfAddress)
+    cluster.joinSeedNodes(immutable.Seq(self.path.address))
+  }
 
-  override def postStop(): Unit =
+  override def postStop(): Unit = {
     log.info("Node {} shutting down.", cluster.selfAddress)
+    cluster.leave(self.path.address)
+  }
 
   /** On startup, actor is in an [[uninitialized]] state. */
-  override def receive = uninitialized orElse super.receive
+  override def receive = uninitialized orElse initialized orElse super.receive
 
   /** When [[OutputStreamInitialized]] is received from the [[KafkaStreamingActor]] after
     * it creates and defines the [[KafkaInputDStream]], at which point the streaming
@@ -82,44 +77,29 @@ class NodeGuardian(ssc: StreamingContext,
   }
 
   def initialized: Actor.Receive = {
-    case e: TemperatureRequest    => temperature forward e
-    case e: PrecipitationRequest  => precipitation forward e
-    case e: WeatherStationRequest => station forward e
-    case PoisonPill               => gracefulShutdown()
+    case e: KafkaMessageEnvelope[_,_] =>
+      log.debug("Forwarding request {} to {}", e, publisher)
+      publisher forward e
+    case e: TemperatureRequest =>
+      log.debug("Forwarding request {} to to {}", e, temperature)
+      temperature forward e
+    case e: PrecipitationRequest =>
+      log.debug("Forwarding request {} to to {}", e, precipitation)
+      precipitation forward e
+    case e: WeatherStationRequest =>
+      log.debug("Forwarding request {} to to {}", e, station)
+      station forward e
+    case PoisonPill =>
+      gracefulShutdown()
   }
 
   def initialize(): Unit = {
     log.info(s"Node is transitioning from 'uninitialized' to 'initialized'")
     ssc.checkpoint(SparkCheckpointDir)
     ssc.start() // currently can not add more dstreams once started
-    start()
+
     context become initialized
-
     context.system.eventStream.publish(NodeInitialized(self))
-  }
-
- /** Loads data from /data/load files (because this is for a runnable demo.
-  * Because we run locally vs against a cluster as a demo app, we keep that file size data small.
-  * Using rdd.toLocalIterator will consume as much memory as the largest partition in this RDD,
-  * which in this use case is 360 or fewer (if current year before December 31) small Strings.
-  *
-  * The ingested data is sent to the kafka actor for processing in the stream.
-  *
-  * RDD.toLocalIterator will consume as much memory as the largest partition in this RDD.
-  * RDD.toLocalIterator uses allowLocal = false flag. `allowLocal` specifies whether the
-  * scheduler can run the computation on the driver rather than shipping it out to the cluster
-  * for short actions like first().
-  */
-  def start(): Unit = {
-    import settings.{KafkaTopicRaw => topic, KafkaGroupId => group}
-    import KafkaEvent._
-
-    val toActor = (data: String) => kafkaActor ! KafkaMessageEnvelope[String,String](topic, group, data)
-
-    for (file <- IngestionData) {
-      log.info(s"Ingesting $file")
-      ssc.sparkContext.textFile(file).flatMap(_.split("\\n")).toLocalIterator.foreach(toActor)
-    }
   }
 
   def gracefulShutdown(): Unit = {

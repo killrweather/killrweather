@@ -38,7 +38,6 @@ abstract class ActorSparkSpec extends AkkaSpec with AbstractSpec {
     "Call the 'start' function before requesting the sample."))
 
   override def afterAll() {
-    log.info("")
     deleteOnExit()
     super.afterAll()
   }
