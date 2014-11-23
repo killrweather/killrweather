@@ -17,13 +17,7 @@ object SimpleSparkJob {
 
     // "local" here is the master, meaning we don't explicitly have a spark master set up
     val sc = new SparkContext("local", "weather", conf)
-
-    // we need this later to execute queries
-    // there's another way of writing data to cassandra, we'll cover it later
-    // this is good for single queries
-    // the future version will be for saving RDDs
-    val connector = CassandraConnector(conf)
-
+ 
     // keyspace & table
     val table: CassandraRDD[CassandraRow] = sc.cassandraTable("isd_weather_data", "raw_weather_data")
       // Add this to drill further into the data
@@ -33,7 +27,7 @@ object SimpleSparkJob {
     val rowCount = table.count()
 
 
-    println("Total Rows in Raw Weather Table: ", rowCount)
+    println(s"Total Rows in Raw Weather Table: $rowCount")
 
   }
 }
