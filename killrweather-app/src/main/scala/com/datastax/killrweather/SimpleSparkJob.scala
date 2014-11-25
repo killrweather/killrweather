@@ -1,6 +1,5 @@
 package com.datastax.killrweather
 
-import com.datastax.spark.connector.cql.CassandraConnector
 import com.datastax.spark.connector.rdd.CassandraRDD
 import org.apache.spark.{SparkContext, SparkConf}
 import com.datastax.spark.connector._
