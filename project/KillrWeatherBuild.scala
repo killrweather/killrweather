@@ -25,7 +25,7 @@ object KillrWeatherBuild extends Build {
     id = "root",
     base = file("."),
     settings = parentSettings,
-    aggregate = Seq(core, app)
+    aggregate = Seq(core, app, examples)
   )
 
   lazy val core = Project(
@@ -40,6 +40,12 @@ object KillrWeatherBuild extends Build {
     dependencies = Seq(core),
     settings = defaultSettings ++ withSigar ++ Seq(libraryDependencies ++= Dependencies.app)
   ) configs IntegrationTest
+
+  lazy val examples = Project(
+    id = "examples",
+    base = file("./killrweather-examples"),
+    settings = defaultSettings ++ Seq(libraryDependencies ++= Dependencies.examples)
+  )
 
 }
 
@@ -59,8 +65,8 @@ object Dependencies {
     val algebird          = "com.twitter"         %% "algebird-core"                      % Albebird
     val bijection         = "com.twitter"         %% "bijection-core"                     % Bijection
     val driver            = "com.datastax.cassandra" % "cassandra-driver-core"            % CassandraDriver exclude("com.google.guava", "guava") excludeAll(ExclusionRule("org.slf4j"))
-    val jodaTime          = "joda-time"           % "joda-time"                           % JodaTime % "compile;runtime"       // ApacheV2
-    val jodaConvert       = "org.joda"            % "joda-convert"                        % JodaConvert % "compile;runtime"    // ApacheV2
+    val jodaTime          = "joda-time"           % "joda-time"                           % JodaTime   % "compile;runtime"  // ApacheV2
+    val jodaConvert       = "org.joda"            % "joda-convert"                        % JodaConvert % "compile;runtime"  // ApacheV2
     val json4sCore        = "org.json4s"          %% "json4s-core"                        % Json4s          // ApacheV2
     val json4sJackson     = "org.json4s"          %% "json4s-jackson"                     % Json4s          // ApacheV2
     val json4sNative      = "org.json4s"          %% "json4s-native"                      % Json4s          // ApacheV2
@@ -104,4 +110,5 @@ object Dependencies {
 
   val app = core ++ test ++ Seq(kafkaStreaming, sparkML, sparkSQL)
 
+  val examples = connector ++ akka ++ time ++ json ++ logging ++ Seq(algebird, kafka, kafkaStreaming, sparkML, sparkSQL)
 }
