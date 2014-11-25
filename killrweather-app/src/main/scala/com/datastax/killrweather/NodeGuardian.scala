@@ -81,13 +81,13 @@ class NodeGuardian(ssc: StreamingContext,
       log.debug("Forwarding request {} to {}", e, publisher)
       publisher forward e
     case e: TemperatureRequest =>
-      log.debug("Forwarding request {} to to {}", e, temperature)
+      log.debug("Forwarding request {} to {}", e, temperature)
       temperature forward e
     case e: PrecipitationRequest =>
-      log.debug("Forwarding request {} to to {}", e, precipitation)
+      log.debug("Forwarding request {} to {}", e, precipitation)
       precipitation forward e
     case e: WeatherStationRequest =>
-      log.debug("Forwarding request {} to to {}", e, station)
+      log.debug("Forwarding request {} to {}", e, station)
       station forward e
     case PoisonPill =>
       gracefulShutdown()
