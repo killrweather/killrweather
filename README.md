@@ -5,7 +5,7 @@ KillrWeather is a reference application (which we are constantly improving) show
   
 ## Start Here
 * [KillrWeather Wiki](https://github.com/killrweather/killrweather/wiki) 
-* com.datastax.killrweather [Spark, Kafka and Cassandra workers](https://github.com/killrweather/killrweather/tree/master/killrweather-app/src)
+* com.datastax.killrweather [Spark, Kafka and Cassandra workers](http://github.com/killrweather/killrweather/tree/master/killrweather-app/src/it/scala/com/datastax/killrweather)
 
 ### Clone the repo
 
