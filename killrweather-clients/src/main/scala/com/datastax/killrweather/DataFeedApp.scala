@@ -18,6 +18,7 @@ package com.datastax.killrweather
 import java.net.InetSocketAddress
 import java.io.{File => JFile}
 
+import scala.util.Try
 import scala.concurrent.duration._
 import scala.collection.immutable
 import akka.actor._
@@ -25,8 +26,6 @@ import akka.cluster.Cluster
 import akka.http.model.HttpResponse
 import akka.io.{IO, Tcp}
 import akka.util.ByteString
-
-import scala.util.Try
 
 /** Run with
   * sbt -Dauto.import=false clients/run to run manual data file imports interactively via curl.
@@ -40,6 +39,7 @@ import scala.util.Try
   * }}}
   */
 object DataFeedApp extends App with ClientHelper {
+  import FileFeedEvent._
 
   val autoImport = Try(sys.props("auto.import").toBoolean) getOrElse true
 
@@ -48,21 +48,16 @@ object DataFeedApp extends App with ClientHelper {
   val cluster = Cluster(system)
   cluster.joinSeedNodes(immutable.Seq(cluster.selfAddress))
 
-  /** The 2 data feed actors publish messages to this actor which get published to Kafka for buffered streaming. */
-  val guardian = system.actorSelection(cluster.selfAddress.copy(port = Some(BasePort)) + "/user/node-guardian")
-
-  val dataFiles = fileFeed()
-
-  val auto = system.actorOf(Props(new AutomaticDataFeedActor(guardian, fileFeed(), DefaultTopic, DefaultGroup)), "auto-data-feed")
-  if(autoImport) auto ! WeatherEvent.Start
-
+  if (autoImport) {
+    system.actorOf(Props(new AutomaticDataFeedActor(cluster)), "auto-data-feed") ! FileStreamEnvelope(for (f <- fileFeed()) yield FileStream(f))
+  }
 
   /** Accepts comma-separated list of files
     * curl -v -X POST -d "/path/to/file.csv" http://127.0.0.1:9051
     * or:
     * curl -v -X POST -d "/path/to/file.gz,/path/to/file.csv" http://127.0.0.1:9051
     */
-  system.actorOf(Props(new DynamicDataFeedActor(guardian, DefaultTopic, DefaultGroup)), "dynamic-data-feed")
+  system.actorOf(Props(new DynamicDataFeedActor(cluster)), "dynamic-data-feed")
 
 }
 
@@ -79,34 +74,30 @@ object DataFeedApp extends App with ClientHelper {
   * scheduler can run the computation on the driver rather than shipping it out to the cluster
   * for short actions like first().
   */
-class AutomaticDataFeedActor(guardian: ActorSelection, fileData: Set[JFile], topic: String, group: String)
-  extends Actor with ActorLogging with ClientHelper {
+class AutomaticDataFeedActor(cluster: Cluster) extends Actor with ActorLogging with ClientHelper {
 
   import WeatherEvent._
+  import FileFeedEvent._
   import context.dispatcher
 
-  log.info("Starting automatic data file ingestion on {} with {} files",
-    Cluster(context.system).selfAddress, fileData.size)
+  log.info("Starting automatic data file ingestion on {}.", Cluster(context.system).selfAddress)
 
   def receive: Actor.Receive = {
-    case Start => start()
+    case FileStreamEnvelope(toStream) => start(toStream)
+    case TaskCompleted                => stop()
   }
 
-  def start(): Unit =
-    for (file <- fileData) {
+  def start(toStream: Set[FileStream]): Unit =
+    for (fs <- toStream) {
       context.system.scheduler.scheduleOnce(2.seconds) {
-        log.info(s"Ingesting {}", file.getAbsolutePath)
-        getLines(file) foreach { data =>
-          context.system.scheduler.scheduleOnce(1.second) {
-            guardian ! KafkaMessageEnvelope[String, String](topic, group, data)
-          }
-        }
+        context.actorOf(Props(new FileFeedActor(cluster))) ! fs
       }
     }
 
+  def stop(): Unit = if (context.children.isEmpty) context stop self
 }
 
-class DynamicDataFeedActor(guardian: ActorSelection, topic: String, group: String) extends Actor with ActorLogging with ClientHelper {
+class DynamicDataFeedActor(cluster: Cluster) extends Actor with ActorLogging with ClientHelper {
 
   import Tcp._
   import context.system
@@ -123,21 +114,23 @@ class DynamicDataFeedActor(guardian: ActorSelection, topic: String, group: Strin
 
   def connected(remote: InetSocketAddress, local: InetSocketAddress, connection: ActorRef): Unit = {
     log.info("Connected remote[{}], local[{}]", remote, local)
-    val handler = context.actorOf(Props(new DataFeedReceiverHandler(guardian, connection, topic, group)))
+    val handler = context.actorOf(Props(new DataFeedReceiverHandler(cluster, connection)))
     connection ! Register(handler)
   }
 }
 
-private[killrweather] class DataFeedReceiverHandler(guardian: ActorSelection, connection: ActorRef, topic: String, group: String)
+private[killrweather] class DataFeedReceiverHandler(cluster: Cluster, connection: ActorRef)
   extends Actor with ActorLogging with ClientHelper {
 
   import Tcp._
   import WeatherEvent._
-  import context.dispatcher
+  import FileFeedEvent._
 
   def receive: Actor.Receive = {
-    case Received(data) => send(data, sender)
-    case PeerClosed => context stop self
+    case Received(data)           => send(data, sender)
+    case PeerClosed               => context stop self
+    case TaskCompleted
+      if context.children.isEmpty => context stop self
   }
 
   // tech debt
@@ -150,14 +143,35 @@ private[killrweather] class DataFeedReceiverHandler(guardian: ActorSelection, co
         value.split(",").map(new JFile(_)).filter(_.exists) foreach {
           file =>
             log.info(s"Received {}", file)
-            getLines(file) foreach {
-              line =>
-                context.system.scheduler.scheduleOnce(2.seconds) {
-                  log.debug(s"Sending '{}'", line)
-                  guardian ! KafkaMessageEnvelope[String, String](topic, group, line)
-                }
-            }
+            context.actorOf(Props(new FileFeedActor(cluster))) ! FileStream(file)
         }
       } else log.error("Received unsupported data type: {}", value)
   }
 }
+
+class FileFeedActor(cluster: Cluster) extends Actor with ActorLogging with ClientHelper {
+
+  import WeatherEvent._
+  import FileFeedEvent._
+  import context.dispatcher
+
+  /** The 2 data feed actors publish messages to this actor which get published to Kafka for buffered streaming. */
+  val guardian = context.actorSelection(cluster.selfAddress.copy(port = Some(BasePort)) + "/user/node-guardian")
+
+  def receive: Actor.Receive = {
+    case e: FileStream => handle(e, sender)
+  }
+
+  def handle(e : FileStream, origin : ActorRef): Unit = {
+    log.info(s"Ingesting {}", e.file.getAbsolutePath)
+    e.getLines foreach { data =>
+      context.system.scheduler.scheduleOnce(1.second) {
+        log.debug(s"Sending '{}'", data)
+        guardian ! KafkaMessageEnvelope[String, String](DefaultTopic, DefaultGroup, data)
+      }
+    }
+    origin ! TaskCompleted
+    context stop self
+  }
+}
+

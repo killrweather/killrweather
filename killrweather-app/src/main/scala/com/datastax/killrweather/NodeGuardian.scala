@@ -15,6 +15,8 @@
  */
 package com.datastax.killrweather
 
+import akka.cluster.MemberStatus.Joining
+
 import scala.concurrent.duration._
 import scala.collection.immutable
 import akka.actor._
@@ -120,12 +122,11 @@ class ClusterAware extends Actor with ActorLogging {
   override def postStop(): Unit = cluster.unsubscribe(self)
 
   def receive : Actor.Receive = {
-    case LeaderChanged(leader) =>
-      log.info("Leader changed to {}", leader)
     case ClusterMetricsChanged(forNode) =>
-      log.info("Cluster metrics update:")
+      log.debug("Cluster metrics update:")
+      forNode foreach (m => log.info("{}", m))
     case MemberUp(member) =>
-      log.info("Member is Up: {}", member.address)
+      log.info("Member {} joined cluster.", member.address)
     case UnreachableMember(member) =>
       log.info("Member detected as unreachable: {}", member)
     case MemberRemoved(member, previousStatus) =>

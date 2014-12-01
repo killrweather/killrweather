@@ -15,11 +15,9 @@
  */
 package com.datastax.killrweather
 
-import java.io.{BufferedInputStream, FileInputStream, File => JFile}
-import java.util.zip.GZIPInputStream
+import java.io.{File => JFile}
 
 import scala.util.Try
-import scala.util.control.NonFatal
 import akka.util.ByteString
 import com.typesafe.config.ConfigFactory
 
@@ -42,18 +40,25 @@ private[killrweather] trait ClientHelper {
         new JFile(s"$path/$name".replace("./", ""))
     }.toSet
 
-  protected def getLines(file: JFile): Stream[String] = try {
-    file match {
+}
+
+private[killrweather] object FileFeedEvent {
+  import java.io.{BufferedInputStream, FileInputStream, File => JFile}
+  import java.util.zip.GZIPInputStream
+
+  @SerialVersionUID(0L)
+  sealed trait FileFeedEvent extends Serializable
+  case class FileStreamEnvelope(files: Set[FileStream]) extends FileFeedEvent
+  case class FileStream(file: JFile) extends FileFeedEvent {
+
+    def getLines: Stream[String] = file match {
       case null =>
-        throw new IllegalArgumentException("File must not be null.")
+        throw new IllegalArgumentException("FileStream: File must not be null.")
       case f if f.getAbsolutePath endsWith ".gz" =>
         scala.io.Source.fromInputStream(new GZIPInputStream(new BufferedInputStream(new FileInputStream(file)))).getLines.toStream
       case f =>
         scala.io.Source.fromFile(file).getLines.toStream
     }
-  } catch { case NonFatal(e) =>
-      println(s"Error parsing lines from file $file: $e"); throw e
   }
-
 }
 
