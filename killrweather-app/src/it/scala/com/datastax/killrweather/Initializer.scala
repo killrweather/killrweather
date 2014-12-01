@@ -18,6 +18,7 @@ package com.datastax.killrweather
 import akka.actor.ActorRef
 import com.datastax.spark.connector._
 import com.datastax.spark.connector.cql.CassandraConnector
+import com.datastax.spark.connector.embedded.KafkaEvent.KafkaMessageEnvelope
 import com.datastax.spark.connector.util.Logging
 import org.apache.spark.SparkContext
 import org.apache.spark.rdd.RDD
@@ -27,7 +28,7 @@ import org.apache.spark.rdd.RDD
  * assumes manual creation by running the cql scripts.
  */
 private[killrweather] class Initializer(sc: SparkContext, settings: WeatherSettings)
-  extends Serializable with Logging {
+  extends Serializable with TestFileHelper with Logging {
 
   import com.datastax.killrweather.Weather._
   import settings._
@@ -52,21 +53,19 @@ private[killrweather] class Initializer(sc: SparkContext, settings: WeatherSetti
   private def loadDataFiles(kafkaActor: Option[ActorRef]): Unit = {
     import settings.{CassandraKeyspace => keyspace, CassandraTableRaw => table, KafkaGroupId => group, KafkaTopicRaw => topic}
 
-    def toLines(file: String): RDD[String] = {
-      log.info(s"Processing $file")
+    def toLines(file: String): RDD[String] =
       sc.textFile(file).flatMap(_.split("\\n"))
-    }
 
     kafkaActor match {
       case Some(actor) =>
         val toActor = (line: String) => actor ! KafkaMessageEnvelope[String, String](topic, group, line)
 
-        for (file <- IngestionData)
-          toLines(file).toLocalIterator.foreach(toActor)
+        for (file <- fileFeed(DataLoadPath, DataFileExtension))
+          toLines(file.getAbsolutePath).toLocalIterator.foreach(toActor)
 
       case _ =>
-        for (file <- IngestionData)
-          toLines(file).map(_.split(",")).map(RawWeatherData(_)).saveToCassandra(keyspace, table)
+        for (file <- fileFeed(DataLoadPath, DataFileExtension))
+          toLines(file.getAbsolutePath).map(_.split(",")).map(RawWeatherData(_)).saveToCassandra(keyspace, table)
     }
   }
 

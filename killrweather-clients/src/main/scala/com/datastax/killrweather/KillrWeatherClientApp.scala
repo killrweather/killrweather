@@ -13,22 +13,15 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-
 package com.datastax.killrweather
 
-import com.typesafe.config.ConfigFactory
+import akka.actor._
 
-/** Initializes Kafka components. */
-class Settings extends Serializable {
- 
-  protected val kafka = ConfigFactory.load.getConfig("kafka")
-  //val KafkaHosts: immutable.Seq[String] = Util.immutableSeq(timeseries.getStringList("kafka.hosts"))
-  val KafkaGroupId = kafka.getString("group.id")
-  val KafkaTopicRaw = kafka.getString("topic.raw")
-  val KafkaEncoderFqcn = kafka.getString("encoder.fqcn")
-  val KafkaDecoderFqcn = kafka.getString("decoder.fqcn")
-  val KafkaPartitioner = kafka.getString("partitioner.fqcn")
-  val KafkaBatchSendSize = kafka.getInt("batch.send.size")
- 
+object KillrWeatherClientApp extends App with ClientHelper {
+
+  val system = ActorSystem("api-client")
+
+  /** Drives demo activity by sending requests to the NodeGuardian actor. */
+  val queryClient = system.actorOf(Props[WeatherApiQueries], "api-client")
+
 }
-

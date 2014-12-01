@@ -16,7 +16,8 @@
 
 object Versions {
 
-  val Akka           = "2.2.3" // binary incompat with akka and config latest 2.3.6 with spark :(
+  val Akka           = "2.3.7" // used by the client, no spark
+  val AkkaSpark      = "2.2.3" // binary incompat with akka.latest with spark :(
   val Albebird       = "0.8.1"
   val Bijection      = "0.7.0"
   val CassandraDriver = "2.1.2"

@@ -15,13 +15,13 @@
  */
 package com.datastax.killrweather
 
+import scala.concurrent.duration._
 import scala.collection.immutable
 import akka.actor._
 import akka.pattern.gracefulStop
 import org.apache.spark.streaming.kafka.KafkaInputDStream
 import org.apache.spark.streaming.StreamingContext
 import com.datastax.spark.connector.embedded.{KafkaProducer, Assertions, EmbeddedKafka}
-import com.datastax.spark.connector.embedded.KafkaEvent.KafkaMessageEnvelope
 
 /**
  * The `NodeGuardian` is the root of the primary KillrWeather deployed application.
@@ -35,9 +35,7 @@ import com.datastax.spark.connector.embedded.KafkaEvent.KafkaMessageEnvelope
  *    a [[com.datastax.killrweather.Weather.RawWeatherData]] (hourly per weather station),
  *    and saves the new data to the cassandra raw data table as it arrives.
  */
-class NodeGuardian(ssc: StreamingContext,
-                   kafka: EmbeddedKafka,
-                   settings: WeatherSettings)
+class NodeGuardian(ssc: StreamingContext, kafka: EmbeddedKafka, settings: WeatherSettings)
   extends ClusterAware with AggregationActor with Assertions with ActorLogging {
 
   import WeatherEvent._
@@ -45,9 +43,9 @@ class NodeGuardian(ssc: StreamingContext,
 
   /* Creates the Kafka actors: */
   context.actorOf(Props(new KafkaStreamingActor(kafka.kafkaParams, ssc, settings, self)), "kafka-stream")
+  val producerConfig = KafkaProducer.defaultConfig(kafka.kafkaConfig)
 
-  val publisher = context.actorOf(Props(new KafkaPublisherActor(
-    KafkaProducer.defaultConfig(kafka.kafkaConfig), ssc.sparkContext, settings)), "kafka-publisher")
+  val publisher = context.actorOf(Props(new KafkaPublisherActor(producerConfig, ssc.sparkContext, settings)), "kafka-publisher")
 
   /* The Spark/Cassandra computation actors: For the tutorial we just use 2005 for now. */
   val temperature = context.actorOf(Props(new TemperatureActor(ssc.sparkContext, settings)), "temperature")
@@ -99,7 +97,7 @@ class NodeGuardian(ssc: StreamingContext,
     ssc.start() // currently can not add more dstreams once started
 
     context become initialized
-    context.system.eventStream.publish(NodeInitialized(self))
+    context.system.eventStream.publish(NodeInitialized)
   }
 
   def gracefulShutdown(): Unit = {
@@ -107,4 +105,32 @@ class NodeGuardian(ssc: StreamingContext,
     log.info(s"Graceful stop completed.")
   }
 
+}
+
+class ClusterAware extends Actor with ActorLogging {
+  import akka.cluster.Cluster
+  import akka.cluster.ClusterEvent._
+
+  val cluster = Cluster(context.system)
+
+  /** subscribe to cluster changes, re-subscribe when restart. */
+  override def preStart(): Unit =
+    cluster.subscribe(self, classOf[ClusterDomainEvent])
+
+  override def postStop(): Unit = cluster.unsubscribe(self)
+
+  def receive : Actor.Receive = {
+    case LeaderChanged(leader) =>
+      log.info("Leader changed to {}", leader)
+    case ClusterMetricsChanged(forNode) =>
+      log.info("Cluster metrics update:")
+    case MemberUp(member) =>
+      log.info("Member is Up: {}", member.address)
+    case UnreachableMember(member) =>
+      log.info("Member detected as unreachable: {}", member)
+    case MemberRemoved(member, previousStatus) =>
+      log.info("Member is Removed: {} after {}",
+        member.address, previousStatus)
+    case _: MemberEvent => // ignore
+  }
 }

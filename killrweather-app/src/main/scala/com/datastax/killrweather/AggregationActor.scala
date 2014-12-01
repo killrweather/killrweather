@@ -17,14 +17,12 @@ package com.datastax.killrweather
 
 import java.util.concurrent.TimeoutException
 
+import scala.concurrent.duration._
 import akka.actor.SupervisorStrategy._
 import akka.actor._
 import akka.util.Timeout
-import org.apache.spark.SparkException
 import org.joda.time.format.DateTimeFormat
 import org.joda.time.{DateTime, DateTimeZone}
-
-import scala.concurrent.duration._
 
 /** A base actor for weather data computation. */
 private[killrweather] trait AggregationActor extends Actor {
@@ -35,7 +33,6 @@ private[killrweather] trait AggregationActor extends Actor {
 
   override val supervisorStrategy =
     OneForOneStrategy(maxNrOfRetries = 10, withinTimeRange = 1 minute) {
-      case _: SparkException           => Stop
       case _: ActorInitializationException => Stop
       case _: IllegalArgumentException => Stop
       case _: IllegalStateException    => Restart

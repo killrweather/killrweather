@@ -87,7 +87,7 @@ class TemperatureActor(sc: SparkContext, settings: WeatherSettings)
    */
   private def forDay(key: Day, temps: Seq[Double]): WeatherAggregate  =
     if (temps.nonEmpty) {
-      val data = DailyTemperature(key, StatCounter(temps))
+      val data = toDailyTemperature(key, StatCounter(temps))
       self ! data
       data
     } else NoDataAvailable(key.wsid, key.year, classOf[DailyTemperature])
@@ -98,4 +98,15 @@ class TemperatureActor(sc: SparkContext, settings: WeatherSettings)
     else
       NoDataAvailable(wsid, year, classOf[MonthlyTemperature])
 
+  def toDailyTemperature(key: Day, stats: StatCounter): DailyTemperature =
+    DailyTemperature(
+      key.wsid,
+      key.year,
+      key.month,
+      key.day,
+      high = stats.max,
+      low = stats.min,
+      mean = stats.mean,
+      variance = stats.variance,
+      stdev = stats.stdev)
 }

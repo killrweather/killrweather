@@ -15,12 +15,11 @@
  */
 package com.datastax.killrweather
 
+import scala.util.Try
 import com.datastax.driver.core.ConsistencyLevel
 import com.datastax.spark.connector.cql.{AuthConf, NoAuthConf, PasswordAuthConf}
 import com.datastax.spark.connector.util.Logging
 import com.typesafe.config.{Config, ConfigFactory}
-
-import scala.util.Try
 
 /**
  * Application settings. First attempts to acquire from the deploy environment.
@@ -43,7 +42,7 @@ import scala.util.Try
  *
  * @param conf Optional config for test
  */
-final class WeatherSettings(conf: Option[Config] = None) extends Settings with Logging with Serializable {
+final class WeatherSettings(conf: Option[Config] = None) extends Logging with Serializable {
 
   val rootConfig = conf match {
     case Some(c) => c.withFallback(ConfigFactory.load)
@@ -52,6 +51,7 @@ final class WeatherSettings(conf: Option[Config] = None) extends Settings with L
 
   protected val spark = rootConfig.getConfig("spark")
   protected val cassandra = rootConfig.getConfig("cassandra")
+  protected val kafka = ConfigFactory.load.getConfig("kafka")
   protected val killrweather = rootConfig.getConfig("killrweather")
 
   val SparkMaster = withFallback[String](Try(spark.getString("master")),
@@ -147,6 +147,14 @@ final class WeatherSettings(conf: Option[Config] = None) extends Settings with L
 
   val CassandraDefaultMeasuredInsertsCount: Int = 128
 
+  //val KafkaHosts: immutable.Seq[String] = Util.immutableSeq(kafka.getStringList("hosts"))
+  val KafkaGroupId = kafka.getString("group.id")
+  val KafkaTopicRaw = kafka.getString("topic.raw")
+  val KafkaEncoderFqcn = kafka.getString("encoder.fqcn")
+  val KafkaDecoderFqcn = kafka.getString("decoder.fqcn")
+  val KafkaPartitioner = kafka.getString("partitioner.fqcn")
+  val KafkaBatchSendSize = kafka.getInt("batch.send.size")
+
   val AppName = killrweather.getString("app-name")
   val CassandraKeyspace = killrweather.getString("cassandra.keyspace")
   val CassandraTableRaw = killrweather.getString("cassandra.table.raw")
@@ -157,19 +165,6 @@ final class WeatherSettings(conf: Option[Config] = None) extends Settings with L
   val CassandraTableStations = killrweather.getString("cassandra.table.stations")
   val DataLoadPath = killrweather.getString("data.load.path")
   val DataFileExtension = killrweather.getString("data.file.extension")
-
-  val IngestionData: Set[String] = {
-    import java.io.{File => JFile}
-
-    val files = new JFile(s"$DataLoadPath").list.collect {
-      case name if name.endsWith(s"$DataFileExtension") =>
-        val path = s"$DataLoadPath/$name".replace("./", "")
-        new JFile(path).getAbsolutePath
-    }.toSet
-
-    log.info(s"Found ${files.size} data files to load.")
-    files.toSet
-  }
 
   /** Attempts to acquire from environment, then java system properties. */
   def withFallback[T](env: Try[T], key: String): Option[T] = env match {

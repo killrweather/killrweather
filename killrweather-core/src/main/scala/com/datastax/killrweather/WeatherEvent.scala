@@ -15,9 +15,9 @@
  */
 package com.datastax.killrweather
 
-import akka.actor.ActorRef
 import org.joda.time.DateTime
 
+// TODO document the Event API
 object WeatherEvent {
   import Weather._
 
@@ -27,16 +27,12 @@ object WeatherEvent {
 
   sealed trait LifeCycleEvent extends WeatherEvent
   case object OutputStreamInitialized extends LifeCycleEvent
-  case class NodeInitialized(root: ActorRef) extends LifeCycleEvent
+  case object NodeInitialized extends LifeCycleEvent
   case object DataFeedStarted extends LifeCycleEvent
   case object Shutdown extends LifeCycleEvent
   case object TaskCompleted extends LifeCycleEvent
 
-  sealed trait Task extends WeatherEvent
-  case object QueryTask extends Task
-
   sealed trait WeatherRequest extends WeatherEvent
-
   trait WeatherStationRequest extends WeatherRequest
   case class GetWeatherStation(sid: String) extends WeatherStationRequest
   case class GetCurrentWeather(wsid: String, timestamp: Option[DateTime]= None) extends WeatherStationRequest
@@ -51,6 +47,10 @@ object WeatherEvent {
   case class GetMonthlyTemperature(wsid: String, year: Int, month: Int) extends TemperatureRequest
 
 
+  sealed trait Task extends Serializable
+  case object QueryTask extends Task
+
+  case class KafkaMessageEnvelope[K,V](topic: String, key: K, messages: V*) extends Serializable
 
   /**
    * Quick access lookup table for sky_condition. Useful for potential analytics.

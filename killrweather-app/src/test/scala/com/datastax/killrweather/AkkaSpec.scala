@@ -16,6 +16,7 @@
 
 package com.datastax.killrweather
 
+import java.io.{File => JFile}
 import akka.cluster.Cluster
 import akka.actor._
 import akka.testkit.{DefaultTimeout, ImplicitSender, TestKit}
@@ -36,6 +37,15 @@ abstract class AkkaSpec extends TestKit(ActorSystem()) with AbstractSpec with Im
    override def afterAll() {
      system.shutdown()
   }
+}
+
+trait TestFileHelper {
+
+  def fileFeed(path: String, extension: String): Set[JFile] =
+    new JFile(path).list.collect {
+      case name if name.endsWith(extension) =>
+        new JFile(s"$path/$name".replace("./", ""))
+    }.toSet
 }
 
 class MetricsListener(cluster: Cluster) extends Actor with ActorLogging {

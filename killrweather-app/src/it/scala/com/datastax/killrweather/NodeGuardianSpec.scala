@@ -56,7 +56,7 @@ class NodeGuardianSpec extends ActorSparkSpec {
   "NodeGuardian" must {
     "publish a NodeInitialized to the event stream on initialization" in {
       expectMsgPF(10.seconds) {
-        case NodeInitialized(actor) => actor.path should be (guardian.path)
+        case NodeInitialized =>
       }
     }
     "return a weather station" in {

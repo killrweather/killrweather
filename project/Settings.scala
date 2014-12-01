@@ -67,9 +67,7 @@ object Settings extends Build {
     managedClasspath in IntegrationTest <<= Classpaths.concat(managedClasspath in IntegrationTest, exportedProducts in Test)
   )
 
-  lazy val withSigar = Seq(
-    javaOptions in run ++= Seq("-Djava.library.path=./sigar", "-Xms128m", "-Xmx1024m")
-  )
+  lazy val withSigar = Seq(javaOptions in run ++= Seq(s"-Djava.library.path=./sigar", "-Xms128m", "-Xmx1024m"))
 
 }
 

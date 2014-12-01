@@ -15,19 +15,19 @@
  */
 package com.datastax.killrweather
 
+import scala.concurrent.duration._
 import akka.actor._
 import org.joda.time.{DateTime, DateTimeZone}
 
-import scala.concurrent.duration._
+private[killrweather] class WeatherApiQueries extends Actor with ActorLogging with ClientHelper {
 
-class WeatherApiQueries(settings: WeatherSettings, actor: ActorSelection)
-  extends AggregationActor with ActorLogging {
+  import Weather._
+  import WeatherEvent._
+  import context.dispatcher
 
-  import com.datastax.killrweather.Weather._
-  import com.datastax.killrweather.WeatherEvent._
-  import settings._
+  val actor = context.actorSelection(s"akka.tcp://KillrWeather@127.0.0.1:$BasePort/user/node-guardian")
 
-  var task = context.system.scheduler.schedule(3.seconds, 2.seconds) {
+  val task = context.system.scheduler.schedule(3.seconds, 2.seconds) {
     self ! QueryTask
   }
 
@@ -50,7 +50,7 @@ class WeatherApiQueries(settings: WeatherSettings, actor: ActorSelection)
     val previous = (d: Day) => queried contains d
 
     val sample: Day = (for {
-      file <- IngestionData
+      file <- fileFeed()
       data <- getLines(file).map(Day(_)).filterNot(previous)
     } yield data).head
 
@@ -76,23 +76,5 @@ class WeatherApiQueries(settings: WeatherSettings, actor: ActorSelection)
     actor ! GetWeatherStation(sample.wsid)
 
     queried += sample
-  }
-
-  // slinking away in shame for writing this..
-  protected def getLines(file: String): Seq[String] = {
-    import java.io.{BufferedInputStream, FileInputStream}
-    import java.util.zip.GZIPInputStream
-
-    val a = new FileInputStream(file)
-    val b = new BufferedInputStream(a)
-    val c = new GZIPInputStream(new BufferedInputStream(new FileInputStream(file)))
-    var samples: Seq[String] = Seq.empty
-    try {
-      val stream = scala.io.Source.fromInputStream(c)
-      samples ++= stream.getLines.toList
-      stream.close()
-    } finally a.close();b.close;c.close;
-
-    samples
   }
 }
