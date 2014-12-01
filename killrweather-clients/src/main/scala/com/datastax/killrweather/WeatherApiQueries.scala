@@ -51,7 +51,7 @@ private[killrweather] class WeatherApiQueries extends Actor with ActorLogging wi
 
     val sample: Day = (for {
       file <- fileFeed()
-      data <- getLines(file).map(Day(_)).filterNot(previous)
+      data <- getLines(file).toList.map(Day(_)).filterNot(previous)
     } yield data).head
 
     log.info("Requesting the current weather for weather station {}", sample.wsid)

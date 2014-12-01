@@ -16,20 +16,32 @@
 package com.datastax.killrweather
 
 import java.net.InetSocketAddress
-import java.io.File
+import java.io.{File => JFile}
 
+import scala.concurrent.duration._
+import scala.collection.immutable
+import akka.actor._
 import akka.cluster.Cluster
 import akka.http.model.HttpResponse
-
-import scala.collection.immutable
-import scala.util.Try
-import akka.actor._
 import akka.io.{IO, Tcp}
 import akka.util.ByteString
 
+import scala.util.Try
+
+/** Run with
+  * sbt -Dauto.import=false clients/run to run manual data file imports interactively via curl.
+  * sbt clients/run for automatic data file import to Kafka.
+  * 'auto.import' defaults to true.
+  *
+  * To do manual curl import: use PUT or POST
+  * {{{
+  *   curl -v -X PUT -d "/path/to/filename.csv" http://127.0.0.1:9051
+  *   curl -v -X POST -d "./data/load/sf-2008.csv.gz" http://127.0.0.1:9051
+  * }}}
+  */
 object DataFeedApp extends App with ClientHelper {
 
-  case object Ack extends Tcp.Event
+  val autoImport = Try(sys.props("auto.import").toBoolean) getOrElse true
 
   val system = ActorSystem("KillrWeather")
 
@@ -39,19 +51,24 @@ object DataFeedApp extends App with ClientHelper {
   /** The 2 data feed actors publish messages to this actor which get published to Kafka for buffered streaming. */
   val guardian = system.actorSelection(cluster.selfAddress.copy(port = Some(BasePort)) + "/user/node-guardian")
 
-  system.actorOf(Props(new AutomaticDataFeedActor(guardian, DefaultTopic, DefaultGroup)), "auto-data-feed")
+  val dataFiles = fileFeed()
+
+  val auto = system.actorOf(Props(new AutomaticDataFeedActor(guardian, fileFeed(), DefaultTopic, DefaultGroup)), "auto-data-feed")
+  if(autoImport) auto ! WeatherEvent.Start
+
 
   /** Accepts comma-separated list of files
     * curl -v -X POST -d "/path/to/file.csv" http://127.0.0.1:9051
     * or:
-    * curl -v -X POST -d "/path/to/file.csv" http://127.0.0.1:9051
-    * curl -v -X POST -d "/path/to/file.gz" http://127.0.0.1:9051
+    * curl -v -X POST -d "/path/to/file.gz,/path/to/file.csv" http://127.0.0.1:9051
     */
   system.actorOf(Props(new DynamicDataFeedActor(guardian, DefaultTopic, DefaultGroup)), "dynamic-data-feed")
 
 }
 
-/** Because we run locally vs against a cluster as a demo app, we keep that file size data small.
+/** Simulates real time weather events individually sent to the KillrWeather App for demos.
+  *
+  * Because we run locally vs against a cluster as a demo app, we keep that file size data small.
   * Using rdd.toLocalIterator will consume as much memory as the largest partition in this RDD,
   * which in this use case is 360 or fewer (if current year before December 31) small Strings.
   *
@@ -62,31 +79,30 @@ object DataFeedApp extends App with ClientHelper {
   * scheduler can run the computation on the driver rather than shipping it out to the cluster
   * for short actions like first().
   */
-class AutomaticDataFeedActor(guardian: ActorSelection, topic: String, group: String) extends Actor with ActorLogging with ClientHelper {
-  import scala.concurrent.duration._
+class AutomaticDataFeedActor(guardian: ActorSelection, fileData: Set[JFile], topic: String, group: String)
+  extends Actor with ActorLogging with ClientHelper {
+
   import WeatherEvent._
   import context.dispatcher
 
-  log.info("Starting automatic data file ingestion on {}", Cluster(context.system).selfAddress)
+  log.info("Starting automatic data file ingestion on {} with {} files",
+    Cluster(context.system).selfAddress, fileData.size)
 
-  val historicData = fileFeed()
-  log.info(s"Ingesting {} data files", historicData.size)
+  def receive: Actor.Receive = {
+    case Start => start()
+  }
 
-  for(file <- historicData) {
-    context.system.scheduler.scheduleOnce(5.seconds) {
-      log.info(s"Ingesting {}", file.getAbsolutePath)
-      val data = getLines(file)
-      getLines(file) foreach { data =>
-        context.system.scheduler.scheduleOnce(1.second) {
-          guardian ! KafkaMessageEnvelope[String,String](topic, group, data)
+  def start(): Unit =
+    for (file <- fileData) {
+      context.system.scheduler.scheduleOnce(2.seconds) {
+        log.info(s"Ingesting {}", file.getAbsolutePath)
+        getLines(file) foreach { data =>
+          context.system.scheduler.scheduleOnce(1.second) {
+            guardian ! KafkaMessageEnvelope[String, String](topic, group, data)
+          }
         }
       }
     }
-  }
-
-  def receive : Actor.Receive = {
-    case e => log.info("{}", e)
-  }
 
 }
 
@@ -99,7 +115,7 @@ class DynamicDataFeedActor(guardian: ActorSelection, topic: String, group: Strin
 
   IO(Tcp) ! Bind(self, remoteAddress)
 
-  def receive : Actor.Receive = {
+  def receive: Actor.Receive = {
     case b@Bound(local) => log.info("{}", b)
     case CommandFailed(_: Bind) => context stop self
     case Connected(remote, local) => connected(remote, local, sender)
@@ -117,33 +133,31 @@ private[killrweather] class DataFeedReceiverHandler(guardian: ActorSelection, co
 
   import Tcp._
   import WeatherEvent._
+  import context.dispatcher
 
   def receive: Actor.Receive = {
     case Received(data) => send(data, sender)
     case PeerClosed => context stop self
   }
 
-  def send(data: ByteString, origin: ActorRef): Unit = {
-    // tech debt
-    Try(data.utf8String.split("Content-Type: application/x-www-form-urlencoded")(1).trim) map {
-      value =>
-        log.info("Received {} on {} from {}.", value, self.path.address, origin)
-        connection ! HttpResponse()
+  // tech debt
+  def send(data: ByteString, origin: ActorRef): Unit = parse(data) map {
+    value =>
+      log.info("Received {} on {} from {}.", value, self.path.address, origin)
+      connection ! HttpResponse()
 
-        // TODO type
-        val lines: Seq[String] = if (value contains File.separator) {
-          value.split(",").map(new File(_)).filter(_.exists).flatMap {
-            file => getLines(file)
-          }
-        } else Nil
-
-        log.info(s"found ${lines.size} lines")
-        lines foreach { line =>
-          log.debug(s"sending to kafka $line")
-          guardian ! KafkaMessageEnvelope[String,String](topic, group, line)
-       }
-    }
+      if (value contains JFile.separator) {
+        value.split(",").map(new JFile(_)).filter(_.exists) foreach {
+          file =>
+            log.info(s"Received {}", file)
+            getLines(file) foreach {
+              line =>
+                context.system.scheduler.scheduleOnce(2.seconds) {
+                  log.debug(s"Sending '{}'", line)
+                  guardian ! KafkaMessageEnvelope[String, String](topic, group, line)
+                }
+            }
+        }
+      } else log.error("Received unsupported data type: {}", value)
   }
-
-
 }

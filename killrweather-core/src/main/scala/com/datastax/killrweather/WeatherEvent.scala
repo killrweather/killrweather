@@ -28,6 +28,7 @@ object WeatherEvent {
   sealed trait LifeCycleEvent extends WeatherEvent
   case object OutputStreamInitialized extends LifeCycleEvent
   case object NodeInitialized extends LifeCycleEvent
+  case object Start extends LifeCycleEvent
   case object DataFeedStarted extends LifeCycleEvent
   case object Shutdown extends LifeCycleEvent
   case object TaskCompleted extends LifeCycleEvent

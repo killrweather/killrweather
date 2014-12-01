@@ -18,9 +18,10 @@ package com.datastax.killrweather
 import java.io.{BufferedInputStream, FileInputStream, File => JFile}
 import java.util.zip.GZIPInputStream
 
-import com.typesafe.config.ConfigFactory
-
+import scala.util.Try
 import scala.util.control.NonFatal
+import akka.util.ByteString
+import com.typesafe.config.ConfigFactory
 
 private[killrweather] trait ClientHelper {
 
@@ -31,25 +32,24 @@ private[killrweather] trait ClientHelper {
   protected val DefaultTopic = config.getString("kafka.topic.raw")
   protected val DefaultGroup = config.getString("kafka.group.id")
 
-  def fileFeed(path: String = DefaultPath, extension: String = DefaultExtension): Set[JFile] =
+  // val Pattern = """Content-Type.*?(/[^\s,]+)(?:,(/[^\s,]+))*""".r
+  protected def parse(data: ByteString): Option[String] =
+    Try(data.utf8String.split("Content-Type: application/x-www-form-urlencoded")(1).trim).toOption
+
+  protected def fileFeed(path: String = DefaultPath, extension: String = DefaultExtension): Set[JFile] =
     new JFile(path).list.collect {
       case name if name.endsWith(extension) =>
         new JFile(s"$path/$name".replace("./", ""))
     }.toSet
 
-  // slinking away in shame for writing this..
-  protected def getLines(file: JFile): Seq[String] = try {
+  protected def getLines(file: JFile): Stream[String] = try {
     file match {
+      case null =>
+        throw new IllegalArgumentException("File must not be null.")
       case f if f.getAbsolutePath endsWith ".gz" =>
-        val a = scala.io.Source.fromInputStream(new GZIPInputStream(new BufferedInputStream(new FileInputStream(file))))
-        val b = a.getLines.toList
-        a.close()
-        b
+        scala.io.Source.fromInputStream(new GZIPInputStream(new BufferedInputStream(new FileInputStream(file)))).getLines.toStream
       case f =>
-        val a = scala.io.Source.fromFile(file)
-        val b = a.getLines.toList
-        a.close()
-        b
+        scala.io.Source.fromFile(file).getLines.toStream
     }
   } catch { case NonFatal(e) =>
       println(s"Error parsing lines from file $file: $e"); throw e
