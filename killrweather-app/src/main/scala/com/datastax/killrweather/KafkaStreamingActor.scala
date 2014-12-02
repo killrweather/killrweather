@@ -43,8 +43,8 @@ class KafkaStreamingActor(kafkaParams: Map[String, String],
 
   val kafkaStream = KafkaUtils.createStream[String, String, StringDecoder, StringDecoder](
     ssc, kafkaParams, Map(KafkaTopicRaw -> 10), StorageLevel.DISK_ONLY_2)
-    .map { case (_, line) => println(s"have $line"); line.split(",")}
-    .filter(_(0) contains ":") // todo type validation
+    .map { case (_, line) => line.split(",")}
+    .filter(_(0) contains ":")
     .map(RawWeatherData(_))
 
   /** Saves the raw data to Cassandra - raw table. */

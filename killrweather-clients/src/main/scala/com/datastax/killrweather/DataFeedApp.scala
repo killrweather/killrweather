@@ -21,21 +21,25 @@ import java.io.{File => JFile}
 import scala.util.Try
 import scala.concurrent.duration._
 import scala.collection.immutable
+import org.reactivestreams.Publisher
+import akka.http.Http.IncomingConnection
+import akka.stream.FlowMaterializer
+import akka.stream.scaladsl.{Sink, Source}
 import akka.actor._
 import akka.cluster.Cluster
-import akka.http.model.HttpResponse
-import akka.io.{IO, Tcp}
-import akka.util.ByteString
+import akka.http.model._
+import akka.http.model.HttpMethods._
+import akka.io.IO
+import akka.util.Timeout
 
 /** Run with
   * sbt -Dauto.import=false clients/run to run manual data file imports interactively via curl.
   * sbt clients/run for automatic data file import to Kafka.
   * 'auto.import' defaults to true.
   *
-  * To do manual curl import: use PUT or POST
+  * To do manual curl import:
   * {{{
-  *   curl -v -X PUT -d "/path/to/filename.csv" http://127.0.0.1:9051
-  *   curl -v -X POST -d "./data/load/sf-2008.csv.gz" http://127.0.0.1:9051
+  *   curl -v -X POST --header "X-DATA-FEED: ./data/load/sf-2008.csv.gz" http://127.0.0.1:8080/weather/data
   * }}}
   */
 object DataFeedApp extends App with ClientHelper {
@@ -48,17 +52,12 @@ object DataFeedApp extends App with ClientHelper {
   val cluster = Cluster(system)
   cluster.joinSeedNodes(immutable.Seq(cluster.selfAddress))
 
-  if (autoImport) {
-    system.actorOf(Props(new AutomaticDataFeedActor(cluster)), "auto-data-feed") ! FileStreamEnvelope(for (f <- fileFeed()) yield FileStream(f))
-  }
-
-  /** Accepts comma-separated list of files
-    * curl -v -X POST -d "/path/to/file.csv" http://127.0.0.1:9051
-    * or:
-    * curl -v -X POST -d "/path/to/file.gz,/path/to/file.csv" http://127.0.0.1:9051
-    */
   system.actorOf(Props(new DynamicDataFeedActor(cluster)), "dynamic-data-feed")
 
+  if (autoImport) {
+    val envelope = FileStreamEnvelope(for (f <- fileFeed()) yield FileStream(f))
+    system.actorOf(Props(new AutomaticDataFeedActor(cluster)), "auto-data-feed") ! envelope
+  }
 }
 
 /** Simulates real time weather events individually sent to the KillrWeather App for demos.
@@ -98,55 +97,53 @@ class AutomaticDataFeedActor(cluster: Cluster) extends Actor with ActorLogging w
 }
 
 class DynamicDataFeedActor(cluster: Cluster) extends Actor with ActorLogging with ClientHelper {
-
-  import Tcp._
-  import context.system
-
-  val remoteAddress = new InetSocketAddress("localhost", 9051)
-
-  IO(Tcp) ! Bind(self, remoteAddress)
-
-  def receive: Actor.Receive = {
-    case b@Bound(local) => log.info("{}", b)
-    case CommandFailed(_: Bind) => context stop self
-    case Connected(remote, local) => connected(remote, local, sender)
-  }
-
-  def connected(remote: InetSocketAddress, local: InetSocketAddress, connection: ActorRef): Unit = {
-    log.info("Connected remote[{}], local[{}]", remote, local)
-    val handler = context.actorOf(Props(new DataFeedReceiverHandler(cluster, connection)))
-    connection ! Register(handler)
-  }
-}
-
-private[killrweather] class DataFeedReceiverHandler(cluster: Cluster, connection: ActorRef)
-  extends Actor with ActorLogging with ClientHelper {
-
-  import Tcp._
-  import WeatherEvent._
+  import akka.http.Http
   import FileFeedEvent._
+  import context.dispatcher
 
-  def receive: Actor.Receive = {
-    case Received(data)           => send(data, sender)
-    case PeerClosed               => context stop self
-    case TaskCompleted
-      if context.children.isEmpty => context stop self
+  implicit val system = context.system
+  implicit val materializer = FlowMaterializer()
+  implicit val askTimeout: Timeout = 500.millis
+
+  val ctx = "/weather/data"
+  val xheader = "X-DATA-FEED"
+
+  IO(Http) ! Http.Bind("localhost", 8080)
+
+  val toFiles = (headers: Seq[HttpHeader]) => headers.collect {
+    case header if isValid(header) => FileStream(new JFile(header.value()))
+    }.toSet.filter(_.file.exists)
+
+  val requestHandler: HttpRequest => HttpResponse = {
+    case HttpRequest(POST, Uri.Path(ctx), headers, entity, _) =>
+      val files: Set[FileStream] = toFiles(headers)
+
+      if (files.nonEmpty) {
+        log.info(s"Received {}", files.mkString)
+        context.actorOf(Props(new FileFeedActor(cluster))) ! FileStreamEnvelope(files)
+        HttpResponse(200, entity = HttpEntity(MediaTypes.`text/html`, s"POST [$entity] successful."))
+      } else {
+        log.error("Received unsupported data type from headers: {}", headers)
+        HttpResponse(404, entity = "Unknown resource!")
+      }
+    case _: HttpRequest => HttpResponse(404, entity = "Unknown resource!")
   }
 
-  // tech debt
-  def send(data: ByteString, origin: ActorRef): Unit = parse(data) map {
-    value =>
-      log.info("Received {} on {} from {}.", value, self.path.address, origin)
-      connection ! HttpResponse()
-
-      if (value contains JFile.separator) {
-        value.split(",").map(new JFile(_)).filter(_.exists) foreach {
-          file =>
-            log.info(s"Received {}", file)
-            context.actorOf(Props(new FileFeedActor(cluster))) ! FileStream(file)
-        }
-      } else log.error("Received unsupported data type: {}", value)
+  def receive : Actor.Receive = {
+    case Http.ServerBinding(local, stream) => bound(local, stream)
+    case WeatherEvent.TaskCompleted => // ignore
   }
+
+  def bound(localAddress: InetSocketAddress, connectionStream: Publisher[IncomingConnection]): Unit = {
+    log.info("Connected to [{}] with [{}]", localAddress, connectionStream)
+    Source(connectionStream).foreach({
+      case Http.IncomingConnection(remoteAddress, requestProducer, responseConsumer) =>
+        log.info("Accepted new connection from {}.", remoteAddress)
+        Source(requestProducer).map(requestHandler).to(Sink(responseConsumer)).run()
+    })
+  }
+
+  def isValid(header: HttpHeader): Boolean = header.name == xheader && header.value.contains(JFile.separator)
 }
 
 class FileFeedActor(cluster: Cluster) extends Actor with ActorLogging with ClientHelper {
@@ -158,9 +155,13 @@ class FileFeedActor(cluster: Cluster) extends Actor with ActorLogging with Clien
   /** The 2 data feed actors publish messages to this actor which get published to Kafka for buffered streaming. */
   val guardian = context.actorSelection(cluster.selfAddress.copy(port = Some(BasePort)) + "/user/node-guardian")
 
-  def receive: Actor.Receive = {
-    case e: FileStream => handle(e, sender)
+  def receive : Actor.Receive = {
+    case e: FileStream                => handle(e, sender)
+    case FileStreamEnvelope(toStream) => handle(toStream, sender)
   }
+
+  def handle(toStream : Set[FileStream], origin : ActorRef): Unit =
+    for (fs <- toStream) handle(fs, origin)
 
   def handle(e : FileStream, origin : ActorRef): Unit = {
     log.info(s"Ingesting {}", e.file.getAbsolutePath)

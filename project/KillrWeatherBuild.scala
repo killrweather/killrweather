@@ -113,12 +113,13 @@ object Dependencies {
     Seq(akkaCluster, akkaSlf4j, algebird, bijection, kafka, kafkaStreaming, logback, sparkML, sparkSQL)
 
   val client = Seq(logback) ++ Seq(
-   "com.typesafe.akka"   %% "akka-actor"   % Akka force(),
-   "com.typesafe.akka"   %% "akka-cluster" % Akka force(),// can't fix config binary issue
-   "com.typesafe.akka"   %% "akka-http-core-experimental" % "0.11",
-   "com.typesafe.akka"   %% "akka-remote"  % Akka force(),
-   "com.typesafe.akka"   %% "akka-slf4j"   % Akka force(),
-   "com.typesafe"        % "config"        % "1.2.1" force()
+    "com.typesafe.akka" %% "akka-actor"   % Akka force(),
+    "com.typesafe.akka" %% "akka-cluster" % Akka force(),// can't fix config binary issue
+    "com.typesafe.akka" %% "akka-remote"  % Akka force(),
+    "com.typesafe.akka" %% "akka-slf4j"   % Akka force(),
+    "com.typesafe.akka" %% "akka-stream-experimental" % "0.11",
+    "com.typesafe.akka" %% "akka-http-core-experimental" % "0.11",
+    "com.typesafe"      % "config"        % "1.2.1" force()
   )
 
   val examples = connector ++ time ++ json ++
