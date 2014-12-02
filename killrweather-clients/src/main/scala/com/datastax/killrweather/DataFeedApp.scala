@@ -41,6 +41,8 @@ import akka.util.Timeout
   * {{{
   *   curl -v -X POST --header "X-DATA-FEED: ./data/load/sf-2008.csv.gz" http://127.0.0.1:8080/weather/data
   * }}}
+  *
+  * NOTE does not support running on Windows
   */
 object DataFeedApp extends App with ClientHelper {
   import FileFeedEvent._
@@ -55,7 +57,7 @@ object DataFeedApp extends App with ClientHelper {
   system.actorOf(Props(new DynamicDataFeedActor(cluster)), "dynamic-data-feed")
 
   if (autoImport) {
-    val envelope = FileStreamEnvelope(for (f <- fileFeed()) yield FileStream(f))
+    val envelope = FileStreamEnvelope(fileFeed().toArray:_*)
     system.actorOf(Props(new AutomaticDataFeedActor(cluster)), "auto-data-feed") ! envelope
   }
 }
@@ -79,19 +81,15 @@ class AutomaticDataFeedActor(cluster: Cluster) extends Actor with ActorLogging w
   import FileFeedEvent._
   import context.dispatcher
 
-  log.info("Starting automatic data file ingestion on {}.", Cluster(context.system).selfAddress)
-
   def receive: Actor.Receive = {
-    case FileStreamEnvelope(toStream) => start(toStream)
-    case TaskCompleted                => stop()
+    case e @ FileStreamEnvelope(toStream) => start(e)
+    case TaskCompleted                    => stop()
   }
 
-  def start(toStream: Set[FileStream]): Unit =
-    for (fs <- toStream) {
-      context.system.scheduler.scheduleOnce(2.seconds) {
-        context.actorOf(Props(new FileFeedActor(cluster))) ! fs
-      }
-    }
+  def start(envelope: FileStreamEnvelope): Unit = {
+    log.info("Starting data file ingestion on {}.", Cluster(context.system).selfAddress)
+    context.actorOf(Props(new FileFeedActor(cluster))) ! envelope
+  }
 
   def stop(): Unit = if (context.children.isEmpty) context stop self
 }
@@ -110,23 +108,21 @@ class DynamicDataFeedActor(cluster: Cluster) extends Actor with ActorLogging wit
 
   IO(Http) ! Http.Bind("localhost", 8080)
 
-  val toFiles = (headers: Seq[HttpHeader]) => headers.collect {
-    case header if isValid(header) => FileStream(new JFile(header.value()))
-    }.toSet.filter(_.file.exists)
+  val toFiles = (headers: Seq[HttpHeader]) => headers.collectFirst {
+    case header if isValid(header) =>
+      header.value.split(",").map(new JFile(_)).filter(_.exists)
+  }
 
   val requestHandler: HttpRequest => HttpResponse = {
     case HttpRequest(POST, Uri.Path(ctx), headers, entity, _) =>
-      val files: Set[FileStream] = toFiles(headers)
-
-      if (files.nonEmpty) {
+      toFiles(headers) map { files =>
         log.info(s"Received {}", files.mkString)
-        context.actorOf(Props(new FileFeedActor(cluster))) ! FileStreamEnvelope(files)
+        context.actorOf(Props(new FileFeedActor(cluster))) ! FileStreamEnvelope(files:_*)
         HttpResponse(200, entity = HttpEntity(MediaTypes.`text/html`, s"POST [$entity] successful."))
-      } else {
-        log.error("Received unsupported data type from headers: {}", headers)
-        HttpResponse(404, entity = "Unknown resource!")
-      }
-    case _: HttpRequest => HttpResponse(404, entity = "Unknown resource!")
+      } getOrElse
+        HttpResponse(404, entity = s"Unknown resource '$entity'")
+
+    case _: HttpRequest => HttpResponse(400, entity = "Unsupported request")
   }
 
   def receive : Actor.Receive = {
@@ -143,7 +139,8 @@ class DynamicDataFeedActor(cluster: Cluster) extends Actor with ActorLogging wit
     })
   }
 
-  def isValid(header: HttpHeader): Boolean = header.name == xheader && header.value.contains(JFile.separator)
+  def isValid(header: HttpHeader): Boolean =
+    header.name == xheader && header.value.nonEmpty && header.value.contains(JFile.separator)
 }
 
 class FileFeedActor(cluster: Cluster) extends Actor with ActorLogging with ClientHelper {

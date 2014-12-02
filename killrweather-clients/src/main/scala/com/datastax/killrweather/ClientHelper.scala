@@ -49,6 +49,10 @@ private[killrweather] object FileFeedEvent {
   @SerialVersionUID(0L)
   sealed trait FileFeedEvent extends Serializable
   case class FileStreamEnvelope(files: Set[FileStream]) extends FileFeedEvent
+  object FileStreamEnvelope {
+    def apply(files: JFile*): FileStreamEnvelope =
+      FileStreamEnvelope(files.map(FileStream(_)).toSet)
+  }
   case class FileStream(file: JFile) extends FileFeedEvent {
 
     def getLines: Stream[String] = file match {

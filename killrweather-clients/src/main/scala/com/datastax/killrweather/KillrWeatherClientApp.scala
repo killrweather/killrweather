@@ -15,13 +15,19 @@
  */
 package com.datastax.killrweather
 
+import akka.cluster.Cluster
+
+import scala.collection.immutable
 import scala.concurrent.duration._
 import akka.actor._
 import org.joda.time.{DateTime, DateTimeZone}
 
 object KillrWeatherClientApp extends App with ClientHelper {
 
-  val system = ActorSystem("api-client")
+  val system = ActorSystem("KillrWeather")
+
+  val cluster = Cluster(system)
+  cluster.joinSeedNodes(immutable.Seq(cluster.selfAddress))
 
   /** Drives demo activity by sending requests to the NodeGuardian actor. */
   val queryClient = system.actorOf(Props[WeatherApiQueries], "api-client")
@@ -35,7 +41,7 @@ private[killrweather] class WeatherApiQueries extends Actor with ActorLogging wi
   import FileFeedEvent._
   import context.dispatcher
 
-  val actor = context.actorSelection(s"akka.tcp://KillrWeather@127.0.0.1:$BasePort/user/node-guardian")
+  val guardian = context.actorSelection(Cluster(context.system).selfAddress.copy(port = Some(BasePort)) + "/user/node-guardian")
 
   val task = context.system.scheduler.schedule(3.seconds, 2.seconds) {
     self ! QueryTask
@@ -68,22 +74,22 @@ private[killrweather] class WeatherApiQueries extends Actor with ActorLogging wi
     // because we load from historic file data vs stream in the cloud for this sample app ;)
     val timestamp = new DateTime(DateTimeZone.UTC).withYear(sample.year)
       .withMonthOfYear(sample.month).withDayOfMonth(sample.day)
-    actor ! GetCurrentWeather(sample.wsid, Some(timestamp))
+    guardian ! GetCurrentWeather(sample.wsid, Some(timestamp))
 
     log.info("Requesting annual precipitation for weather station {} in year {}", sample.wsid, sample.year)
-    actor ! GetPrecipitation(sample.wsid, sample.year)
+    guardian ! GetPrecipitation(sample.wsid, sample.year)
 
     log.info("Requesting top-k Precipitation for weather station {}", sample.wsid)
-    actor ! GetTopKPrecipitation(sample.wsid, sample.year, k = 10)
+    guardian ! GetTopKPrecipitation(sample.wsid, sample.year, k = 10)
 
     log.info("Requesting the daily temperature aggregate for weather station {}", sample.wsid)
-    actor ! GetDailyTemperature(sample)
+    guardian ! GetDailyTemperature(sample)
 
     log.info("Requesting the high-low temperature aggregate for weather station {}",sample.wsid)
-    actor ! GetMonthlyHiLowTemperature(sample.wsid, sample.year, sample.month)
+    guardian ! GetMonthlyHiLowTemperature(sample.wsid, sample.year, sample.month)
 
     log.info("Requesting weather station {}", sample.wsid)
-    actor ! GetWeatherStation(sample.wsid)
+    guardian ! GetWeatherStation(sample.wsid)
 
     queried += sample
   }
