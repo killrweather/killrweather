@@ -16,9 +16,8 @@
 package com.datastax.killrweather
 
 import akka.actor.{Actor, ActorRef}
-import akka.cluster.Cluster
 import com.datastax.spark.connector.embedded.KafkaEvent.KafkaMessageEnvelope
-import com.datastax.spark.connector.embedded.{KafkaEvent, KafkaProducerActor}
+import com.datastax.spark.connector.embedded.KafkaProducerActor
 import kafka.producer.ProducerConfig
 import kafka.serializer.StringDecoder
 import org.apache.spark.SparkContext
@@ -44,7 +43,6 @@ class KafkaStreamingActor(kafkaParams: Map[String, String],
   val kafkaStream = KafkaUtils.createStream[String, String, StringDecoder, StringDecoder](
     ssc, kafkaParams, Map(KafkaTopicRaw -> 10), StorageLevel.DISK_ONLY_2)
     .map { case (_, line) => line.split(",")}
-    .filter(_(0) contains ":")
     .map(RawWeatherData(_))
 
   /** Saves the raw data to Cassandra - raw table. */
@@ -77,7 +75,6 @@ class KafkaStreamingActor(kafkaParams: Map[String, String],
     case e => // ignore
   }
 }
-
 
 /** The KafkaPublisherActor loads data from /data/load files on startup (because this
   * is for a runnable demo) and also receives [[KafkaMessageEnvelope]] messages and
