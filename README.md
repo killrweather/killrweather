@@ -53,20 +53,35 @@ Run the scripts:
     cqlsh> quit;
  
 ### Run 
-#### To Run from an IDE
-First start com.datastax.killrweather.KillrWeatherApp, then  com.datastax.killrweather.KillrWeatherClientApp.
+#### From an IDE
+1. Run the app [com.datastax.killrweather.KillrWeatherApp](https://github.com/killrweather/killrweather/blob/master/killrweather-app/src/main/scala/com/datastax/killrweather/KillrWeatherApp.scala)
+2. Run the data feed server [com.datastax.killrweather.DataFeedApp](https://github.com/killrweather/killrweather/blob/master/killrweather-clients/src/main/scala/com/datastax/killrweather/DataFeedApp.scala)
+3. Run the API client [com.datastax.killrweather.KillrWeatherClientApp](https://github.com/killrweather/killrweather/blob/master/killrweather-clients/src/main/scala/com/datastax/killrweather/KillrWeatherClientApp.scala)
 
-#### To Run from Command Line
+
+#### From Command Line
 
     cd /path/to/killrweather
     sbt app/run
+    
+In a new shell
+
+    sbt clients/run
 
 You should see:
 
     Multiple main classes detected, select one to run:
 
-    [1] com.datastax.killrweather.SimpleSparkJob
+    [1] com.datastax.killrweather.DataFeedApp
     [2] com.datastax.killrweather.KillrWeatherClientApp
-    [3] com.datastax.killrweather.KillrWeatherApp
 
-Select 3, then open a new window, do the same and select 2.
+    Enter number: 
+
+
+Select 1, and watch the app and client shells for activity. You can stop the data feed or let it keep running.
+Now start the API client in another shell
+
+    sbt clients/run
+    
+Select [2] and watch the app and client activity in request response of weather data and aggregation data.
+
