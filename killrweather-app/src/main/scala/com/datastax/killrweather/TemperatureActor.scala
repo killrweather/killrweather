@@ -99,14 +99,7 @@ class TemperatureActor(sc: SparkContext, settings: WeatherSettings)
       NoDataAvailable(wsid, year, classOf[MonthlyTemperature])
 
   def toDailyTemperature(key: Day, stats: StatCounter): DailyTemperature =
-    DailyTemperature(
-      key.wsid,
-      key.year,
-      key.month,
-      key.day,
-      high = stats.max,
-      low = stats.min,
-      mean = stats.mean,
-      variance = stats.variance,
-      stdev = stats.stdev)
+    DailyTemperature(key.wsid, key.year, key.month, key.day,
+      high = stats.max, low = stats.min, mean = stats.mean,
+      variance = stats.variance, stdev = stats.stdev)
 }

@@ -16,18 +16,17 @@
 
 object Versions {
 
-  val Akka           = "2.3.7" // used by the client, no spark
+  val Akka           = "2.3.7"
   val AkkaSpark      = "2.2.3" // binary incompat with akka.latest with spark :(
   val Albebird       = "0.8.1"
   val Bijection      = "0.7.0"
   val CassandraDriver = "2.1.2"
-  val Chill          = "1.1"
   val Config         = "1.2.1"
   val JDK            = "1.7"
   val JodaConvert    = "1.7"
   val JodaTime       = "2.4"
   val Json4s         = "3.2.10"
-  val Kafka          = "0.8.0"// TODO issues w encoder/decoder ATM "0.8.1.2"
+  val Kafka          = "0.8.0"//0.8.2
   val Kryo           = "3.0.0"
   val Logback        = "1.0.0"
   val Scala          = "2.10.4"
@@ -37,6 +36,6 @@ object Versions {
   val ScalazStream   = "0.1"
   val Sigar          = "1.6.4"
   val Slf4j          = "1.7.7"
-  val Spark          = "1.1.0"
-  val SparkCassandra = "1.1.0-rc1"
+  val Spark          = "1.1.1"
+  val SparkCassandra = "1.1.0"
 }

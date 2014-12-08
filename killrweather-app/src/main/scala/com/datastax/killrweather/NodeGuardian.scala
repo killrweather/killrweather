@@ -15,8 +15,6 @@
  */
 package com.datastax.killrweather
 
-import akka.cluster.MemberStatus.Joining
-
 import scala.concurrent.duration._
 import scala.collection.immutable
 import akka.actor._

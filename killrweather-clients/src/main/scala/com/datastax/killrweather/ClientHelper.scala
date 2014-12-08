@@ -17,8 +17,6 @@ package com.datastax.killrweather
 
 import java.io.{File => JFile}
 
-import scala.util.Try
-import akka.util.ByteString
 import com.typesafe.config.ConfigFactory
 
 private[killrweather] trait ClientHelper {
@@ -29,10 +27,6 @@ private[killrweather] trait ClientHelper {
   protected val DefaultExtension = config.getString("killrweather.data.file.extension")
   protected val DefaultTopic = config.getString("kafka.topic.raw")
   protected val DefaultGroup = config.getString("kafka.group.id")
-
-  // val Pattern = """Content-Type.*?(/[^\s,]+)(?:,(/[^\s,]+))*""".r
-  protected def parse(data: ByteString): Option[String] =
-    Try(data.utf8String.split("Content-Type: application/x-www-form-urlencoded")(1).trim).toOption
 
   protected def fileFeed(path: String = DefaultPath, extension: String = DefaultExtension): Set[JFile] =
     new JFile(path).list.collect {

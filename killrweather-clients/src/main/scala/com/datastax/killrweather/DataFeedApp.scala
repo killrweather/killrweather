@@ -88,6 +88,19 @@ class AutomaticDataFeedActor(cluster: Cluster) extends Actor with ActorLogging w
 
   def start(envelope: FileStreamEnvelope): Unit = {
     log.info("Starting data file ingestion on {}.", Cluster(context.system).selfAddress)
+
+    envelope.files.map {
+      case f if f == envelope.files.head =>
+        context.system.scheduler.scheduleOnce(2.second) {
+          context.actorOf(Props(new FileFeedActor(cluster))) ! envelope
+        }
+      case f =>
+        context.system.scheduler.scheduleOnce(20.seconds) {
+          context.actorOf(Props(new FileFeedActor(cluster))) ! envelope
+        }
+    }
+
+    for (fs <- envelope.files) context.system.scheduler.scheduleOnce(20.seconds)
     context.actorOf(Props(new FileFeedActor(cluster))) ! envelope
   }
 
@@ -153,17 +166,13 @@ class FileFeedActor(cluster: Cluster) extends Actor with ActorLogging with Clien
   val guardian = context.actorSelection(cluster.selfAddress.copy(port = Some(BasePort)) + "/user/node-guardian")
 
   def receive : Actor.Receive = {
-    case e: FileStream                => handle(e, sender)
-    case FileStreamEnvelope(toStream) => handle(toStream, sender)
+    case e: FileStream => handle(e, sender)
   }
-
-  def handle(toStream : Set[FileStream], origin : ActorRef): Unit =
-    for (fs <- toStream) handle(fs, origin)
 
   def handle(e : FileStream, origin : ActorRef): Unit = {
     log.info(s"Ingesting {}", e.file.getAbsolutePath)
     e.getLines foreach { data =>
-      context.system.scheduler.scheduleOnce(1.second) {
+      context.system.scheduler.scheduleOnce(2.second) {
         log.debug(s"Sending '{}'", data)
         guardian ! KafkaMessageEnvelope[String, String](DefaultTopic, DefaultGroup, data)
       }
