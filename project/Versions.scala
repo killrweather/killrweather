@@ -17,7 +17,6 @@
 object Versions {
 
   val Akka           = "2.3.7"
-  val AkkaSpark      = "2.2.3" // binary incompat with akka.latest with spark :(
   val Albebird       = "0.8.1"
   val Bijection      = "0.7.0"
   val CassandraDriver = "2.1.2"
@@ -37,5 +36,6 @@ object Versions {
   val Sigar          = "1.6.4"
   val Slf4j          = "1.7.7"
   val Spark          = "1.1.1"
+  val SparkAkka      = "2.2.3"
   val SparkCassandra = "1.1.0"
 }

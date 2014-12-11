@@ -64,8 +64,15 @@ object Dependencies {
   import Versions._
 
   object Compile {
-    val akkaCluster       = "com.typesafe.akka"   %% "akka-cluster"                       % AkkaSpark // ApacheV2
-    val akkaSlf4j         = "com.typesafe.akka"   %% "akka-slf4j"                         % AkkaSpark // ApacheV2
+
+    val akkaStream        = "com.typesafe.akka"   %% "akka-stream-experimental"          % "0.11"
+    val akkaHttpCore      = "com.typesafe.akka"   %% "akka-http-core-experimental"       % "0.11"
+    val akkaActor         = "com.typesafe.akka"   %% "akka-actor"   % Akka
+    val akkaCluster       = "com.typesafe.akka"   %% "akka-cluster" % Akka
+    val akkaRemote        = "com.typesafe.akka"   %% "akka-remote"  % Akka
+    val akkaSlf4j         = "com.typesafe.akka"   %% "akka-slf4j"   % Akka
+    val config            = "com.typesafe"        % "config"        % "1.2.1" force()
+
     val algebird          = "com.twitter"         %% "algebird-core"                      % Albebird
     val bijection         = "com.twitter"         %% "bijection-core"                     % Bijection
     val driver            = "com.datastax.cassandra" % "cassandra-driver-core"            % CassandraDriver exclude("com.google.guava", "guava") excludeAll(ExclusionRule("org.slf4j"))
@@ -80,16 +87,16 @@ object Dependencies {
     val scalazContrib     = "org.typelevel"       %% "scalaz-contrib-210"                 % ScalazContrib   // MIT
     val scalazContribVal  = "org.typelevel"       %% "scalaz-contrib-validation"          % ScalazContrib   // MIT
     val scalazStream      = "org.scalaz.stream"   %% "scalaz-stream"                      % ScalazStream    // MIT
-    val slf4jApi          = "org.slf4j"           % "slf4j-api"                           % Slf4j           // MIT
-    val sparkML           = "org.apache.spark"    %% "spark-mllib"                        % Spark           // ApacheV2
-    val sparkSQL          = "org.apache.spark"    %% "spark-sql"                          % Spark           // ApacheV2
+    val slf4jApi          = "org.slf4j"           % "slf4j-api"                           % Slf4j % "provided" // MIT
+    val sparkML           = "org.apache.spark"    %% "spark-mllib"                        % Spark % "provided" // ApacheV2
+    val sparkSQL          = "org.apache.spark"    %% "spark-sql"                          % Spark % "provided" // ApacheV2
     val sparkCassandra    = "com.datastax.spark"  %% "spark-cassandra-connector"          % SparkCassandra  excludeAll(ExclusionRule("org.slf4j"))// ApacheV2
     val sparkCassandraEmb = "com.datastax.spark"  %% "spark-cassandra-connector-embedded" % SparkCassandra  excludeAll(ExclusionRule("org.slf4j")) excludeAll(ExclusionRule("org.apache.spark")) excludeAll(ExclusionRule("com.typesafe")) excludeAll(ExclusionRule("org.apache.cassandra")) excludeAll(ExclusionRule("com.datastax.cassandra"))// ApacheV2
     val sigar             = "org.fusesource"      % "sigar"                               % Sigar
   }
 
   object Test {
-    val akkaTestKit     = "com.typesafe.akka"     %% "akka-testkit"                       % AkkaSpark    % "test,it" // ApacheV2
+    val akkaTestKit     = "com.typesafe.akka"     %% "akka-testkit"                       % SparkAkka    % "test,it" // ApacheV2
     val scalatest       = "org.scalatest"         %% "scalatest"                          % ScalaTest    % "test,it"
   }
 
@@ -106,21 +113,13 @@ object Dependencies {
   val test = Seq(Test.akkaTestKit, Test.scalatest)
 
   /** Module deps */
+  val client = Seq(akkaStream, akkaHttpCore, akkaActor, akkaCluster, akkaRemote, akkaSlf4j, logback)
 
   val core = time
 
   val app = connector ++ json ++ scalaz ++ test ++ time ++
-    Seq(akkaCluster, akkaSlf4j, algebird, bijection, kafka, kafkaStreaming, logback, sparkML, sparkSQL)
-
-  val client = Seq(logback) ++ Seq(
-    "com.typesafe.akka" %% "akka-actor"   % Akka force(),
-    "com.typesafe.akka" %% "akka-cluster" % Akka force(),// can't fix config binary issue
-    "com.typesafe.akka" %% "akka-remote"  % Akka force(),
-    "com.typesafe.akka" %% "akka-slf4j"   % Akka force(),
-    "com.typesafe.akka" %% "akka-stream-experimental" % "0.11",
-    "com.typesafe.akka" %% "akka-http-core-experimental" % "0.11",
-    "com.typesafe"      % "config"        % "1.2.1" force()
-  )
+    Seq(algebird, bijection, kafka, kafkaStreaming, logback, sparkML, sparkSQL) ++
+    Seq("com.typesafe.akka" %% "akka-cluster" % SparkAkka, "com.typesafe.akka" %% "akka-slf4j" % SparkAkka)// spark
 
   val examples = connector ++ time ++ json ++
     Seq(algebird, kafka, kafkaStreaming, logback, sparkML, sparkSQL)

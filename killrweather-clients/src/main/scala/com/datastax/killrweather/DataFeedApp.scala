@@ -100,7 +100,7 @@ class AutomaticDataFeedActor(cluster: Cluster) extends Actor with ActorLogging w
         }
     }
 
-    for (fs <- envelope.files) context.system.scheduler.scheduleOnce(20.seconds)
+    for (fs <- envelope.files) context.system.scheduler.scheduleOnce(20.seconds)(context.dispatcher)
     context.actorOf(Props(new FileFeedActor(cluster))) ! envelope
   }
 

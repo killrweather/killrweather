@@ -32,7 +32,7 @@ object Settings extends Build {
     licenses := Seq(("Apache License, Version 2.0", url("http://www.apache.org/licenses/LICENSE-2.0")))
   )
 
-  override lazy val settings = super.settings ++ buildSettings ++ Seq(shellPrompt := ShellPrompt.prompt)
+  override lazy val settings = super.settings ++ buildSettings
 
   val parentSettings = buildSettings ++ Seq(
     publishArtifact := false,
@@ -44,6 +44,7 @@ object Settings extends Build {
     libraryDependencies <+= scalaVersion { v => compilerPlugin("org.scala-lang.plugins" % "continuations" % v) },
     scalacOptions ++= Seq("-encoding", "UTF-8", s"-target:jvm-${Versions.JDK}", "-feature", "-language:_", "-deprecation", "-unchecked", "-Xfatal-warnings", "-Xlint"),
     javacOptions in Compile ++= Seq("-encoding", "UTF-8", "-source", Versions.JDK, "-target", Versions.JDK, "-Xlint:deprecation", "-Xlint:unchecked"),
+    run in Compile <<= Defaults.runTask(fullClasspath in Compile, mainClass in (Compile, run), runner in (Compile, run)),
     ivyLoggingLevel in ThisBuild := UpdateLogging.Quiet,
     parallelExecution in ThisBuild := false,
     parallelExecution in Global := false
@@ -71,24 +72,22 @@ object Settings extends Build {
 
 }
 
-/**
- * TODO make plugin
- * Shell prompt which shows the current project, git branch
- */
-object ShellPrompt {
-
-  def gitBranches = ("git branch" lines_! devnull).mkString
-
-  def current: String = """\*\s+([\.\w-]+)""".r findFirstMatchIn gitBranches map (_ group 1) getOrElse "-"
-
-  def currBranch: String = ("git status -sb" lines_! devnull headOption) getOrElse "-" stripPrefix "## "
-
-  lazy val prompt = (state: State) =>
-    "%s:%s:%s> ".format("killrweather", Project.extract (state).currentProject.id, currBranch)
-
-  object devnull extends ProcessLogger {
-    def info(s: => String) {}
-    def error(s: => String) {}
-    def buffer[T](f: => T): T = f
+object ShellPromptPlugin extends AutoPlugin {
+  override def trigger = allRequirements
+  override lazy val projectSettings = Seq(
+    shellPrompt := buildShellPrompt
+  )
+  val devnull: ProcessLogger = new ProcessLogger {
+    def info (s: => String) {}
+    def error (s: => String) { }
+    def buffer[T] (f: => T): T = f
+  }
+  def currBranch =
+    ("git status -sb" lines_! devnull headOption).
+      getOrElse("-").stripPrefix("## ")
+  val buildShellPrompt: State => String = {
+    case (state: State) =>
+      val currProject = Project.extract (state).currentProject.id
+      s"""$currProject:$currBranch> """
   }
 }
