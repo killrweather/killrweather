@@ -46,7 +46,7 @@ object SampleJoin extends App {
       AND test1.b = test2.b
       AND test1.c = test2.c
    """)
-    .map{row => println(row); (row.getInt(0), row.getInt(1), row.getInt(2), row.getInt(3))}
+    .map{row => (row.getInt(0), row.getInt(1), row.getInt(2), row.getInt(3))}
     .saveToCassandra("nosql_join", "test3")
 
   sc.stop()
