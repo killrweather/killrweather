@@ -121,7 +121,7 @@ class ClusterAware extends Actor with ActorLogging {
 
   def receive : Actor.Receive = {
     case ClusterMetricsChanged(forNode) =>
-      log.debug("Cluster metrics update:")
+      log.info("Cluster metrics update:")
       forNode foreach (m => log.info("{}", m))
     case MemberUp(member) =>
       log.info("Member {} joined cluster.", member.address)

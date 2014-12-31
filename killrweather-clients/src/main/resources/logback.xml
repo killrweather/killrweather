@@ -12,7 +12,6 @@
     <logger name="org.apache.hadoop" level="ERROR" />
 
     <logger name="com.datastax.killrweather" level="DEBUG" />
-    <logger name="com.datastax.driver" level="WARN" />
     <!-- Change to INFO to see spark-cassandra-connector logging -->
     <logger name="com.datastax.spark" level="WARN" />
     <!-- Change to INFO to see spark logging -->

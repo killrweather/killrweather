@@ -18,6 +18,8 @@ package com.datastax.killrweather
 import java.net.InetSocketAddress
 import java.io.{File => JFile}
 
+import com.typesafe.config.ConfigFactory
+
 import scala.util.Try
 import scala.concurrent.duration._
 import scala.collection.immutable
@@ -32,10 +34,7 @@ import akka.http.model.HttpMethods._
 import akka.io.IO
 import akka.util.Timeout
 
-/** Run with
-  * sbt -Dauto.import=false clients/run to run manual data file imports interactively via curl.
-  * sbt clients/run for automatic data file import to Kafka.
-  * 'auto.import' defaults to true.
+/** Run with: sbt clients/run for automatic data file import to Kafka.
   *
   * To do manual curl import:
   * {{{
@@ -47,19 +46,16 @@ import akka.util.Timeout
 object DataFeedApp extends App with ClientHelper {
   import FileFeedEvent._
 
-  val autoImport = Try(sys.props("auto.import").toBoolean) getOrElse true
-
-  val system = ActorSystem("KillrWeather")
+  val system = ActorSystem("KillrWeather", ConfigFactory.load)
 
   val cluster = Cluster(system)
   cluster.joinSeedNodes(immutable.Seq(cluster.selfAddress))
 
+  val envelope = FileStreamEnvelope(fileFeed().toArray:_*)
+  system.actorOf(Props(new AutomaticDataFeedActor(cluster)), "auto-data-feed") ! envelope
+
   system.actorOf(Props(new DynamicDataFeedActor(cluster)), "dynamic-data-feed")
 
-  if (autoImport) {
-    val envelope = FileStreamEnvelope(fileFeed().toArray:_*)
-    system.actorOf(Props(new AutomaticDataFeedActor(cluster)), "auto-data-feed") ! envelope
-  }
 }
 
 /** Simulates real time weather events individually sent to the KillrWeather App for demos.
@@ -90,18 +86,16 @@ class AutomaticDataFeedActor(cluster: Cluster) extends Actor with ActorLogging w
     log.info("Starting data file ingestion on {}.", Cluster(context.system).selfAddress)
 
     envelope.files.map {
-      case f if f == envelope.files.head =>
-        context.system.scheduler.scheduleOnce(2.second) {
-          context.actorOf(Props(new FileFeedActor(cluster))) ! envelope
+      case message if message == envelope.files.head =>
+        context.system.scheduler.scheduleOnce(5.seconds) {
+          context.actorOf(Props(new FileFeedActor(cluster))) ! message
         }
-      case f =>
+      case message =>
         context.system.scheduler.scheduleOnce(20.seconds) {
-          context.actorOf(Props(new FileFeedActor(cluster))) ! envelope
+          context.actorOf(Props(new FileFeedActor(cluster))) ! message
         }
     }
 
-    for (fs <- envelope.files) context.system.scheduler.scheduleOnce(20.seconds)(context.dispatcher)
-    context.actorOf(Props(new FileFeedActor(cluster))) ! envelope
   }
 
   def stop(): Unit = if (context.children.isEmpty) context stop self
