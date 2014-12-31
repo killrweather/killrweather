@@ -37,24 +37,21 @@ class PrecipitationActor(ssc: StreamingContext, settings: WeatherSettings)
   /** Computes and sends the annual aggregation to the `requester` actor.
     * Precipitation values are 1 hour deltas from the previous. */
   def cumulative(wsid: String, year: Int, requester: ActorRef): Unit =
-    (for {
-      aggregate <- ssc.cassandraTable[Double](keyspace, dailytable)
-            .select("precipitation")
-            .where("wsid = ? AND year = ?", wsid, year)
-            .collectAsync()
-    } yield AnnualPrecipitation(wsid, year, aggregate.sum)) pipeTo requester
+    ssc.cassandraTable[Double](keyspace, dailytable)
+      .select("precipitation")
+      .where("wsid = ? AND year = ?", wsid, year)
+      .collectAsync()
+      .map(AnnualPrecipitation(_, wsid, year)) pipeTo requester
 
   /** Returns the 10 highest temps for any station in the `year`. */
   def topK(wsid: String, year: Int, k: Int, requester: ActorRef): Unit = {
-    (for {
-      aggregate <- ssc.cassandraTable[Double](keyspace, dailytable)
-              .select("precipitation")
-              .where("wsid = ? AND year = ?", wsid, year)
-              .collectAsync()
-    } yield {
-      val top = ssc.sparkContext.parallelize(aggregate).top(k).toSeq
-      TopKPrecipitation(wsid, year, top)
-    }) pipeTo requester
+    val toTopK = (aggregate: Seq[Double]) => TopKPrecipitation(wsid, year,
+      ssc.sparkContext.parallelize(aggregate).top(k).toSeq)
+
+    ssc.cassandraTable[Double](keyspace, dailytable)
+      .select("precipitation")
+      .where("wsid = ? AND year = ?", wsid, year)
+      .collectAsync().map(toTopK) pipeTo requester
   }
 }
 

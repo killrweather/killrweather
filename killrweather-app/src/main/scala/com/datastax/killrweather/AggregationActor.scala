@@ -32,7 +32,7 @@ private[killrweather] trait AggregationActor extends Actor {
   implicit val ctx = context.dispatcher
 
   override val supervisorStrategy =
-    OneForOneStrategy(maxNrOfRetries = 10, withinTimeRange = 1 minute) {
+    OneForOneStrategy(maxNrOfRetries = 10, withinTimeRange = 1.minute) {
       case _: ActorInitializationException => Stop
       case _: IllegalArgumentException => Stop
       case _: IllegalStateException    => Restart

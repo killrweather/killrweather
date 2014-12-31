@@ -28,15 +28,15 @@ import com.datastax.spark.connector._
 class TemperatureActor(sc: SparkContext, settings: WeatherSettings)
   extends AggregationActor with ActorLogging {
 
-  import settings.{CassandraKeyspace => keyspace }
+  import settings.{CassandraKeyspace => keyspace}
   import settings.{CassandraTableDailyTemp => dailytable}
   import settings.{CassandraTableRaw => rawtable}
   import WeatherEvent._
   import Weather._
 
-  def receive : Actor.Receive = {
-    case e: GetDailyTemperature   => daily(e.day, sender)
-    case e: DailyTemperature      => store(e)
+  def receive: Actor.Receive = {
+    case e: GetDailyTemperature        => daily(e.day, sender)
+    case e: DailyTemperature           => store(e)
     case e: GetMonthlyHiLowTemperature => highLow(e, sender)
   }
 
@@ -53,22 +53,21 @@ class TemperatureActor(sc: SparkContext, settings: WeatherSettings)
     * and create stats on does exist at the time of request.
     */
   def daily(day: Day, requester: ActorRef): Unit =
-    (for {
-      aggregate <- sc.cassandraTable[Double](keyspace, rawtable)
-                   .select("temperature").where("wsid = ? AND year = ? AND month = ? AND day = ?",
-                      day.wsid, day.year, day.month, day.day)
-                   .collectAsync()
-    } yield forDay(day, aggregate)) pipeTo requester
+    sc.cassandraTable[Double](keyspace, rawtable)
+      .select("temperature").where("wsid = ? AND year = ? AND month = ? AND day = ?",
+        day.wsid, day.year, day.month, day.day)
+      .collectAsync()
+      .map(toDaily(_, day)) pipeTo requester
 
   /**
    * Computes and sends the monthly aggregation to the `requester` actor.
    */
   def highLow(e: GetMonthlyHiLowTemperature, requester: ActorRef): Unit =
-    (for {
-      a <- sc.cassandraTable[DailyTemperature](keyspace, dailytable)
-              .where("wsid = ? AND year = ? AND month = ?", e.wsid, e.year, e.month)
-              .collectAsync()
-    } yield forMonth(e.wsid, e.year, e.month, a)) pipeTo requester
+    sc.cassandraTable[DailyTemperature](keyspace, dailytable)
+      .where("wsid = ? AND year = ? AND month = ?", e.wsid, e.year, e.month)
+      .collectAsync()
+      .map(toMonthly(_, e.wsid, e.year, e.month)) pipeTo requester
+
 
   /** Stores the daily temperature aggregates asynchronously which are triggered
     * by on-demand requests during the `forDay` function's `self ! data`
@@ -85,20 +84,20 @@ class TemperatureActor(sc: SparkContext, settings: WeatherSettings)
    * @return If no hourly data available, returns [[NoDataAvailable]]
    *         else [[DailyTemperature]] with mean, variance,stdev,hi,low stats.
    */
-  private def forDay(key: Day, temps: Seq[Double]): WeatherAggregate  =
-    if (temps.nonEmpty) {
-      val data = toDailyTemperature(key, StatCounter(temps))
+  private def toDaily(aggregate: Seq[Double], key: Day): WeatherAggregate =
+    if (aggregate.nonEmpty) {
+      val data = toDailyTemperature(key, StatCounter(aggregate))
       self ! data
       data
-    } else NoDataAvailable(key.wsid, key.year, classOf[DailyTemperature])
+    } else NoDataAvailable(key.wsid, key.year, classOf[DailyTemperature]) // not wanting to return an option to requester
 
-  private def forMonth(wsid: String, year: Int, month: Int, temps: Seq[DailyTemperature]): WeatherAggregate =
-    if (temps.nonEmpty)
-      MonthlyTemperature(wsid, year, month, temps.map(_.high).max, temps.map(_.low).min)
+  private def toMonthly(aggregate: Seq[DailyTemperature], wsid: String, year: Int, month: Int): WeatherAggregate =
+    if (aggregate.nonEmpty)
+      MonthlyTemperature(wsid, year, month, aggregate.map(_.high).max, aggregate.map(_.low).min)
     else
-      NoDataAvailable(wsid, year, classOf[MonthlyTemperature])
+      NoDataAvailable(wsid, year, classOf[MonthlyTemperature]) // not wanting to return an option to requester
 
-  def toDailyTemperature(key: Day, stats: StatCounter): DailyTemperature =
+  private def toDailyTemperature(key: Day, stats: StatCounter): DailyTemperature =
     DailyTemperature(key.wsid, key.year, key.month, key.day,
       high = stats.max, low = stats.min, mean = stats.mean,
       variance = stats.variance, stdev = stats.stdev)

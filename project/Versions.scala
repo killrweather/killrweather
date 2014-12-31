@@ -35,7 +35,7 @@ object Versions {
   val ScalazStream   = "0.1"
   val Sigar          = "1.6.4"
   val Slf4j          = "1.7.7"
-  val Spark          = "1.1.1"
-  val SparkAkka      = "2.2.3"
-  val SparkCassandra = "1.1.0"
+  val Spark          = "1.1.1"// upgrade coming soon
+  val SparkAkka      = "2.2.3"// upgrade coming soon
+  val SparkCassandra = "1.1.0"// upgrade coming soon
 }

@@ -129,7 +129,10 @@ object Weather {
   case class AnnualPrecipitation(wsid: String,
                                  year: Int,
                                  total: Double) extends Precipitation
-
+  object AnnualPrecipitation {
+    def apply(aggregate: Seq[Double], wsid: String, year: Int): AnnualPrecipitation =
+      AnnualPrecipitation(wsid, year, aggregate.sum)
+  }
   case class TopKPrecipitation(wsid: String,
                                year: Int,
                                top: Seq[Double]) extends WeatherAggregate

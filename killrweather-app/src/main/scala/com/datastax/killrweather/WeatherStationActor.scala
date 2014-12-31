@@ -15,7 +15,7 @@
  */
 package com.datastax.killrweather
 
-import akka.pattern.{ pipe, ask }
+import akka.pattern.pipe
 import akka.actor.{ActorLogging, Actor, ActorRef}
 import org.apache.spark.SparkContext
 import org.apache.spark.SparkContext._
@@ -34,7 +34,7 @@ class WeatherStationActor(sc: SparkContext, settings: WeatherSettings)
 
   def receive : Actor.Receive = {
     case GetCurrentWeather(wsid, dt) => current(wsid, dt, sender)
-    case GetWeatherStation(wsid)  => weatherStation(wsid, sender)
+    case GetWeatherStation(wsid)     => weatherStation(wsid, sender)
   }
 
   /** Computes and sends the current weather conditions for a given weather station,
@@ -42,12 +42,10 @@ class WeatherStationActor(sc: SparkContext, settings: WeatherSettings)
     */
   def current(wsid: String, dt: Option[DateTime], requester: ActorRef): Unit = {
     val day = Day(wsid, dt getOrElse timestamp)
-    (for {
-      now <- sc.cassandraTable[RawWeatherData](keyspace, rawtable)
-              .where("wsid = ? AND year = ? AND month = ? AND day = ?",
-                wsid, day.year, day.month, day.day)
-              .collectAsync()
-    } yield now.headOption) pipeTo requester
+    sc.cassandraTable[RawWeatherData](keyspace, rawtable)
+      .where("wsid = ? AND year = ? AND month = ? AND day = ?",
+        wsid, day.year, day.month, day.day)
+      .collectAsync.map(_.headOption) pipeTo requester
   }
 
   /** The reason we can not allow a `LIMIT 1` in the `where` function is that
@@ -55,10 +53,8 @@ class WeatherStationActor(sc: SparkContext, settings: WeatherSettings)
     * query invocation. You would probably receive about partitions_number * limit results.
     */
   def weatherStation(wsid: String, requester: ActorRef): Unit =
-    for {
-      stations <- sc.cassandraTable[Weather.WeatherStation](keyspace, weatherstations)
-                  .where("id = ?", wsid).collectAsync
-      station <- stations.headOption
-    } requester ! station
+    sc.cassandraTable[Weather.WeatherStation](keyspace, weatherstations)
+      .where("id = ?", wsid)
+      .collectAsync.map(_.headOption) pipeTo requester
 
 }
