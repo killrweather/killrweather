@@ -15,10 +15,10 @@
  */
 package com.datastax.killrweather
 
-import akka.cluster.Cluster
-
 import scala.collection.immutable
 import scala.concurrent.duration._
+import scala.util.Try
+import akka.cluster.Cluster
 import akka.actor._
 import org.joda.time.{DateTime, DateTimeZone}
 
@@ -63,12 +63,17 @@ private[killrweather] class WeatherApiQueries extends Actor with ActorLogging wi
 
   def queries(): Unit = {
 
-    val previous = (d: Day) => queried contains d
+    val previous = (day: Day) => {
+      val key = day.wsid.split(":")(0)
+      queried.exists(_.wsid.startsWith(key))
+    }
 
-    val sample: Day = (for {
-      f <- for (f <- fileFeed()) yield FileStream(f)
-      data <- f.getLines.toList.map(Day(_)).filterNot(previous)
-    } yield data).head
+    val sample: Day = fileFeed().flatMap { case f =>
+      val source = FileSource(f).source
+      val s = source.getLines().map(Day(_)).filterNot(previous).toSeq.headOption
+      Try(source.close())
+      s
+    }.head
 
     log.info("Requesting the current weather for weather station {}", sample.wsid)
     // because we load from historic file data vs stream in the cloud for this sample app ;)

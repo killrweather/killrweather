@@ -18,11 +18,10 @@ package com.datastax.killrweather
 import java.net.InetSocketAddress
 import java.io.{File => JFile}
 
-import com.typesafe.config.ConfigFactory
-
 import scala.util.Try
 import scala.concurrent.duration._
 import scala.collection.immutable
+import com.typesafe.config.ConfigFactory
 import org.reactivestreams.Publisher
 import akka.http.Http.IncomingConnection
 import akka.stream.FlowMaterializer
@@ -156,23 +155,29 @@ class FileFeedActor(cluster: Cluster) extends Actor with ActorLogging with Clien
   import FileFeedEvent._
   import context.dispatcher
 
+  implicit val materializer = FlowMaterializer()
+
   /** The 2 data feed actors publish messages to this actor which get published to Kafka for buffered streaming. */
   val guardian = context.actorSelection(cluster.selfAddress.copy(port = Some(BasePort)) + "/user/node-guardian")
 
   def receive : Actor.Receive = {
-    case e: FileStream => handle(e, sender)
+    case e: FileSource => handle(e, sender)
   }
 
-  def handle(e : FileStream, origin : ActorRef): Unit = {
+  def handle(e : FileSource, origin : ActorRef): Unit = {
+    val source = e.source
     log.info(s"Ingesting {}", e.file.getAbsolutePath)
-    e.getLines foreach { data =>
-      context.system.scheduler.scheduleOnce(2.second) {
+
+    Source(source.getLines).foreach { case data =>
+        context.system.scheduler.scheduleOnce(2.second) {
         log.debug(s"Sending '{}'", data)
         guardian ! KafkaMessageEnvelope[String, String](DefaultTopic, DefaultGroup, data)
       }
+    }.onComplete { _ =>
+      Try(source.close())
+      origin ! TaskCompleted
+      context stop self
     }
-    origin ! TaskCompleted
-    context stop self
   }
 }
 

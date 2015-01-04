@@ -19,6 +19,8 @@ import java.io.{File => JFile}
 
 import com.typesafe.config.ConfigFactory
 
+import scala.io.BufferedSource
+
 private[killrweather] trait ClientHelper {
 
   private val config = ConfigFactory.load
@@ -42,20 +44,20 @@ private[killrweather] object FileFeedEvent {
 
   @SerialVersionUID(0L)
   sealed trait FileFeedEvent extends Serializable
-  case class FileStreamEnvelope(files: Set[FileStream]) extends FileFeedEvent
+  case class FileStreamEnvelope(files: Set[FileSource]) extends FileFeedEvent
   object FileStreamEnvelope {
     def apply(files: JFile*): FileStreamEnvelope =
-      FileStreamEnvelope(files.map(FileStream(_)).toSet)
+      FileStreamEnvelope(files.map(FileSource(_)).toSet)
   }
-  case class FileStream(file: JFile) extends FileFeedEvent {
+  case class FileSource(file: JFile) extends FileFeedEvent {
 
-    def getLines: Stream[String] = file match {
+    private[killrweather] def source: BufferedSource = file match {
       case null =>
         throw new IllegalArgumentException("FileStream: File must not be null.")
       case f if f.getAbsolutePath endsWith ".gz" =>
-        scala.io.Source.fromInputStream(new GZIPInputStream(new BufferedInputStream(new FileInputStream(file)))).getLines.toStream
+        scala.io.Source.fromInputStream(new GZIPInputStream(new BufferedInputStream(new FileInputStream(file))), "utf-8")
       case f =>
-        scala.io.Source.fromFile(file).getLines.toStream
+        scala.io.Source.fromFile(file, "utf-8")
     }
   }
 }
