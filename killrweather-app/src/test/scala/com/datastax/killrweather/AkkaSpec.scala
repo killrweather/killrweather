@@ -41,11 +41,13 @@ abstract class AkkaSpec extends TestKit(ActorSystem()) with AbstractSpec with Im
 
 trait TestFileHelper {
 
-  def fileFeed(path: String, extension: String): Set[JFile] =
+  def fileFeed(path: String, extension: String): Set[JFile] = {
+    println(s"path=$path, ext=$extension")
     new JFile(path).list.collect {
       case name if name.endsWith(extension) =>
         new JFile(s"$path/$name".replace("./", ""))
     }.toSet
+  }
 }
 
 class MetricsListener(cluster: Cluster) extends Actor with ActorLogging {

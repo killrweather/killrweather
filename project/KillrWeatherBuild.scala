@@ -87,7 +87,6 @@ object Dependencies {
     val scalazContrib     = "org.typelevel"       %% "scalaz-contrib-210"                 % ScalazContrib   // MIT
     val scalazContribVal  = "org.typelevel"       %% "scalaz-contrib-validation"          % ScalazContrib   // MIT
     val scalazStream      = "org.scalaz.stream"   %% "scalaz-stream"                      % ScalazStream    // MIT
-    val slf4jApi          = "org.slf4j"           % "slf4j-api"                           % Slf4j //% "provided" // MIT
     val sparkML           = "org.apache.spark"    %% "spark-mllib"                        % Spark % "provided" // ApacheV2
     val sparkSQL          = "org.apache.spark"    %% "spark-sql"                          % Spark % "provided" // ApacheV2
     val sparkCassandra    = "com.datastax.spark"  %% "spark-cassandra-connector"          % SparkCassandra  excludeAll(ExclusionRule("org.slf4j"))// ApacheV2
@@ -106,8 +105,6 @@ object Dependencies {
 
   val json = Seq(json4sCore, json4sJackson, json4sNative)
 
-  val logging = Seq(logback, slf4jApi)
-
   val scalaz = Seq(scalazContrib, scalazContribVal, scalazStream)
 
   val time = Seq(jodaConvert, jodaTime)
@@ -115,12 +112,12 @@ object Dependencies {
   val test = Seq(Test.akkaTestKit, Test.scalatest)
 
   /** Module deps */
-  val client = logging ++ Seq(akkaStream, akkaHttpCore, akkaActor, akkaCluster, akkaRemote, akkaSlf4j)
+  val client = Seq(akkaStream, akkaHttpCore, akkaActor, akkaCluster, akkaRemote, akkaSlf4j, logback)
 
   val core = time
 
-  val app = connector ++ json ++ scalaz ++ test ++ time ++ logging ++
-    Seq(algebird, bijection, kafka, kafkaStreaming, sparkML, sparkSQL) ++
+  val app = connector ++ json ++ scalaz ++ test ++ time ++
+    Seq(algebird, bijection, kafka, kafkaStreaming, logback, sparkML, sparkSQL) ++
     Seq("com.typesafe.akka" %% "akka-cluster" % SparkAkka, "com.typesafe.akka" %% "akka-slf4j" % SparkAkka)// spark
 
   val examples = connector ++ time ++ json ++

@@ -14,11 +14,13 @@
  * limitations under the License.
  */
 
+import scala.language.postfixOps
+
 import sbt._
 import sbt.Keys._
 import net.virtualvoid.sbt.graph.Plugin.graphSettings
-
-import scala.language.postfixOps
+import com.scalapenos.sbt.prompt.SbtPrompt.autoImport._
+import com.scalapenos.sbt.prompt.PromptTheme
 
 object Settings extends Build {
 
@@ -29,7 +31,8 @@ object Settings extends Build {
     organizationHomepage := Some(url("http://www.github.com/killrweather/killrweather")),
     scalaVersion := Versions.Scala,
     homepage := Some(url("https://github.com/killrweather/killrweather")),
-    licenses := Seq(("Apache License, Version 2.0", url("http://www.apache.org/licenses/LICENSE-2.0")))
+    licenses := Seq(("Apache License, Version 2.0", url("http://www.apache.org/licenses/LICENSE-2.0"))),
+    promptTheme := theme
   )
 
   override lazy val settings = super.settings ++ buildSettings
@@ -53,8 +56,7 @@ object Settings extends Build {
   val tests = inConfig(Test)(Defaults.testTasks) ++ inConfig(IntegrationTest)(Defaults.itSettings)
 
   val testOptionSettings = Seq(
-    Tests.Argument(TestFrameworks.ScalaTest, "-oDF"),
-    Tests.Argument(TestFrameworks.JUnit, "-oDF", "-v", "-a")
+    Tests.Argument(TestFrameworks.ScalaTest, "-oDF")
   )
 
   lazy val testSettings = tests ++ Seq(
@@ -70,24 +72,15 @@ object Settings extends Build {
 
   lazy val withSigar = Seq(javaOptions in run ++= Seq(s"-Djava.library.path=./sigar", "-Xms128m", "-Xmx1024m"))
 
-}
-
-object ShellPromptPlugin extends AutoPlugin {
-  override def trigger = allRequirements
-  override lazy val projectSettings = Seq(
-    shellPrompt := buildShellPrompt
-  )
-  val devnull: ProcessLogger = new ProcessLogger {
-    def info (s: => String) {}
-    def error (s: => String) { }
-    def buffer[T] (f: => T): T = f
-  }
-  def currBranch =
-    ("git status -sb" lines_! devnull headOption).
-      getOrElse("-").stripPrefix("## ")
-  val buildShellPrompt: State => String = {
-    case (state: State) =>
-      val currProject = Project.extract (state).currentProject.id
-      s"""$currProject:$currBranch> """
-  }
+  lazy val theme = PromptTheme(List(
+    text("[SBT] ", fg(green)),
+    userName(fg(000)),
+    text("@", fg(000)),
+    hostName(fg(000)),
+    text(":", fg(000)),
+    gitBranch(clean = fg(green), dirty = fg(20)),
+    text(":", fg(000)),
+    currentProject(fg(magenta)),
+    text("> ", fg(000))
+  ))
 }

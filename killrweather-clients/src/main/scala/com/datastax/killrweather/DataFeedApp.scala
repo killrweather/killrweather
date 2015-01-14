@@ -94,7 +94,6 @@ class AutomaticDataFeedActor(cluster: Cluster) extends Actor with ActorLogging w
           context.actorOf(Props(new FileFeedActor(cluster))) ! message
         }
     }
-
   }
 
   def stop(): Unit = if (context.children.isEmpty) context stop self
