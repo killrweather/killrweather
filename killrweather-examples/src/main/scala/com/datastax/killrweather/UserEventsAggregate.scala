@@ -61,11 +61,10 @@ object UserEventsAggregate extends App {
   val results = sc.cassandraTable[UserEvent]("my_keyspace", "user_events")
     .where("timestmp > ? and timestmp < ?", from, to)
     .groupBy(_.userId)
-    .filter(_._2.nonEmpty)
-    .collect.toMap
+    .map(_._1)
+    .collect()
 
-  require(results.get("user-a").isEmpty, "'results' must not contain 'user-a' which has 0 events")
-  require(results.values.forall(_.size > 0))
+  require(!results.contains("user-a"), "'results' must not contain 'user-a' which has 0 events")
 
   results foreach println
 
