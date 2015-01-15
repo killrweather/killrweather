@@ -18,6 +18,7 @@ package com.datastax.killrweather
 
 import com.datastax.spark.connector.cql.CassandraConnector
 import org.apache.spark.{SparkContext, SparkConf}
+import org.apache.spark.SparkContext._
 import com.datastax.spark.connector._
 import org.joda.time.{DateTime, DateTimeZone}
 
@@ -60,9 +61,7 @@ object UserEventsAggregate extends App {
 
   val results = sc.cassandraTable[UserEvent]("my_keyspace", "user_events")
     .where("timestmp > ? and timestmp < ?", from, to)
-    .groupBy(_.userId)
-    .map(_._1)
-    .collect()
+    .map(_.userId).distinct().collect()
 
   require(!results.contains("user-a"), "'results' must not contain 'user-a' which has 0 events")
 
