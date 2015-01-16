@@ -26,7 +26,7 @@ object Versions {
   val JodaConvert    = "1.7"
   val JodaTime       = "2.4"
   val Json4s         = "3.2.10"
-  val Kafka          = "0.8.0"//0.8.2
+  val Kafka          = "0.8.0"//0.8.2 https://github.com/apache/spark/pull/3631
   val Kryo           = "3.0.0"
   val Logback        = "1.0.13"
   val Scala          = "2.10.4"
@@ -36,7 +36,7 @@ object Versions {
   val ScalazStream   = "0.1"
   val Sigar          = "1.6.4"
   val Slf4j          = "1.7.7"
-  val Spark          = "1.1.1"// 1.2.0, 1.2.1
-  val SparkAkka      = "2.2.3"// 2.3.4
-  val SparkCassandra = "1.1.0"// 1.2.0, 1.2.1
+  val Spark          = "1.2.0"
+  val SparkAkka      = "2.3.4"
+  val SparkCassandra = "1.2.0-alpha1"
 }

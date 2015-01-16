@@ -87,8 +87,8 @@ object Dependencies {
     val scalazContrib     = "org.typelevel"       %% "scalaz-contrib-210"                 % ScalazContrib   // MIT
     val scalazContribVal  = "org.typelevel"       %% "scalaz-contrib-validation"          % ScalazContrib   // MIT
     val scalazStream      = "org.scalaz.stream"   %% "scalaz-stream"                      % ScalazStream    // MIT
-    val sparkML           = "org.apache.spark"    %% "spark-mllib"                        % Spark % "provided" // ApacheV2
-    val sparkSQL          = "org.apache.spark"    %% "spark-sql"                          % Spark % "provided" // ApacheV2
+    val sparkML           = "org.apache.spark"    %% "spark-mllib"                        % Spark % "provided" exclude("com.google.guava", "guava") exclude("org.apache.spark", "spark-core") // ApacheV2
+    val sparkCatalyst       = "org.apache.spark"        %% "spark-catalyst"        % Spark exclude("com.google.guava", "guava") exclude("org.apache.spark", "spark-core")
     val sparkCassandra    = "com.datastax.spark"  %% "spark-cassandra-connector"          % SparkCassandra  excludeAll(ExclusionRule("org.slf4j"))// ApacheV2
     val sparkCassandraEmb = "com.datastax.spark"  %% "spark-cassandra-connector-embedded" % SparkCassandra  excludeAll(ExclusionRule("org.slf4j")) excludeAll(ExclusionRule("org.apache.spark")) excludeAll(ExclusionRule("com.typesafe")) excludeAll(ExclusionRule("org.apache.cassandra")) excludeAll(ExclusionRule("com.datastax.cassandra"))// ApacheV2
     val sigar             = "org.fusesource"      % "sigar"                               % Sigar
@@ -101,7 +101,7 @@ object Dependencies {
 
   import Compile._
 
-  val connector = Seq(driver, sparkCassandra, sparkCassandraEmb)
+  val connector = Seq(driver, sparkCassandra, sparkCatalyst, sparkCassandraEmb)
 
   val json = Seq(json4sCore, json4sJackson, json4sNative)
 
@@ -117,9 +117,9 @@ object Dependencies {
   val core = time
 
   val app = connector ++ json ++ scalaz ++ test ++ time ++
-    Seq(algebird, bijection, kafka, kafkaStreaming, logback, sparkML, sparkSQL) ++
+    Seq(algebird, bijection, kafka, kafkaStreaming, logback, sparkML) ++
     Seq("com.typesafe.akka" %% "akka-cluster" % SparkAkka, "com.typesafe.akka" %% "akka-slf4j" % SparkAkka)// spark
 
   val examples = connector ++ time ++ json ++
-    Seq(algebird, kafka, kafkaStreaming, logback, sparkML, sparkSQL)
+    Seq(algebird, kafka, kafkaStreaming, logback, sparkML)
 }
