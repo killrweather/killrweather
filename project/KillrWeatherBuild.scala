@@ -83,12 +83,13 @@ object Dependencies {
     val json4sNative      = "org.json4s"          %% "json4s-native"                      % Json4s          // ApacheV2
     val kafka             = "org.apache.kafka"    %% "kafka"                              % Kafka excludeAll(ExclusionRule("org.slf4j")) // ApacheV2
     val kafkaStreaming    = "org.apache.spark"    %% "spark-streaming-kafka"              % Spark exclude("com.google.guava", "guava") exclude("org.apache.spark", "spark-core") // ApacheV2
-    val logback           = "ch.qos.logback"      % "logback-classic"                     % Logback % "runtime"
+    val logback           = "ch.qos.logback"      % "logback-classic"                     % Logback
     val scalazContrib     = "org.typelevel"       %% "scalaz-contrib-210"                 % ScalazContrib   // MIT
     val scalazContribVal  = "org.typelevel"       %% "scalaz-contrib-validation"          % ScalazContrib   // MIT
     val scalazStream      = "org.scalaz.stream"   %% "scalaz-stream"                      % ScalazStream    // MIT
+    val slf4jApi          = "org.slf4j"           % "slf4j-api"                           % Slf4j           // MIT
     val sparkML           = "org.apache.spark"    %% "spark-mllib"                        % Spark % "provided" exclude("com.google.guava", "guava") exclude("org.apache.spark", "spark-core") // ApacheV2
-    val sparkCatalyst       = "org.apache.spark"        %% "spark-catalyst"        % Spark exclude("com.google.guava", "guava") exclude("org.apache.spark", "spark-core")
+    val sparkCatalyst     = "org.apache.spark"    %% "spark-catalyst"                     % Spark exclude("com.google.guava", "guava") exclude("org.apache.spark", "spark-core")
     val sparkCassandra    = "com.datastax.spark"  %% "spark-cassandra-connector"          % SparkCassandra  excludeAll(ExclusionRule("org.slf4j"))// ApacheV2
     val sparkCassandraEmb = "com.datastax.spark"  %% "spark-cassandra-connector-embedded" % SparkCassandra  excludeAll(ExclusionRule("org.slf4j")) excludeAll(ExclusionRule("org.apache.spark")) excludeAll(ExclusionRule("com.typesafe")) excludeAll(ExclusionRule("org.apache.cassandra")) excludeAll(ExclusionRule("com.datastax.cassandra"))// ApacheV2
     val sigar             = "org.fusesource"      % "sigar"                               % Sigar
@@ -112,7 +113,7 @@ object Dependencies {
   val test = Seq(Test.akkaTestKit, Test.scalatest)
 
   /** Module deps */
-  val client = Seq(akkaStream, akkaHttpCore, akkaActor, akkaCluster, akkaRemote, akkaSlf4j, logback)
+  val client = Seq(akkaStream, akkaHttpCore, akkaActor, akkaCluster, akkaRemote, akkaSlf4j, logback, slf4jApi)
 
   val core = time
 
