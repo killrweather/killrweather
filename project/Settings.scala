@@ -64,6 +64,7 @@ object Settings extends Build {
     parallelExecution in IntegrationTest := false,
     testOptions in Test ++= testOptionSettings,
     testOptions in IntegrationTest ++= testOptionSettings,
+    baseDirectory in Test := baseDirectory.value.getParentFile(),
     fork in Test := true,
     fork in IntegrationTest := true,
     (compile in IntegrationTest) <<= (compile in Test, compile in IntegrationTest) map { (_, c) => c },
