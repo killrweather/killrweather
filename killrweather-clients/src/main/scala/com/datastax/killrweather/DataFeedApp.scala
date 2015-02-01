@@ -122,7 +122,7 @@ class DynamicDataFeedActor(cluster: Cluster) extends Actor with ActorLogging wit
     case HttpRequest(POST, Uri.Path(ctx), headers, entity, _) =>
       toFiles(headers) map { files =>
         log.info(s"Received {}", files.mkString)
-        context.actorOf(Props(new FileFeedActor(cluster))) ! FileStreamEnvelope(files:_*)
+        context.actorOf(Props(new AutomaticDataFeedActor(cluster))) ! FileStreamEnvelope(files:_*)
         HttpResponse(200, entity = HttpEntity(MediaTypes.`text/html`, s"POST [$entity] successful."))
       } getOrElse
         HttpResponse(404, entity = s"Unknown resource '$entity'")
