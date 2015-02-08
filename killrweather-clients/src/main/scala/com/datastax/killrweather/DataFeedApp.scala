@@ -17,7 +17,6 @@ package com.datastax.killrweather
 
 import java.net.InetSocketAddress
 import java.io.{File => JFile}
-
 import scala.util.Try
 import scala.concurrent.duration._
 import scala.collection.immutable
@@ -32,6 +31,7 @@ import akka.http.model._
 import akka.http.model.HttpMethods._
 import akka.io.IO
 import akka.util.Timeout
+import scala.io.BufferedSource
 
 /** Run with: sbt clients/run for automatic data file import to Kafka.
   *
@@ -84,13 +84,8 @@ class AutomaticDataFeedActor(cluster: Cluster) extends Actor with ActorLogging w
   def start(envelope: FileStreamEnvelope): Unit = {
     log.info("Starting data file ingestion on {}.", Cluster(context.system).selfAddress)
 
-    envelope.files.map {
-      case message if message == envelope.files.head =>
-        context.system.scheduler.scheduleOnce(5.seconds) {
-          context.actorOf(Props(new FileFeedActor(cluster))) ! message
-        }
-      case message =>
-        context.system.scheduler.scheduleOnce(20.seconds) {
+    envelope.files.zipWithIndex.map { case (message,index) => 
+        context.system.scheduler.scheduleOnce((index + 1) * 5.seconds) {
           context.actorOf(Props(new FileFeedActor(cluster))) ! message
         }
     }
@@ -158,25 +153,28 @@ class FileFeedActor(cluster: Cluster) extends Actor with ActorLogging with Clien
 
   /** The 2 data feed actors publish messages to this actor which get published to Kafka for buffered streaming. */
   val guardian = context.actorSelection(cluster.selfAddress.copy(port = Some(BasePort)) + "/user/node-guardian")
+  
 
   def receive : Actor.Receive = {
-    case e: FileSource => handle(e, sender)
+    case e: FileSource => log.info(s"Ingesting {}", e.file.getAbsolutePath)
+       val source = e.source
+       val ticker = context.system.scheduler.schedule(0.second, 2.second,self,Tick)
+       context.become(awaitTick(sender,source,ticker,source.getLines())) 
   }
-
-  def handle(e : FileSource, origin : ActorRef): Unit = {
-    val source = e.source
-    log.info(s"Ingesting {}", e.file.getAbsolutePath)
-
-    Source(source.getLines).foreach { case data =>
-        context.system.scheduler.scheduleOnce(2.second) {
-        log.debug(s"Sending '{}'", data)
-        guardian ! KafkaMessageEnvelope[String, String](DefaultTopic, DefaultGroup, data)
-      }
-    }.onComplete { _ =>
-      Try(source.close())
-      origin ! TaskCompleted
-      context stop self
-    }
+  
+  def awaitTick(origin:ActorRef, source:BufferedSource,ticker:Cancellable,lines: Iterator[String]) : Actor.Receive =  {
+    case Tick => 
+      if(lines.hasNext)
+      guardian ! KafkaMessageEnvelope[String, String](DefaultTopic, DefaultGroup, lines.next())
+    else{
+       Try(source.close())
+       origin ! TaskCompleted
+       ticker.cancel()
+       log.info(s"Ingested")
+       context stop self
+    } 
   }
+  
+  object Tick
 }
 
