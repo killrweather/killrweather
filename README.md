@@ -28,7 +28,7 @@ If this is your first time running SBT, you will be downloading the internet.
     # For IntelliJ users, this creates Intellij project files
     sbt gen-idea
 
-### Setup - 3 Steps
+### Setup (for Linux & Mac) - 3 Steps
 1. [Download the latest Cassandra](http://cassandra.apache.org/download/) and open the compressed file.
 
 
@@ -45,6 +45,30 @@ On the command line start a cqlsh shell:
 
     cd /path/to/killrweather
     ~/apache-cassandra-{latest.version}/bin/cqlsh
+
+You should see:
+
+    Connected to Test Cluster at 127.0.0.1:9042.
+    [cqlsh {latest.version} | Cassandra {latest.version} | CQL spec {latest.version} | Native protocol {latest.version}]
+    Use HELP for help.
+    cqlsh>
+
+Run the scripts:
+
+    cqlsh> source 'create-timeseries.cql';
+    cqlsh> source 'load-timeseries.cql';
+    cqlsh> quit;
+
+### Setup (for Windows) - 3 Steps
+1. [Download the latest Cassandra](http://www.planetcassandra.org/cassandra) and double click the installer.
+
+2. Chose to run the Cassandra automatically during start-up
+
+3. Run the setup cql scripts to create the schema and populate the weather stations table.
+On the command line start a cqlsh shell:
+
+
+    cd c:/path/to/killrweather c:/pat/to/cassandara/bin/cqlsh
 
 You should see:
 
