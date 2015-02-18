@@ -68,13 +68,16 @@ private[killrweather] class WeatherApiQueries extends Actor with ActorLogging wi
       queried.exists(_.wsid.startsWith(key))
     }
 
-    val sample: Day = fileFeed().flatMap { case f =>
+    val samples: Option[Day] = fileFeed().flatMap { case f =>
       val source = FileSource(f).source
-      val s = source.getLines().map(Day(_)).filterNot(previous).toSeq.headOption
-      Try(source.close())
-      s
-    }.head
+      try{
+        source.getLines().map(Day(_)).filterNot(previous).toSeq.headOption
+      }finally{
+         Try(source.close())
+      }
+    }.headOption
 
+    for(sample <- samples){
     log.info("Requesting the current weather for weather station {}", sample.wsid)
     // because we load from historic file data vs stream in the cloud for this sample app ;)
     val timestamp = new DateTime(DateTimeZone.UTC).withYear(sample.year)
@@ -97,5 +100,6 @@ private[killrweather] class WeatherApiQueries extends Actor with ActorLogging wi
     guardian ! GetWeatherStation(sample.wsid)
 
     queried += sample
+    }
   }
 }
