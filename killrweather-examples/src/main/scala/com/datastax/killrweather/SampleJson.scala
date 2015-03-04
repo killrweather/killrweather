@@ -32,7 +32,12 @@ object SampleJson extends App {
   CassandraConnector(conf).withSessionDo { session =>
     session.execute("DROP KEYSPACE IF EXISTS githubstats")
     session.execute("CREATE KEYSPACE githubstats WITH REPLICATION = {'class': 'SimpleStrategy', 'replication_factor': 1 }")
-    session.execute("CREATE TABLE githubstats.monthly_commits (user VARCHAR PRIMARY KEY, commits INT, date INT)")
+    session.execute(
+      """CREATE TABLE githubstats.monthly_commits (
+        |user VARCHAR PRIMARY KEY,
+        |commits INT,
+        |month INT,
+        |year INT)""".stripMargin)
   }
 
   val sc = new SparkContext(conf)
@@ -53,8 +58,9 @@ object GitHubEvents {
   trait User extends Stat
   trait Repo extends Stat
   trait Commits extends Stat
-  case class MonthlyCommits(user: String, commits: Int, date: Long) extends Commits
+  case class MonthlyCommits(user: String, commits: Int, month: Int, year: Int) extends Commits
   object MonthlyCommits {
-    def apply(r: Row): MonthlyCommits = MonthlyCommits(r.getString(2),r.getInt(0),r.getInt(1))
+    def apply(r: Row): MonthlyCommits = MonthlyCommits(
+      r.getString(0), r.getInt(1), r.getInt(2), r.getInt(3))
   }
 }
