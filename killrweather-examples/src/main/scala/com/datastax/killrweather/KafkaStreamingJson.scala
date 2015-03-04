@@ -11,17 +11,14 @@ import org.apache.spark.storage.StorageLevel
 import org.apache.spark.streaming.kafka.KafkaUtils
 import com.datastax.spark.connector.cql.CassandraConnector
 import com.datastax.spark.connector.embedded.{Assertions, EmbeddedKafka}
-
-import scala.util.{Try, Random}
+import com.datastax.spark.connector._
+import com.datastax.spark.connector.streaming._
 
 object KafkaStreamingJson extends App with Assertions {
-  import com.datastax.spark.connector._
-  import com.datastax.spark.connector.streaming._
 
   val data = Seq(
     """{"user":"helena","commits":98, "month":12, "year":2015}""",
     """{"user":"pkolaczk", "commits":42, "month":12, "year":2015}""")
-
 
   /* Kafka (embedded) setup */
   val kafka = new EmbeddedKafka
@@ -39,6 +36,7 @@ object KafkaStreamingJson extends App with Assertions {
     .set("spark.cleaner.ttl", "5000")
   val sc = new SparkContext(conf)
   val ssc = new StreamingContext(sc, Milliseconds(5000))
+  val sqlContext = new SQLContext(sc)
 
   /* Cassandra setup */
   CassandraConnector(conf).withSessionDo { session =>
@@ -50,8 +48,6 @@ object KafkaStreamingJson extends App with Assertions {
   val kafkaStream = KafkaUtils.createStream[String, String, StringDecoder, StringDecoder](
     ssc, kafka.kafkaParams, Map("github" -> 10), StorageLevel.DISK_ONLY_2)
     .map(_._2)
-
-  val sqlContext = new SQLContext(sc)
 
   kafkaStream.foreachRDD { rdd =>
     sqlContext.jsonRDD(rdd).registerTempTable("mytable")
