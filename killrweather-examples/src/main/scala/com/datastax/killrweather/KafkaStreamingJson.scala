@@ -46,7 +46,7 @@ object KafkaStreamingJson extends App with Assertions {
   }
 
   val kafkaStream = KafkaUtils.createStream[String, String, StringDecoder, StringDecoder](
-    ssc, kafka.kafkaParams, Map("github" -> 10), StorageLevel.DISK_ONLY_2)
+    ssc, kafka.kafkaParams, Map("github" -> 10), StorageLevel.MEMORY_ONLY)
     .map(_._2)
 
   kafkaStream.foreachRDD { rdd =>
