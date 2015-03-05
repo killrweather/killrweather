@@ -15,6 +15,8 @@ import com.datastax.spark.connector.embedded.{Assertions, EmbeddedKafka}
 
 /**
  * Uses spark sql for json work.
+ * @see [[https://github.com/killrweather/killrweather/blob/master/killrweather-examples/src/main/scala/com/datastax/killrweather/KafkaStreamingJson2.scala"]]
+ *      for a cleaner version without Spark SQL doing the JSON mapping.
  */
 object KafkaStreamingJson extends App with Assertions {
   import com.datastax.spark.connector.streaming._
