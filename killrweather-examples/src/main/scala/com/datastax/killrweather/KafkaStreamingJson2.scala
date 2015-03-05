@@ -52,14 +52,14 @@ object KafkaStreamingJson2 extends App with Assertions {
 
   val stream = KafkaUtils.createStream[String, String, StringDecoder, StringDecoder](
     ssc, kafka.kafkaParams, Map("github" -> 5), StorageLevel.MEMORY_ONLY)
-    .map{ case (k,v) => JsonParser.parse(v).extract[MonthlyCommits]}
+    .map{ case (_,v) => JsonParser.parse(v).extract[MonthlyCommits]}
     .saveToCassandra("githubstats","monthly_commits")
 
   ssc.start()
 
   /* validate */
-  val table = ssc.cassandraTable("githubstats", "monthly_commits")
-  awaitCond(table.collect.size > 1, 8.seconds)
+  val table = ssc.cassandraTable[MonthlyCommits]("githubstats", "monthly_commits")
+  awaitCond(table.collect.size > 1, 5.seconds)
   table.toLocalIterator foreach println
 
   ssc.awaitTermination()
