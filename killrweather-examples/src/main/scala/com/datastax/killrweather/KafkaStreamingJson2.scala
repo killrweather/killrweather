@@ -14,7 +14,7 @@ import com.datastax.spark.connector.cql.CassandraConnector
 import com.datastax.spark.connector.embedded.{Assertions, EmbeddedKafka}
 
 /**
- * Uses json4j for json work from the kafka stream.
+ * Uses json4s for json work from the kafka stream.
  */
 object KafkaStreamingJson2 extends App with Assertions {
   import com.datastax.spark.connector.streaming._
