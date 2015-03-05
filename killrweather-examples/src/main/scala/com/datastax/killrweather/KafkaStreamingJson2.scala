@@ -5,20 +5,21 @@ import com.datastax.killrweather.GitHubEvents.MonthlyCommits
 import kafka.producer.{KeyedMessage, Producer}
 import kafka.serializer.StringDecoder
 import org.apache.spark.streaming.{Seconds, StreamingContext}
-import org.apache.spark.rdd.RDD
 import org.apache.spark.{SparkContext, SparkConf}
-import org.apache.spark.sql.{Row, SQLContext}
 import org.apache.spark.storage.StorageLevel
 import org.apache.spark.streaming.kafka.KafkaUtils
+import org.json4s._
+import org.json4s.native.JsonParser
 import com.datastax.spark.connector.cql.CassandraConnector
 import com.datastax.spark.connector.embedded.{Assertions, EmbeddedKafka}
 
 /**
- * Uses spark sql for json work.
+ * Uses json4j for json work from the kafka stream.
  */
-object KafkaStreamingJson extends App with Assertions {
+object KafkaStreamingJson2 extends App with Assertions {
   import com.datastax.spark.connector.streaming._
-  import com.datastax.spark.connector._
+
+  implicit val formats = DefaultFormats
 
   /* Small sample data */
   val data = Seq(
@@ -40,9 +41,7 @@ object KafkaStreamingJson extends App with Assertions {
     .setMaster("local[*]")
     .set("spark.cassandra.connection.host", "127.0.0.1")
     .set("spark.cleaner.ttl", "5000")
-  val sc = new SparkContext(conf)
-  val ssc = new StreamingContext(sc, Seconds(1))
-  val sqlContext = new SQLContext(sc)
+  val ssc = new StreamingContext(new SparkContext(conf), Seconds(1))
 
   /* Cassandra setup */
   CassandraConnector(conf).withSessionDo { session =>
@@ -53,30 +52,16 @@ object KafkaStreamingJson extends App with Assertions {
 
   val stream = KafkaUtils.createStream[String, String, StringDecoder, StringDecoder](
     ssc, kafka.kafkaParams, Map("github" -> 5), StorageLevel.MEMORY_ONLY)
-    .map(_._2)
-
-  stream.foreachRDD { rdd =>
-    /* this check is here to handle the empty collection error
-       after the 3 items in the static sample data set are processed */
-      if (rdd.toLocalIterator.nonEmpty) {
-        sqlContext.jsonRDD(rdd).registerTempTable("mytable")
-        sqlContext.sql(
-          "SELECT user, commits, month, year FROM mytable WHERE commits >= 5 AND year = 2015")
-          .map(MonthlyCommits(_))
-          .saveToCassandra("githubstats","monthly_commits")
-      }
-  }
-
-  stream.print
+    .map{ case (k,v) => JsonParser.parse(v).extract[MonthlyCommits]}
+    .saveToCassandra("githubstats","monthly_commits")
 
   ssc.start()
 
   /* validate */
-  val table = sc.cassandraTable("githubstats", "monthly_commits")
+  val table = ssc.cassandraTable("githubstats", "monthly_commits")
   awaitCond(table.collect.size > 1, 8.seconds)
   table.toLocalIterator foreach println
 
   ssc.awaitTermination()
-
 }
 
