@@ -16,9 +16,9 @@
 package com.datastax.killrweather
 
 import scala.util.Try
+import org.apache.spark.Logging
 import com.datastax.driver.core.ConsistencyLevel
 import com.datastax.spark.connector.cql.{AuthConf, NoAuthConf, PasswordAuthConf}
-import com.datastax.spark.connector.util.Logging
 import com.typesafe.config.{Config, ConfigFactory}
 
 /**

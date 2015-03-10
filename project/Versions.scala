@@ -16,7 +16,7 @@
 
 object Versions {
 
-  val Akka           = "2.3.8"
+  val Akka           = "2.3.9"
   val Albebird       = "0.8.1"
   val Bijection      = "0.7.0"
   val Cassandra      = "2.1.2"
@@ -35,8 +35,8 @@ object Versions {
   val ScalazContrib  = "0.1.5"
   val ScalazStream   = "0.1"
   val Sigar          = "1.6.4"
-  val Slf4j          = "1.7.7"
-  val Spark          = "1.2.0"
+  val Slf4j          = "1.6.1"
+  val Spark          = "1.2.1"
   val SparkAkka      = "2.3.4"
-  val SparkCassandra = "1.2.0-alpha2"
+  val SparkCassandra = "1.2.0-alpha3"
 }
