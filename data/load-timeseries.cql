@@ -3,7 +3,7 @@ Declares the keyspace to use:
 */
 USE isd_weather_data;
 
-COPY weather_station (id, name, country_code, state_code, call_sign, lat, long, elevation) FROM 'weather_stations.csv';
+COPY weather_station (id, name, country_code, state_code, call_sign, lat, long, elevation) FROM 'data/weather_stations.csv';
 
 /*
 Better to load this much data with one of the utility loading programs. But for simplicity of demos:
@@ -27,3 +27,4 @@ INSERT INTO  sky_condition_lookup (code, condition) VALUES (13, 'Dark scattered'
 INSERT INTO  sky_condition_lookup (code, condition) VALUES (14, 'Thin broken 15: Broken');
 INSERT INTO  sky_condition_lookup (code, condition) VALUES (16, 'Dark broken 17: Thin overcast 18: Overcast');
 INSERT INTO  sky_condition_lookup (code, condition) VALUES (19, 'Dark overcast');
+

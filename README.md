@@ -61,8 +61,8 @@ You should see:
 
 Run the scripts:
 
-    cqlsh> source 'create-timeseries.cql';
-    cqlsh> source 'load-timeseries.cql';
+    cqlsh> source 'data/create-timeseries.cql';
+    cqlsh> source 'data/load-timeseries.cql';
     cqlsh> quit;
 
 ### Setup (for Windows) - 3 Steps
