@@ -49,7 +49,7 @@ If this is your first time running SBT, you will be downloading the internet.
 On the command line start a cqlsh shell:
 
 
-    cd /path/to/killrweather
+    cd /path/to/killrweather/data
     ~/apache-cassandra-{latest.version}/bin/cqlsh
 
 You should see:
