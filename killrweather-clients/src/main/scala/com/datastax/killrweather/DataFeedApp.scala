@@ -85,7 +85,7 @@ class AutomaticDataFeedActor(cluster: Cluster) extends Actor with ActorLogging w
   def start(envelope: FileStreamEnvelope): Unit = {
     log.info("Starting data file ingestion on {}.", Cluster(context.system).selfAddress)
 
-    envelope.files.headOption.map {
+    envelope.files.map {
       case message if message == envelope.files.head =>
         context.system.scheduler.scheduleOnce(5.seconds) {
           context.actorOf(Props(new FileFeedActor(cluster))) ! message
