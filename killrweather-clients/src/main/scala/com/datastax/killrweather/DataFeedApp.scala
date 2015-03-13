@@ -32,6 +32,7 @@ import akka.http.model._
 import akka.http.model.HttpMethods._
 import akka.io.IO
 import akka.util.Timeout
+import com.datastax.spark.connector.embedded.KafkaEvent
 
 /** Run with: sbt clients/run for automatic data file import to Kafka.
   *
@@ -84,7 +85,7 @@ class AutomaticDataFeedActor(cluster: Cluster) extends Actor with ActorLogging w
   def start(envelope: FileStreamEnvelope): Unit = {
     log.info("Starting data file ingestion on {}.", Cluster(context.system).selfAddress)
 
-    envelope.files.map {
+    envelope.files.headOption.map {
       case message if message == envelope.files.head =>
         context.system.scheduler.scheduleOnce(5.seconds) {
           context.actorOf(Props(new FileFeedActor(cluster))) ! message
@@ -150,7 +151,7 @@ class DynamicDataFeedActor(cluster: Cluster) extends Actor with ActorLogging wit
 
 class FileFeedActor(cluster: Cluster) extends Actor with ActorLogging with ClientHelper {
 
-  import WeatherEvent._
+  import KafkaEvent._
   import FileFeedEvent._
   import context.dispatcher
 
@@ -174,7 +175,7 @@ class FileFeedActor(cluster: Cluster) extends Actor with ActorLogging with Clien
       }
     }.onComplete { _ =>
       Try(source.close())
-      origin ! TaskCompleted
+      origin ! WeatherEvent.TaskCompleted
       context stop self
     }
   }

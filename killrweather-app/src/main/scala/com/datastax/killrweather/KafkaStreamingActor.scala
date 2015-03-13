@@ -16,8 +16,6 @@
 package com.datastax.killrweather
 
 import akka.actor.{Actor, ActorRef}
-import com.datastax.spark.connector.embedded.KafkaEvent.KafkaMessageEnvelope
-import com.datastax.spark.connector.embedded.KafkaProducerActor
 import kafka.producer.ProducerConfig
 import kafka.serializer.StringDecoder
 import org.apache.spark.SparkContext
@@ -25,6 +23,7 @@ import org.apache.spark.streaming.StreamingContext
 import org.apache.spark.storage.StorageLevel
 import org.apache.spark.streaming.kafka.KafkaUtils
 import com.datastax.spark.connector.streaming._
+import com.datastax.spark.connector.embedded.KafkaProducerActor
 
 /** The KafkaStreamActor creates a streaming pipeline from Kafka to Cassandra via Spark.
   * It creates the Kafka stream which streams the raw data, transforms it, to
@@ -77,10 +76,12 @@ class KafkaStreamingActor(kafkaParams: Map[String, String],
 }
 
 /** The KafkaPublisherActor loads data from /data/load files on startup (because this
-  * is for a runnable demo) and also receives [[KafkaMessageEnvelope]] messages and
+  * is for a runnable demo) and also receives
+  * [[com.datastax.spark.connector.embedded.KafkaEvent.KafkaMessageEnvelope]] messages and
   * publishes them to Kafka on a sender's behalf.
   *
-  * [[KafkaMessageEnvelope]] messages sent to this actor are handled by the [[KafkaProducerActor]]
+  * [[com.datastax.spark.connector.embedded.KafkaEvent.KafkaMessageEnvelope]]
+  * messages sent to this actor are handled by the [[KafkaProducerActor]]
   * which it extends.
   */
 class KafkaPublisherActor(val producerConfig: ProducerConfig,

@@ -51,8 +51,6 @@ object WeatherEvent {
   sealed trait Task extends Serializable
   case object QueryTask extends Task
 
-  case class KafkaMessageEnvelope[K,V](topic: String, key: K, messages: V*) extends Serializable
-
   /**
    * Quick access lookup table for sky_condition. Useful for potential analytics.
    * See http://en.wikipedia.org/wiki/Okta

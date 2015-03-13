@@ -21,7 +21,7 @@ import akka.actor._
 import akka.pattern.gracefulStop
 import org.apache.spark.streaming.kafka.KafkaInputDStream
 import org.apache.spark.streaming.StreamingContext
-import com.datastax.spark.connector.embedded.{KafkaProducer, Assertions, EmbeddedKafka}
+import com.datastax.spark.connector.embedded._
 
 /**
  * The `NodeGuardian` is the root of the primary KillrWeather deployed application.
@@ -37,7 +37,7 @@ import com.datastax.spark.connector.embedded.{KafkaProducer, Assertions, Embedde
  */
 class NodeGuardian(ssc: StreamingContext, kafka: EmbeddedKafka, settings: WeatherSettings)
   extends ClusterAware with AggregationActor with Assertions with ActorLogging {
-
+  import KafkaEvent._
   import WeatherEvent._
   import settings._
 

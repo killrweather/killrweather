@@ -113,7 +113,7 @@ object Dependencies {
   val test = Seq(Test.akkaTestKit, Test.scalatest)
 
   /** Module deps */
-  val client = Seq(akkaStream, akkaHttpCore, akkaActor, akkaCluster, akkaRemote, akkaSlf4j, logback, slf4jApi)
+  val client = Seq(akkaStream, akkaHttpCore, akkaActor, akkaCluster, akkaRemote, akkaSlf4j, logback, slf4jApi, sparkCassandraEmb)
 
   val core = time
 
