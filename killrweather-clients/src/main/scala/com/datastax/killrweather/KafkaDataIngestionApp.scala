@@ -18,7 +18,7 @@ package com.datastax.killrweather
 import java.net.InetSocketAddress
 import java.io.{File => JFile}
 
-import scala.util.{Failure, Success, Try}
+import scala.util.Try
 import scala.concurrent.duration._
 import org.reactivestreams.Publisher
 import akka.http.Http.IncomingConnection
@@ -93,7 +93,7 @@ final class NodeGuardian extends ClusterAwareNodeGuardian with ClientHelper with
     /* Handles initial data ingestion in Kafka for running as a demo. */
     for (data <- initialData) {
       /* If this fails, we can resend the file data, handled idempotently. */
-      context.actorOf(Props(new KafkaIngestionActor(publisherRouter))) ! FileSource(data)
+      context.actorOf(Props(new KafkaIngestionActor(publisherRouter)), data.getName) ! FileSource(data)
     }
   }
 

@@ -15,50 +15,74 @@
  */
 package com.datastax.killrweather
 
-import scala.collection.immutable
+import java.io.File
+
 import scala.concurrent.duration._
 import scala.util.Try
 import akka.cluster.Cluster
 import akka.actor._
 import org.joda.time.{DateTime, DateTimeZone}
+import com.datastax.spark.connector.embedded.Event
 
+/** Automates demo activity every 2 seconds for demos by sending requests to `KillrWeatherApp` instances. */
 object KillrWeatherClientApp extends App with ClientHelper {
 
+  /** Creates the ActorSystem. */
   val system = ActorSystem("KillrWeather")
 
-  val cluster = Cluster(system)
-  cluster.joinSeedNodes(immutable.Seq(cluster.selfAddress))
+  /* The root supervisor and fault tolerance handler of the data ingestion nodes. */
+  val guardian = system.actorOf(Props[ClientNodeGuardian], "node-guardian")
 
-  /** Drives demo activity by sending requests to the NodeGuardian actor. */
-  val queryClient = system.actorOf(Props[WeatherApiQueries], "api-client")
+  system.registerOnTermination {
+    guardian ! PoisonPill
+  }
 
 }
 
-private[killrweather] class WeatherApiQueries extends Actor with ActorLogging with ClientHelper {
+/** Automates demo activity every 2 seconds for demos by sending requests to `KillrWeatherApp` instances. */
+final class ClientNodeGuardian extends ClusterAwareNodeGuardian with ClientHelper with ActorLogging {
+  import context.dispatcher
+
+  val api = context.actorOf(Props[AutomatedApiActor], "automated-api")
+
+  var task: Option[Cancellable] = None
+
+  Cluster(context.system).registerOnMemberUp {
+    task = Some(context.system.scheduler.schedule(Duration.Zero, 2.seconds) {
+      api ! Event.QueryTask
+    })
+  }
+
+  override def postStop(): Unit = {
+    task.map(_.cancel())
+    super.postStop()
+  }
+
+  def initialized: Actor.Receive = {
+    case e =>
+  }
+}
+
+/** For simplicity, these just go through Akka. */
+private[killrweather] class AutomatedApiActor extends Actor with ActorLogging with ClientHelper {
 
   import Weather._
   import WeatherEvent._
   import DataSourceEvent._
-  import context.dispatcher
 
-  val guardian = context.actorSelection(Cluster(context.system).selfAddress.copy(port = Some(BasePort)) + "/user/node-guardian")
-
-  val task = context.system.scheduler.schedule(3.seconds, 2.seconds) {
-    self ! QueryTask
-  }
+  val guardian = context.actorSelection(Cluster(context.system).selfAddress
+    .copy(port = Some(BasePort)) + "/user/node-guardian")
 
   var queried: Set[Day] = Set(Day("725030:14732", 2008, 12, 31)) // just the initial one
 
   override def preStart(): Unit = log.info("Starting.")
-
-  override def postStop(): Unit = task.cancel()
 
   def receive: Actor.Receive = {
     case e: WeatherAggregate =>
       log.info("Received {} from {}", e, sender)
     case e: WeatherModel =>
       log.info("Received {} from {}", e, sender)
-    case QueryTask => queries()
+    case Event.QueryTask => queries()
   }
 
   def queries(): Unit = {
@@ -68,14 +92,14 @@ private[killrweather] class WeatherApiQueries extends Actor with ActorLogging wi
       queried.exists(_.wsid.startsWith(key))
     }
 
-    val day: Option[Day] = initialData.flatMap { case f =>
+    val toSample = (f: File) => {
       val source = FileSource(f).source
-      val s = source.getLines().map(Day(_)).filterNot(previous).toSeq.headOption
+      val opt = source.getLines().map(Day(_)).filterNot(previous).toSeq.headOption
       Try(source.close())
-      s
-    }.headOption
+      opt
+    }
 
-    for (sample <- day) {
+    initialData.flatMap(toSample(_)).headOption map { sample =>
       log.info("Requesting the current weather for weather station {}", sample.wsid)
       // because we load from historic file data vs stream in the cloud for this sample app ;)
       val timestamp = new DateTime(DateTimeZone.UTC).withYear(sample.year)
