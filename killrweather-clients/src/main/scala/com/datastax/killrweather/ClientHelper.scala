@@ -17,9 +17,9 @@ package com.datastax.killrweather
 
 import java.io.{File => JFile}
 
-import com.typesafe.config.ConfigFactory
-
 import scala.io.BufferedSource
+import akka.japi.Util.immutableSeq
+import com.typesafe.config.ConfigFactory
 
 private[killrweather] trait ClientHelper {
 
@@ -27,18 +27,17 @@ private[killrweather] trait ClientHelper {
   protected val BasePort = 2550
   protected val DefaultPath = config.getString("killrweather.data.load.path")
   protected val DefaultExtension = config.getString("killrweather.data.file.extension")
-  protected val DefaultTopic = config.getString("kafka.topic.raw")
-  protected val DefaultGroup = config.getString("kafka.group.id")
-
-  protected def fileFeed(path: String = DefaultPath, extension: String = DefaultExtension): Set[JFile] =
-    new JFile(path).list.collect {
-      case name if name.endsWith(extension) =>
-        new JFile(s"$path/$name".replace("./", ""))
+  protected val KafkaHosts = immutableSeq(config.getStringList("kafka.hosts")).toSet
+  protected val KafkaTopic = config.getString("kafka.topic.raw")
+  protected val KafkaKey = config.getString("kafka.group.id")
+  protected val KafkaBatchSendSize = config.getInt("kafka.batch.send.size")
+  protected val initialData = new JFile(DefaultPath).list.collect {
+      case name if name.endsWith(DefaultExtension) =>
+        new JFile(s"$DefaultPath/$name".replace("./", ""))
     }.toSet
-
 }
 
-private[killrweather] object FileFeedEvent {
+private[killrweather] object DataSourceEvent {
   import java.io.{BufferedInputStream, FileInputStream, File => JFile}
   import java.util.zip.GZIPInputStream
 

@@ -30,6 +30,7 @@ object Versions {
   val Kryo           = "3.0.0"
   val Logback        = "1.0.13"
   val Scala          = "2.10.4"// waiting for spark-streaming-kafka to be supported in scala 2.11
+  val ScalaBinary    = "2.10"
   val ScalaTest      = "2.2.1"
   val Scalaz         = "7.1.0"
   val ScalazContrib  = "0.1.5"
@@ -37,6 +38,5 @@ object Versions {
   val Sigar          = "1.6.4"
   val Slf4j          = "1.6.1"
   val Spark          = "1.2.1"
-  val SparkAkka      = "2.3.4"
   val SparkCassandra = "1.2.0-alpha3"
 }

@@ -18,7 +18,6 @@ package com.datastax.killrweather
 import akka.actor.{Actor, ActorRef}
 import kafka.producer.ProducerConfig
 import kafka.serializer.StringDecoder
-import org.apache.spark.SparkContext
 import org.apache.spark.streaming.StreamingContext
 import org.apache.spark.storage.StorageLevel
 import org.apache.spark.streaming.kafka.KafkaUtils
@@ -40,7 +39,7 @@ class KafkaStreamingActor(kafkaParams: Map[String, String],
   import Weather._
 
   val kafkaStream = KafkaUtils.createStream[String, String, StringDecoder, StringDecoder](
-    ssc, kafkaParams, Map(KafkaTopicRaw -> 10), StorageLevel.DISK_ONLY_2)
+    ssc, kafkaParams, Map(KafkaTopicRaw -> 1), StorageLevel.DISK_ONLY_2)
     .map { case (_, line) => line.split(",")}
     .map(RawWeatherData(_))
 
@@ -84,6 +83,4 @@ class KafkaStreamingActor(kafkaParams: Map[String, String],
   * messages sent to this actor are handled by the [[KafkaProducerActor]]
   * which it extends.
   */
-class KafkaPublisherActor(val producerConfig: ProducerConfig,
-                          sc: SparkContext,
-                          settings: WeatherSettings) extends KafkaProducerActor[String, String]
+class KafkaPublisherActor(val producerConfig: ProducerConfig) extends KafkaProducerActor[String, String]

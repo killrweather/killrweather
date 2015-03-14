@@ -49,8 +49,18 @@ If this is your first time running SBT, you will be downloading the internet.
 On the command line start a cqlsh shell:
 
 
-    cd /path/to/killrweather
-    ~/apache-cassandra-{latest.version}/bin/cqlsh
+    cd /path/to/killrweather/data
+
+Open a cql shell
+
+    ./path/to/apache-cassandra-{version}/bin/cqlsh
+
+Optional: To make using cassandra simpler each time you could add this to your environment:
+
+    export CASSANDRA_HOME=/path/to/apache-cassandra-{version}
+    PATH=$CASSANDRA_HOME/bin:restOfYourPath..
+
+    Then just open with the `cqlsh` command
 
 You should see:
 
@@ -59,11 +69,11 @@ You should see:
     Use HELP for help.
     cqlsh>
 
-Run the scripts:
+Run the scripts, then keep the cql shell open querying once the apps are running:
 
     cqlsh> source 'create-timeseries.cql';
     cqlsh> source 'load-timeseries.cql';
-    cqlsh> quit;
+
 
 ### Setup (for Windows) - 3 Steps
 1. [Download the latest Cassandra](http://www.planetcassandra.org/cassandra) and double click the installer.
@@ -89,19 +99,27 @@ Run the scripts:
     cqlsh> source 'load-timeseries.cql';
     cqlsh> quit;
  
-### Run 
-#### From an IDE
-1. Run the app [com.datastax.killrweather.KillrWeatherApp](https://github.com/killrweather/killrweather/blob/master/killrweather-app/src/main/scala/com/datastax/killrweather/KillrWeatherApp.scala)
-2. Run the data feed server [com.datastax.killrweather.DataFeedApp](https://github.com/killrweather/killrweather/blob/master/killrweather-clients/src/main/scala/com/datastax/killrweather/DataFeedApp.scala)
-3. Run the API client [com.datastax.killrweather.KillrWeatherClientApp](https://github.com/killrweather/killrweather/blob/master/killrweather-clients/src/main/scala/com/datastax/killrweather/KillrWeatherClientApp.scala)
+### Run
+Note: You will see this in all 3 app shells because log4j has been explicitly taken off the classpath:
 
+    log4j:WARN No appenders could be found for logger (kafka.utils.VerifiableProperties).
+    log4j:WARN Please initialize the log4j system properly.
+
+Sorry log4j, we don't want you here. You can add it locally of course. Just add a log4j.properties file in /resouces.
+Then you will see the usual multiple slf4j bindings warnings and a flood of kafka, zookeeper, spark and cassandra logging.
+What we are really trying to isolate here though is what is happening in the apps with regard to the event stream.
 
 #### From Command Line
 
     cd /path/to/killrweather
     sbt app/run
-    
-In a new shell
+
+As the `KillrWeather` app initializes, you will see Akka Cluster start, Zookeeper and the Kafka servers start.
+
+For all three apps in load-time you see the Akka Cluster node join and start metrics collection. In deployment with multiple nodes of each app
+this would leverage the health of each node for load balancing as the rest of the cluster nodes join the cluster:
+
+In a second shell run:
 
     sbt clients/run
 
@@ -109,16 +127,48 @@ You should see:
 
     Multiple main classes detected, select one to run:
 
-    [1] com.datastax.killrweather.DataFeedApp
+    [1] com.datastax.killrweather.KafkaDataIngestionApp
     [2] com.datastax.killrweather.KillrWeatherClientApp
 
-    Enter number: 
+Select `KafkaDataIngestionApp`, and watch the shells for activity. You can stop the data feed or let it keep running.
+After a few seconds you should see data by entering this in the cqlsh shell:
 
+    cqlsh> select * from isd_weather_data.raw_weather_data;
 
-Select 1, and watch the app and client shells for activity. You can stop the data feed or let it keep running.
-Now start the API client in another shell
+This confirms that data from the ingestion app has published to Kafka, and that raw data is
+streaming from Spark to Cassandra from the `KillrWeatherApp`.
+
+    cqlsh> select * from isd_weather_data.daily_aggregate_precip;
+
+Unfortunately the precips are mostly 0 in the samples (To Do).
+
+Now open a third shell and again enter this but select `KillrWeatherClientApp`:
 
     sbt clients/run
-    
-Select [2] and watch the app and client activity in request response of weather data and aggregation data.
+This api client runs queries againt the raw data and the aggregated data from the kafka stream.
+It sends requests (for varying locations and dates/times):
+* current weather
+* daily temperatures
+* monthly temperatures
+* monthly highs and low temperatures
+* daily precipitations
+* top-k precipitation
 
+Next I will add some forecasting with ML :)
+
+Watch the app and client activity in request response of weather data and aggregation data.
+Because the querying of the API triggers even further aggregation of data from the originally
+aggregated daily roll ups, you can now see a new tier of temperature and precipitation aggregation:
+In the cql shell:
+
+    cqlsh> select * from isd_weather_data.daily_aggregate_temperature;
+    cqlsh> select * from isd_weather_data.daily_aggregate_precip;
+
+#### From an IDE
+1. Run the app [com.datastax.killrweather.KillrWeatherApp](https://github.com/killrweather/killrweather/blob/master/killrweather-app/src/main/scala/com/datastax/killrweather/KillrWeatherApp.scala)
+2. Run the kafka data ingestion server [com.datastax.killrweather.KafkaDataIngestionApp](https://github.com/killrweather/killrweather/blob/master/killrweather-clients/src/main/scala/com/datastax/killrweather/KafkaDataIngestionApp.scala)
+3. Run the API client [com.datastax.killrweather.KillrWeatherClientApp](https://github.com/killrweather/killrweather/blob/master/killrweather-clients/src/main/scala/com/datastax/killrweather/KillrWeatherClientApp.scala)
+
+To close the cql shell:
+
+    cqlsh> quit;

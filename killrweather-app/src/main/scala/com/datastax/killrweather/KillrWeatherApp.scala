@@ -53,7 +53,7 @@ object KillrWeatherApp extends App {
   lazy val ssc = new StreamingContext(sc, Milliseconds(500))
  
   /** Creates the ActorSystem. */
-  val system = ActorSystem(AppName, rootConfig)
+  val system = ActorSystem(AppName)
 
   /* The root supervisor and traffic controller of the app. All inbound messages go through this actor. */
   val guardian = system.actorOf(Props(new NodeGuardian(ssc, kafka, settings)), "node-guardian")

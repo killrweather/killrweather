@@ -38,7 +38,7 @@ object KillrWeatherBuild extends Build {
     id = "app",
     base = file("./killrweather-app"),
     dependencies = Seq(core),
-    settings = defaultSettings ++ withSigar ++ Seq(libraryDependencies ++= Dependencies.app)
+    settings = defaultSettings ++ Seq(libraryDependencies ++= Dependencies.app)
   ) configs IntegrationTest
 
   lazy val clients = Project(
@@ -63,6 +63,32 @@ object KillrWeatherBuild extends Build {
 object Dependencies {
   import Versions._
 
+  implicit class Exclude(module: ModuleID) {
+    def embeddedExclusions: ModuleID =
+      module.log4jExclude.excludeAll(ExclusionRule("org.apache.spark"))
+     .excludeAll(ExclusionRule("com.typesafe"))
+     .excludeAll(ExclusionRule("org.apache.cassandra"))
+     .excludeAll(ExclusionRule("com.datastax.cassandra"))
+
+    def log4jExclude: ModuleID =
+      module excludeAll(ExclusionRule("log4j"))
+
+    def driverExclusions: ModuleID =
+      module.log4jExclude.exclude("com.google.guava", "guava")
+      .excludeAll(ExclusionRule("org.slf4j"))
+
+    def sparkExclusions: ModuleID =
+      module.log4jExclude.exclude("com.google.guava", "guava")
+        .exclude("org.apache.spark", "spark-core")
+        .exclude("org.slf4j", "slf4j-log4j12")
+
+    def kafkaExclusions: ModuleID =
+      module.log4jExclude.excludeAll(ExclusionRule("org.slf4j"))
+      .exclude("com.sun.jmx", "jmxri")
+      .exclude("com.sun.jdmk", "jmxtools")
+      .exclude("net.sf.jopt-simple", "jopt-simple")
+  }
+
   object Compile {
 
     val akkaStream        = "com.typesafe.akka"   %% "akka-stream-experimental"          % "0.11"
@@ -75,36 +101,40 @@ object Dependencies {
 
     val algebird          = "com.twitter"         %% "algebird-core"                      % Albebird
     val bijection         = "com.twitter"         %% "bijection-core"                     % Bijection
-    val driver            = "com.datastax.cassandra" % "cassandra-driver-core"            % CassandraDriver exclude("com.google.guava", "guava") excludeAll(ExclusionRule("org.slf4j"))
-    val jodaTime          = "joda-time"           % "joda-time"                           % JodaTime   % "compile;runtime"  // ApacheV2
-    val jodaConvert       = "org.joda"            % "joda-convert"                        % JodaConvert % "compile;runtime"  // ApacheV2
+    val driver            = "com.datastax.cassandra" % "cassandra-driver-core"            % CassandraDriver driverExclusions
+    val jodaTime          = "joda-time"           % "joda-time"                           % JodaTime   % "compile;runtime" // ApacheV2
+    val jodaConvert       = "org.joda"            % "joda-convert"                        % JodaConvert % "compile;runtime" // ApacheV2
     val json4sCore        = "org.json4s"          %% "json4s-core"                        % Json4s          // ApacheV2
     val json4sJackson     = "org.json4s"          %% "json4s-jackson"                     % Json4s          // ApacheV2
     val json4sNative      = "org.json4s"          %% "json4s-native"                      % Json4s          // ApacheV2
-    val kafka             = "org.apache.kafka"    %% "kafka"                              % Kafka excludeAll(ExclusionRule("org.slf4j")) // ApacheV2
-    val kafkaStreaming    = "org.apache.spark"    %% "spark-streaming-kafka"              % Spark exclude("com.google.guava", "guava") exclude("org.apache.spark", "spark-core") // ApacheV2
+    val kafka             = "org.apache.kafka"    %% "kafka"                              % Kafka kafkaExclusions // ApacheV2
+    val kafkaStreaming    = "org.apache.spark"    %% "spark-streaming-kafka"              % Spark sparkExclusions // ApacheV2
     val logback           = "ch.qos.logback"      % "logback-classic"                     % Logback
     val scalazContrib     = "org.typelevel"       %% "scalaz-contrib-210"                 % ScalazContrib   // MIT
     val scalazContribVal  = "org.typelevel"       %% "scalaz-contrib-validation"          % ScalazContrib   // MIT
     val scalazStream      = "org.scalaz.stream"   %% "scalaz-stream"                      % ScalazStream    // MIT
     val slf4jApi          = "org.slf4j"           % "slf4j-api"                           % Slf4j % "provided"          // MIT
-    val sparkML           = "org.apache.spark"    %% "spark-mllib"                        % Spark % "provided" exclude("com.google.guava", "guava") exclude("org.apache.spark", "spark-core") // ApacheV2
-    val sparkCatalyst     = "org.apache.spark"    %% "spark-catalyst"                     % Spark exclude("com.google.guava", "guava") exclude("org.apache.spark", "spark-core")
-    val sparkCassandra    = "com.datastax.spark"  %% "spark-cassandra-connector"          % SparkCassandra // excludeAll(ExclusionRule("org.slf4j"))// ApacheV2
-    val sparkCassandraEmb = "com.datastax.spark"  %% "spark-cassandra-connector-embedded" % SparkCassandra excludeAll(ExclusionRule("org.apache.spark")) excludeAll(ExclusionRule("com.typesafe")) excludeAll(ExclusionRule("org.apache.cassandra")) excludeAll(ExclusionRule("com.datastax.cassandra")) //excludeAll(ExclusionRule("org.slf4j")) // ApacheV2
+    val sparkML           = "org.apache.spark"    %% "spark-mllib"                        % Spark sparkExclusions // ApacheV2
+    val sparkCatalyst     = "org.apache.spark"    %% "spark-catalyst"                     % Spark sparkExclusions
+    val sparkCassandra    = "com.datastax.spark"  %% "spark-cassandra-connector"          % SparkCassandra // ApacheV2
+    val sparkCassandraEmb = "com.datastax.spark"  %% "spark-cassandra-connector-embedded" % SparkCassandra embeddedExclusions // ApacheV2
     val sigar             = "org.fusesource"      % "sigar"                               % Sigar
   }
 
   object Test {
-    val akkaTestKit     = "com.typesafe.akka"     %% "akka-testkit"                       % SparkAkka    % "test,it" // ApacheV2
-    val scalatest       = "org.scalatest"         %% "scalatest"                          % ScalaTest    % "test,it"
+    val akkaTestKit     = "com.typesafe.akka"     %% "akka-testkit"                       % Akka      % "test,it" // ApacheV2
+    val scalatest       = "org.scalatest"         %% "scalatest"                          % ScalaTest % "test,it"
   }
 
   import Compile._
 
+  val akka = Seq(akkaStream, akkaHttpCore, akkaActor, akkaCluster, akkaRemote, akkaSlf4j)
+
   val connector = Seq(driver, sparkCassandra, sparkCatalyst, sparkCassandraEmb)
 
   val json = Seq(json4sCore, json4sJackson, json4sNative)
+
+  val logging = Seq(logback, slf4jApi)
 
   val scalaz = Seq(scalazContrib, scalazContribVal, scalazStream)
 
@@ -113,14 +143,13 @@ object Dependencies {
   val test = Seq(Test.akkaTestKit, Test.scalatest)
 
   /** Module deps */
-  val client = Seq(akkaStream, akkaHttpCore, akkaActor, akkaCluster, akkaRemote, akkaSlf4j, logback, slf4jApi, sparkCassandraEmb)
+  val client = akka ++ logging ++ Seq(sparkCassandraEmb, sigar)
 
-  val core = time
+  val core = akka ++ logging ++ time
 
-  val app = connector ++ json ++ scalaz ++ test ++ time ++
-    Seq(algebird, bijection, kafka, kafkaStreaming, logback, slf4jApi, sparkML) ++
-    Seq("com.typesafe.akka" %% "akka-cluster" % SparkAkka, "com.typesafe.akka" %% "akka-slf4j" % SparkAkka)// spark
+  val app = connector ++ json ++ scalaz ++ test ++
+    Seq(algebird, bijection, kafka, kafkaStreaming, sparkML, sigar)
 
-  val examples = connector ++ time ++ json ++
-    Seq(algebird, kafka, kafkaStreaming, logback, slf4jApi, sparkML)
+  val examples = connector ++ time ++ json ++ logging ++
+    Seq(algebird, kafka, kafkaStreaming, sparkML)
 }

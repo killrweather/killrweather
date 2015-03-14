@@ -16,120 +16,54 @@
 package com.datastax.killrweather
 
 import scala.concurrent.duration._
-import scala.collection.immutable
-import akka.actor._
-import akka.pattern.gracefulStop
+import akka.actor.{Actor, Props}
 import org.apache.spark.streaming.kafka.KafkaInputDStream
 import org.apache.spark.streaming.StreamingContext
 import com.datastax.spark.connector.embedded._
 
-/**
- * The `NodeGuardian` is the root of the primary KillrWeather deployed application.
- * It manages the worker actors and is Akka Cluster aware by extending [[ClusterAware]].
+/** A `NodeGuardian` manages the worker actors at the root of each KillrWeather
+ * deployed application, where any special application logic is handled in the
+ * implementer here, but the cluster work, node lifecycle and supervision events
+ * are handled in [[ClusterAwareNodeGuardian]], in `killrweather/killrweather-core`.
  *
- * Creates the [[KafkaStreamingActor]] which
- *    - Transforms raw weather data .gz files
- *    to line data and publishes to the Kafka topic created in [[KillrWeatherApp]].
- *    - Creates a streaming pipeline from Kafka to Cassandra,
- *    via Spark, which streams the raw data from Kafka, transforms each line of data to
- *    a [[com.datastax.killrweather.Weather.RawWeatherData]] (hourly per weather station),
- *    and saves the new data to the cassandra raw data table as it arrives.
+ * This `NodeGuardian` creates the [[KafkaStreamingActor]] which creates a streaming
+ * pipeline from Kafka to Cassandra, via Spark, which streams the raw data from Kafka,
+ * transforms data to [[com.datastax.killrweather.Weather.RawWeatherData]] (hourly per
+ * weather station), and saves the new data to the cassandra raw data table on arrival.
  */
 class NodeGuardian(ssc: StreamingContext, kafka: EmbeddedKafka, settings: WeatherSettings)
-  extends ClusterAware with AggregationActor with Assertions with ActorLogging {
-  import KafkaEvent._
+  extends ClusterAwareNodeGuardian with AggregationActor with Assertions {
   import WeatherEvent._
   import settings._
 
-  /* Creates the Kafka actors: */
+  /** Creates the Kafka stream saving raw data and aggregated data to cassandra. */
   context.actorOf(Props(new KafkaStreamingActor(kafka.kafkaParams, ssc, settings, self)), "kafka-stream")
-  val producerConfig = KafkaProducer.defaultConfig(kafka.kafkaConfig)
 
-  val publisher = context.actorOf(Props(new KafkaPublisherActor(producerConfig, ssc.sparkContext, settings)), "kafka-publisher")
-
-  /* The Spark/Cassandra computation actors: For the tutorial we just use 2005 for now. */
+  /** The Spark/Cassandra computation actors: For the tutorial we just use 2005 for now. */
   val temperature = context.actorOf(Props(new TemperatureActor(ssc.sparkContext, settings)), "temperature")
   val precipitation = context.actorOf(Props(new PrecipitationActor(ssc, settings)), "precipitation")
   val station = context.actorOf(Props(new WeatherStationActor(ssc.sparkContext, settings)), "weather-station")
 
-  override def preStart(): Unit = {
-    log.info("Starting at {}", cluster.selfAddress)
-    cluster.joinSeedNodes(immutable.Seq(self.path.address))
-  }
-
-  override def postStop(): Unit = {
-    log.info("Node {} shutting down.", cluster.selfAddress)
-    cluster.leave(self.path.address)
-  }
-
-  /** On startup, actor is in an [[uninitialized]] state. */
-  override def receive = uninitialized orElse initialized orElse super.receive
-
-  /** When [[OutputStreamInitialized]] is received from the [[KafkaStreamingActor]] after
-    * it creates and defines the [[KafkaInputDStream]], at which point the streaming
-    * checkpoint can be set, the [[StreamingContext]] can be started, and the actor
-    * moves from [[uninitialized]] to [[initialized]]with [[ActorContext.become()]].
+  /** When [[OutputStreamInitialized]] is received in the parent actor, [[ClusterAwareNodeGuardian]],
+    * from the [[KafkaStreamingActor]] after it creates and defines the [[KafkaInputDStream]],
+    * the Spark Streaming checkpoint can be set, the [[StreamingContext]] can be started, and the
+    * node guardian actor moves from [[uninitialized]] to [[initialized]]with [[akka.actor.ActorContext.become()]].
+    *
+    * @see [[ClusterAwareNodeGuardian]]
     */
-  def uninitialized: Actor.Receive = {
-    case OutputStreamInitialized => initialize()
-  }
-
-  def initialized: Actor.Receive = {
-    case e: KafkaMessageEnvelope[_,_] =>
-      log.debug("Forwarding request {} to {}", e, publisher)
-      publisher forward e
-    case e: TemperatureRequest =>
-      log.debug("Forwarding request {} to {}", e, temperature)
-      temperature forward e
-    case e: PrecipitationRequest =>
-      log.debug("Forwarding request {} to {}", e, precipitation)
-      precipitation forward e
-    case e: WeatherStationRequest =>
-      log.debug("Forwarding request {} to {}", e, station)
-      station forward e
-    case PoisonPill =>
-      gracefulShutdown()
-  }
-
-  def initialize(): Unit = {
-    log.info(s"Node is transitioning from 'uninitialized' to 'initialized'")
+  override def initialize(): Unit = {
+    super.initialize()
     ssc.checkpoint(SparkCheckpointDir)
     ssc.start() // currently can not add more dstreams once started
 
     context become initialized
-    context.system.eventStream.publish(NodeInitialized)
   }
 
-  def gracefulShutdown(): Unit = {
-    context.children foreach (c => awaitCond(gracefulStop(c, timeout.duration).isCompleted))
-    log.info(s"Graceful stop completed.")
+  /** This node guardian's customer behavior once initialized. */
+  def initialized: Actor.Receive = {
+    case e: TemperatureRequest    => temperature forward e
+    case e: PrecipitationRequest  => precipitation forward e
+    case e: WeatherStationRequest => station forward e
   }
 
-}
-
-class ClusterAware extends Actor with ActorLogging {
-  import akka.cluster.Cluster
-  import akka.cluster.ClusterEvent._
-
-  val cluster = Cluster(context.system)
-
-  /** subscribe to cluster changes, re-subscribe when restart. */
-  override def preStart(): Unit =
-    cluster.subscribe(self, classOf[ClusterDomainEvent])
-
-  override def postStop(): Unit = cluster.unsubscribe(self)
-
-  def receive : Actor.Receive = {
-    case ClusterMetricsChanged(forNode) =>
-      log.info("Cluster metrics update:")
-      forNode foreach (m => log.info("{}", m))
-    case MemberUp(member) =>
-      log.info("Member {} joined cluster.", member.address)
-    case UnreachableMember(member) =>
-      log.info("Member detected as unreachable: {}", member)
-    case MemberRemoved(member, previousStatus) =>
-      log.info("Member is Removed: {} after {}",
-        member.address, previousStatus)
-    case _: MemberEvent => // ignore
-  }
 }

@@ -38,7 +38,7 @@ private[killrweather] class WeatherApiQueries extends Actor with ActorLogging wi
 
   import Weather._
   import WeatherEvent._
-  import FileFeedEvent._
+  import DataSourceEvent._
   import context.dispatcher
 
   val guardian = context.actorSelection(Cluster(context.system).selfAddress.copy(port = Some(BasePort)) + "/user/node-guardian")
@@ -68,7 +68,7 @@ private[killrweather] class WeatherApiQueries extends Actor with ActorLogging wi
       queried.exists(_.wsid.startsWith(key))
     }
 
-    val day: Option[Day] = fileFeed().flatMap { case f =>
+    val day: Option[Day] = initialData.flatMap { case f =>
       val source = FileSource(f).source
       val s = source.getLines().map(Day(_)).filterNot(previous).toSeq.headOption
       Try(source.close())

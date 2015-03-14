@@ -20,7 +20,6 @@ import sbt._
 import sbt.Keys._
 import net.virtualvoid.sbt.graph.Plugin.graphSettings
 import com.scalapenos.sbt.prompt.SbtPrompt.autoImport._
-import com.scalapenos.sbt.prompt.PromptTheme
 
 object Settings extends Build {
 
@@ -32,7 +31,7 @@ object Settings extends Build {
     scalaVersion := Versions.Scala,
     homepage := Some(url("https://github.com/killrweather/killrweather")),
     licenses := Seq(("Apache License, Version 2.0", url("http://www.apache.org/licenses/LICENSE-2.0"))),
-    promptTheme := theme
+    promptTheme := ScalapenosTheme
   )
 
   override lazy val settings = super.settings ++ buildSettings
@@ -42,7 +41,7 @@ object Settings extends Build {
     publish := {}
   )
 
-  lazy val defaultSettings = testSettings ++ graphSettings ++ Seq(
+  lazy val defaultSettings = testSettings ++ graphSettings ++ sigarSettings ++ Seq(
     autoCompilerPlugins := true,
     //libraryDependencies <+= scalaVersion { v => compilerPlugin("org.scala-lang.plugins" % "continuations" % v) },
     scalacOptions ++= Seq("-encoding", "UTF-8", s"-target:jvm-${Versions.JDK}", "-feature", "-language:_", "-deprecation", "-unchecked", "-Xfatal-warnings", "-Xlint"),
@@ -50,7 +49,10 @@ object Settings extends Build {
     run in Compile <<= Defaults.runTask(fullClasspath in Compile, mainClass in (Compile, run), runner in (Compile, run)),
     ivyLoggingLevel in ThisBuild := UpdateLogging.Quiet,
     parallelExecution in ThisBuild := false,
-    parallelExecution in Global := false
+    parallelExecution in Global := false,
+    ivyXML := <dependencies>
+      <exclude org="org.slf4j" module="slf4j-log4j12"/>
+    </dependencies>
   )
 
   val tests = inConfig(Test)(Defaults.testTasks) ++ inConfig(IntegrationTest)(Defaults.itSettings)
@@ -70,17 +72,11 @@ object Settings extends Build {
     managedClasspath in IntegrationTest <<= Classpaths.concat(managedClasspath in IntegrationTest, exportedProducts in Test)
   )
 
-  lazy val withSigar = Seq(javaOptions in run ++= Seq(s"-Djava.library.path=./sigar", "-Xms128m", "-Xmx1024m"))
+  lazy val sigarSettings = Seq(
+    unmanagedSourceDirectories in (Compile,run) += baseDirectory.value.getParentFile / "sigar",
+    javaOptions in run ++= {
+      System.setProperty("java.library.path", file("./sigar").getAbsolutePath)
+      Seq("-Xms128m", "-Xmx1024m")
+    })
 
-  lazy val theme = PromptTheme(List(
-    text("[SBT] ", fg(green)),
-    userName(fg(000)),
-    text("@", fg(000)),
-    hostName(fg(000)),
-    text(":", fg(000)),
-    gitBranch(clean = fg(green), dirty = fg(20)),
-    text(":", fg(000)),
-    currentProject(fg(magenta)),
-    text("> ", fg(000))
-  ))
 }

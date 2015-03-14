@@ -7,16 +7,22 @@
     </appender>
 
     <logger name="org.apache.zookeeper" level="ERROR"/>
-    <logger name="org.eclipse.jetty" level="WARN" />
+    <logger name="org.eclipse.jetty" level="ERROR" />
+    <logger name="org.apache.thrift" level="ERROR"/>
+    <logger name="org.apache.cassandra.db.SystemKeyspace" level="ERROR"/>
+
     <logger name="org.apache.spark.storage.BlockManager" level="ERROR" />
     <logger name="org.apache.hadoop" level="ERROR" />
 
-    <logger name="com.datastax.killrweather" level="DEBUG" />
-    <logger name="com.datastax.driver" level="WARN" />
+
+    <logger name="com.datastax.killrweather" level="INFO" />
+    <logger name="akka.cluster" level="DEBUG" />
+
+    <logger name="com.datastax.driver" level="ERROR" />
     <!-- Change to INFO to see spark-cassandra-connector logging -->
-    <logger name="com.datastax.spark" level="WARN" />
+    <logger name="com.datastax.spark" level="ERROR" />
     <!-- Change to INFO to see spark logging -->
-    <logger name="org.apache.spark" level="WARN" />
+    <logger name="org.apache.spark" level="ERROR" />
     <!-- Change to INFO to see kafka logging -->
     <logger name="kafka" level="ERROR" />
 
