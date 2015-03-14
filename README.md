@@ -31,49 +31,24 @@ If this is your first time running SBT, you will be downloading the internet.
 
     cd killrweather
     sbt compile
-    # For IntelliJ users, this creates Intellij project files
+    # For IntelliJ users, this creates Intellij project files, but as of
+    # version 14x you should not need this, just import a new sbt project.
     sbt gen-idea
 
 ### Setup (for Linux & Mac) - 3 Steps
-1. [Download the latest Cassandra](http://cassandra.apache.org/download/) and open the compressed file.
+1.[Download the latest Cassandra](http://cassandra.apache.org/download/) and open the compressed file.
+
+2.Start Cassandra - you may need to prepend with sudo, or chown /var/lib/cassandra. On the command line:
 
 
-    Optional: open /apache-cassandra-{latest.version}/conf/cassandra.yaml and increase batch_size_warn_threshold_in_kb to 64
+    ./apache-cassandra-{version}/bin/cassandra -f
 
-2. Start Cassandra - you may need to prepend with sudo, or chown /var/lib/cassandra. On the command line:
-
-
-    ./apache-cassandra-{latest.version}/bin/cassandra -f
-
-3. Run the setup cql scripts to create the schema and populate the weather stations table.
+3.Run the setup cql scripts to create the schema and populate the weather stations table.
 On the command line start a cqlsh shell:
 
 
     cd /path/to/killrweather/data
-
-Open a cql shell
-
-    ./path/to/apache-cassandra-{version}/bin/cqlsh
-
-Optional: To make using cassandra simpler each time you could add this to your environment:
-
-    export CASSANDRA_HOME=/path/to/apache-cassandra-{version}
-    PATH=$CASSANDRA_HOME/bin:restOfYourPath..
-
-    Then just open with the `cqlsh` command
-
-You should see:
-
-    Connected to Test Cluster at 127.0.0.1:9042.
-    [cqlsh {latest.version} | Cassandra {latest.version} | CQL spec {latest.version} | Native protocol {latest.version}]
-    Use HELP for help.
-    cqlsh>
-
-Run the scripts, then keep the cql shell open querying once the apps are running:
-
-    cqlsh> source 'create-timeseries.cql';
-    cqlsh> source 'load-timeseries.cql';
-
+    path/to/apache-cassandra-{version}/bin/cqlsh
 
 ### Setup (for Windows) - 3 Steps
 1. [Download the latest Cassandra](http://www.planetcassandra.org/cassandra) and double click the installer.
@@ -86,31 +61,31 @@ On the command line start a cqlsh shell:
 
     cd c:/path/to/killrweather c:/pat/to/cassandara/bin/cqlsh
 
+### In CQL Shell:
 You should see:
 
-    Connected to Test Cluster at 127.0.0.1:9042.
-    [cqlsh {latest.version} | Cassandra {latest.version} | CQL spec {latest.version} | Native protocol {latest.version}]
-    Use HELP for help.
-    cqlsh>
+     Connected to Test Cluster at 127.0.0.1:9042.
+     [cqlsh {latest.version} | Cassandra {latest.version} | CQL spec {latest.version} | Native protocol {latest.version}]
+     Use HELP for help.
+     cqlsh>
 
-Run the scripts:
+Run the scripts, then keep the cql shell open querying once the apps are running:
 
-    cqlsh> source 'create-timeseries.cql';
-    cqlsh> source 'load-timeseries.cql';
-    cqlsh> quit;
- 
+     cqlsh> source 'create-timeseries.cql';
+     cqlsh> source 'load-timeseries.cql';
+
+
 ### Run
 Note: You will see this in all 3 app shells because log4j has been explicitly taken off the classpath:
 
     log4j:WARN No appenders could be found for logger (kafka.utils.VerifiableProperties).
     log4j:WARN Please initialize the log4j system properly.
 
-Sorry log4j, we don't want you here. You can add it locally of course. Just add a log4j.properties file in /resouces.
-Then you will see the usual multiple slf4j bindings warnings and a flood of kafka, zookeeper, spark and cassandra logging.
-What we are really trying to isolate here though is what is happening in the apps with regard to the event stream.
+What we are really trying to isolate here is what is happening in the apps with regard to the event stream.
+You can add log4j locally.
 
 #### From Command Line
-
+1.Start `KillrWeather`
     cd /path/to/killrweather
     sbt app/run
 
@@ -119,6 +94,7 @@ As the `KillrWeather` app initializes, you will see Akka Cluster start, Zookeepe
 For all three apps in load-time you see the Akka Cluster node join and start metrics collection. In deployment with multiple nodes of each app
 this would leverage the health of each node for load balancing as the rest of the cluster nodes join the cluster:
 
+2.Start the Kafka data feed app
 In a second shell run:
 
     sbt clients/run
@@ -142,11 +118,13 @@ streaming from Spark to Cassandra from the `KillrWeatherApp`.
 
 Unfortunately the precips are mostly 0 in the samples (To Do).
 
-Now open a third shell and again enter this but select `KillrWeatherClientApp`:
+3.Open a third shell and again enter this but select `KillrWeatherClientApp`:
 
     sbt clients/run
-This api client runs queries againt the raw data and the aggregated data from the kafka stream.
-It sends requests (for varying locations and dates/times):
+This api client runs queries against the raw and the aggregated data from the kafka stream.
+It sends requests (for varying locations and dates/times) and for some, triggers further aggregations
+in compute time which are also saved to Cassandra:
+
 * current weather
 * daily temperatures
 * monthly temperatures
