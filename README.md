@@ -76,13 +76,17 @@ Run the scripts, then keep the cql shell open querying once the apps are running
 
 
 ### Run
-Note: You will see this in all 3 app shells because log4j has been explicitly taken off the classpath:
+#### Logging
+You will see this in all 3 app shells because log4j has been explicitly taken off the classpath:
 
     log4j:WARN No appenders could be found for logger (kafka.utils.VerifiableProperties).
     log4j:WARN Please initialize the log4j system properly.
 
 What we are really trying to isolate here is what is happening in the apps with regard to the event stream.
 You can add log4j locally.
+
+To change any package log levels and see more activity, simply modify
+- [logback.xml](http://github.com/killrweather/killrweather/tree/master/killrweather-core/src/resources/logback.xml)
 
 #### From Command Line
 1.Start `KillrWeather`
