@@ -15,10 +15,10 @@
  */
 package com.datastax.killrweather
 
-import java.io.File
+import com.datastax.killrweather.cluster.ClusterAwareNodeGuardian
+import com.typesafe.config.ConfigFactory
 
 import scala.concurrent.duration._
-import scala.util.Try
 import akka.cluster.Cluster
 import akka.actor._
 import org.joda.time.{DateTime, DateTimeZone}
@@ -28,10 +28,10 @@ import com.datastax.spark.connector.embedded.Event
 object KillrWeatherClientApp extends App with ClientHelper {
 
   /** Creates the ActorSystem. */
-  val system = ActorSystem("KillrWeather")
+  val system = ActorSystem("KillrWeather", ConfigFactory.parseString("akka.remote.netty.tcp.port = 2552"))
 
   /* The root supervisor and fault tolerance handler of the data ingestion nodes. */
-  val guardian = system.actorOf(Props[ClientNodeGuardian], "node-guardian")
+  val guardian = system.actorOf(Props[ApiNodeGuardian], "node-guardian")
 
   system.registerOnTermination {
     guardian ! PoisonPill
@@ -40,13 +40,19 @@ object KillrWeatherClientApp extends App with ClientHelper {
 }
 
 /** Automates demo activity every 2 seconds for demos by sending requests to `KillrWeatherApp` instances. */
-final class ClientNodeGuardian extends ClusterAwareNodeGuardian with ClientHelper with ActorLogging {
+final class ApiNodeGuardian extends ClusterAwareNodeGuardian with ClientHelper {
   import context.dispatcher
 
   val api = context.actorOf(Props[AutomatedApiActor], "automated-api")
 
   var task: Option[Cancellable] = None
 
+ /* override def preStart(): Unit = {
+    super.preStart()
+    cluster.join(base)
+    cluster.joinSeedNodes(Vector(base))
+  }
+*/
   Cluster(context.system).registerOnMemberUp {
     task = Some(context.system.scheduler.schedule(Duration.Zero, 2.seconds) {
       api ! Event.QueryTask
@@ -68,7 +74,6 @@ private[killrweather] class AutomatedApiActor extends Actor with ActorLogging wi
 
   import Weather._
   import WeatherEvent._
-  import DataSourceEvent._
 
   val guardian = context.actorSelection(Cluster(context.system).selfAddress
     .copy(port = Some(BasePort)) + "/user/node-guardian")
@@ -79,9 +84,9 @@ private[killrweather] class AutomatedApiActor extends Actor with ActorLogging wi
 
   def receive: Actor.Receive = {
     case e: WeatherAggregate =>
-      log.info("Received {} from {}", e, sender)
+      log.debug("Received {} from {}", e, sender)
     case e: WeatherModel =>
-      log.info("Received {} from {}", e, sender)
+      log.debug("Received {} from {}", e, sender)
     case Event.QueryTask => queries()
   }
 
@@ -89,36 +94,32 @@ private[killrweather] class AutomatedApiActor extends Actor with ActorLogging wi
 
     val previous = (day: Day) => {
       val key = day.wsid.split(":")(0)
-      queried.exists(_.wsid.startsWith(key))
+      queried.exists(_.month > day.month)
+      // run more queries than queried.exists(_.wsid.startsWith(key)) until more wsid data
     }
 
-    val toSample = (f: File) => {
-      val source = FileSource(f).source
-      val opt = source.getLines().map(Day(_)).filterNot(previous).toSeq.headOption
-      Try(source.close())
-      opt
-    }
+    val toSample = (source: Sources.FileSource) => source.days.filterNot(previous).headOption
 
     initialData.flatMap(toSample(_)).headOption map { sample =>
-      log.info("Requesting the current weather for weather station {}", sample.wsid)
+      log.debug("Requesting the current weather for weather station {}", sample.wsid)
       // because we load from historic file data vs stream in the cloud for this sample app ;)
       val timestamp = new DateTime(DateTimeZone.UTC).withYear(sample.year)
         .withMonthOfYear(sample.month).withDayOfMonth(sample.day)
       guardian ! GetCurrentWeather(sample.wsid, Some(timestamp))
 
-      log.info("Requesting annual precipitation for weather station {} in year {}", sample.wsid, sample.year)
+      log.debug("Requesting annual precipitation for weather station {} in year {}", sample.wsid, sample.year)
       guardian ! GetPrecipitation(sample.wsid, sample.year)
 
-      log.info("Requesting top-k Precipitation for weather station {}", sample.wsid)
+      log.debug("Requesting top-k Precipitation for weather station {}", sample.wsid)
       guardian ! GetTopKPrecipitation(sample.wsid, sample.year, k = 10)
 
-      log.info("Requesting the daily temperature aggregate for weather station {}", sample.wsid)
+      log.debug("Requesting the daily temperature aggregate for weather station {}", sample.wsid)
       guardian ! GetDailyTemperature(sample)
 
-      log.info("Requesting the high-low temperature aggregate for weather station {}",sample.wsid)
+      log.debug("Requesting the high-low temperature aggregate for weather station {}",sample.wsid)
       guardian ! GetMonthlyHiLowTemperature(sample.wsid, sample.year, sample.month)
 
-      log.info("Requesting weather station {}", sample.wsid)
+      log.debug("Requesting weather station {}", sample.wsid)
       guardian ! GetWeatherStation(sample.wsid)
 
       queried += sample

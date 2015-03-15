@@ -16,7 +16,6 @@
 package com.datastax.killrweather
 
 import scala.util.Try
-import org.apache.spark.Logging
 import com.datastax.driver.core.ConsistencyLevel
 import com.datastax.spark.connector.cql.{AuthConf, NoAuthConf, PasswordAuthConf}
 import com.typesafe.config.{Config, ConfigFactory}
@@ -42,7 +41,7 @@ import com.typesafe.config.{Config, ConfigFactory}
  *
  * @param conf Optional config for test
  */
-final class WeatherSettings(conf: Option[Config] = None) extends Logging with Serializable {
+final class WeatherSettings(conf: Option[Config] = None) extends Serializable {
 
   val rootConfig = conf match {
     case Some(c) => c.withFallback(ConfigFactory.load)
@@ -67,8 +66,6 @@ final class WeatherSettings(conf: Option[Config] = None) extends Logging with Se
 
   val CassandraHosts = withFallback[String](Try(cassandra.getString("connection.host")),
     "spark.cassandra.connection.host") getOrElse "127.0.0.1"
-
-  logInfo(s"Starting up with spark master '$SparkMaster' cassandra hosts '$CassandraHosts'")
 
   val CassandraAuthUsername: Option[String] = Try(cassandra.getString("auth.username")).toOption
     .orElse(sys.props.get("spark.cassandra.auth.username"))

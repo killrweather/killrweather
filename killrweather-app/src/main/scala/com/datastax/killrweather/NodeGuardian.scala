@@ -15,6 +15,8 @@
  */
 package com.datastax.killrweather
 
+import com.datastax.killrweather.cluster.ClusterAwareNodeGuardian
+
 import scala.concurrent.duration._
 import akka.actor.{Actor, Props}
 import org.apache.spark.streaming.kafka.KafkaInputDStream
@@ -43,6 +45,11 @@ class NodeGuardian(ssc: StreamingContext, kafka: EmbeddedKafka, settings: Weathe
   val temperature = context.actorOf(Props(new TemperatureActor(ssc.sparkContext, settings)), "temperature")
   val precipitation = context.actorOf(Props(new PrecipitationActor(ssc, settings)), "precipitation")
   val station = context.actorOf(Props(new WeatherStationActor(ssc.sparkContext, settings)), "weather-station")
+
+  override def preStart(): Unit = {
+    super.preStart()
+    cluster.joinSeedNodes(Vector(cluster.selfAddress))
+  }
 
   /** When [[OutputStreamInitialized]] is received in the parent actor, [[ClusterAwareNodeGuardian]],
     * from the [[KafkaStreamingActor]] after it creates and defines the [[KafkaInputDStream]],

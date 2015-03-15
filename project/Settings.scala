@@ -43,8 +43,8 @@ object Settings extends Build {
 
   lazy val defaultSettings = testSettings ++ graphSettings ++ sigarSettings ++ Seq(
     autoCompilerPlugins := true,
-    //libraryDependencies <+= scalaVersion { v => compilerPlugin("org.scala-lang.plugins" % "continuations" % v) },
-    scalacOptions ++= Seq("-encoding", "UTF-8", s"-target:jvm-${Versions.JDK}", "-feature", "-language:_", "-deprecation", "-unchecked", "-Xfatal-warnings", "-Xlint"),
+    // removed "-Xfatal-warnings" as temporary workaround for log4j fatal error.
+    scalacOptions ++= Seq("-encoding", "UTF-8", s"-target:jvm-${Versions.JDK}", "-feature", "-language:_", "-deprecation", "-unchecked", "-Xlint"),
     javacOptions in Compile ++= Seq("-encoding", "UTF-8", "-source", Versions.JDK, "-target", Versions.JDK, "-Xlint:deprecation", "-Xlint:unchecked"),
     run in Compile <<= Defaults.runTask(fullClasspath in Compile, mainClass in (Compile, run), runner in (Compile, run)),
     ivyLoggingLevel in ThisBuild := UpdateLogging.Quiet,

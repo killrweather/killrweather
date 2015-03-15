@@ -64,14 +64,14 @@ object Dependencies {
   import Versions._
 
   implicit class Exclude(module: ModuleID) {
+    def log4jExclude: ModuleID =
+      module excludeAll(ExclusionRule("log4j"))
+
     def embeddedExclusions: ModuleID =
       module.log4jExclude.excludeAll(ExclusionRule("org.apache.spark"))
      .excludeAll(ExclusionRule("com.typesafe"))
      .excludeAll(ExclusionRule("org.apache.cassandra"))
      .excludeAll(ExclusionRule("com.datastax.cassandra"))
-
-    def log4jExclude: ModuleID =
-      module excludeAll(ExclusionRule("log4j"))
 
     def driverExclusions: ModuleID =
       module.log4jExclude.exclude("com.google.guava", "guava")
@@ -91,14 +91,12 @@ object Dependencies {
 
   object Compile {
 
-    val akkaStream        = "com.typesafe.akka"   %% "akka-stream-experimental"          % "0.11"
-    val akkaHttpCore      = "com.typesafe.akka"   %% "akka-http-core-experimental"       % "0.11"
-    val akkaActor         = "com.typesafe.akka"   %% "akka-actor"   % Akka
-    val akkaCluster       = "com.typesafe.akka"   %% "akka-cluster" % Akka
-    val akkaRemote        = "com.typesafe.akka"   %% "akka-remote"  % Akka
-    val akkaSlf4j         = "com.typesafe.akka"   %% "akka-slf4j"   % Akka
-    val config            = "com.typesafe"        % "config"        % "1.2.1" force()
-
+    val akkaStream        = "com.typesafe.akka"   %% "akka-stream-experimental"           % AkkaStreams
+    val akkaHttpCore      = "com.typesafe.akka"   %% "akka-http-core-experimental"        % AkkaStreams
+    val akkaActor         = "com.typesafe.akka"   %% "akka-actor"                         % Akka
+    val akkaCluster       = "com.typesafe.akka"   %% "akka-cluster"                       % Akka
+    val akkaRemote        = "com.typesafe.akka"   %% "akka-remote"                        % Akka
+    val akkaSlf4j         = "com.typesafe.akka"   %% "akka-slf4j"                         % Akka
     val algebird          = "com.twitter"         %% "algebird-core"                      % Albebird
     val bijection         = "com.twitter"         %% "bijection-core"                     % Bijection
     val driver            = "com.datastax.cassandra" % "cassandra-driver-core"            % CassandraDriver driverExclusions
@@ -143,13 +141,14 @@ object Dependencies {
   val test = Seq(Test.akkaTestKit, Test.scalatest)
 
   /** Module deps */
-  val client = akka ++ logging ++ Seq(sparkCassandraEmb, sigar)
+  val client = akka ++ logging ++ scalaz ++ Seq(sparkCassandraEmb, sigar)
 
   val core = akka ++ logging ++ time
 
   val app = connector ++ json ++ scalaz ++ test ++
     Seq(algebird, bijection, kafka, kafkaStreaming, sparkML, sigar)
 
-  val examples = connector ++ time ++ json ++ logging ++
-    Seq(algebird, kafka, kafkaStreaming, sparkML)
+  val examples = connector ++ time ++ json ++
+    Seq(kafka, kafkaStreaming, sparkML)
 }
+

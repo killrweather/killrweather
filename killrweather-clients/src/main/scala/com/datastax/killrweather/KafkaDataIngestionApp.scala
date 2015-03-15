@@ -18,12 +18,15 @@ package com.datastax.killrweather
 import java.net.InetSocketAddress
 import java.io.{File => JFile}
 
+import com.datastax.killrweather.cluster.ClusterAwareNodeGuardian
+import com.typesafe.config.ConfigFactory
+
 import scala.util.Try
 import scala.concurrent.duration._
 import org.reactivestreams.Publisher
 import akka.http.Http.IncomingConnection
 import akka.stream.FlowMaterializer
-import akka.stream.scaladsl.{Sink, Source}
+import akka.stream.scaladsl.{IteratorSource, Sink, Source}
 import akka.http.model._
 import akka.http.model.HttpMethods._
 import akka.io.IO
@@ -47,7 +50,7 @@ import com.datastax.spark.connector.embedded._
 object KafkaDataIngestionApp extends App {
 
   /** Creates the ActorSystem. */
-  val system = ActorSystem("KillrWeather")
+  val system = ActorSystem("KillrWeather", ConfigFactory.parseString("akka.remote.netty.tcp.port = 2551"))
 
   /* The root supervisor and fault tolerance handler of the data ingestion nodes. */
   val guardian = system.actorOf(Props[NodeGuardian], "node-guardian")
@@ -69,12 +72,11 @@ object KafkaDataIngestionApp extends App {
  *
  * The ingested data is sent to the kafka actor for processing in the stream.
  */
-final class NodeGuardian extends ClusterAwareNodeGuardian with ClientHelper with ActorLogging {
-  import DataSourceEvent._
+final class NodeGuardian extends ClusterAwareNodeGuardian with ClientHelper {
 
   /** The [[KafkaPublisherActor]] as a load-balancing pool router
     * which sends messages to idle or less busy routees to handle work. */
-  val publisherRouter = context.actorOf(BalancingPool(initialData.size).props(
+  val router = context.actorOf(BalancingPool(initialData.size).props(
     Props(new KafkaPublisherActor(KafkaHosts, KafkaBatchSendSize))), "kafka-ingestion-router")
 
   /** Wait for this node's [[akka.cluster.MemberStatus]] to be
@@ -86,53 +88,66 @@ final class NodeGuardian extends ClusterAwareNodeGuardian with ClientHelper with
   cluster registerOnMemberUp {
 
     /* As http data is received, publishes to Kafka. */
-    context.actorOf(Props(new HttpDataFeedActor(publisherRouter)), "dynamic-data-feed")
+    context.actorOf(Props(new HttpDataFeedActor(router)), "dynamic-data-feed")
 
     log.info("Starting data file ingestion on {}.", cluster.selfAddress)
 
     /* Handles initial data ingestion in Kafka for running as a demo. */
-    for (data <- initialData) {
+    for (source <- initialData) {
       /* If this fails, we can resend the file data, handled idempotently. */
-      context.actorOf(Props(new KafkaIngestionActor(publisherRouter)), data.getName) ! FileSource(data)
+      router ! source
     }
   }
 
   def initialized: Actor.Receive = {
-    case WeatherEvent.TaskCompleted =>
+    case WeatherEvent.TaskCompleted => // ignore for now
   }
 }
 
-class KafkaPublisherActor(val producerConfig: ProducerConfig) extends KafkaProducerActor[String, String] {
+/** This actor manages parsing file data into lines of raw data and publishing each
+  * to Kafka (vs bulk sends) by delegating to the [[KafkaProducerActor]] who's
+  * instances are load-balanced. Once its work is completed, it shuts itself down. */
+class KafkaPublisherActor(val producerConfig: ProducerConfig) extends KafkaProducerActor[String, String] with ClientHelper {
 
   def this(hosts: Set[String], batchSize: Int) = this(KafkaProducer.createConfig(
     hosts, batchSize, "async", classOf[StringEncoder].getName))
+
+  import KafkaEvent._
+  import context.dispatcher
+
+  implicit val materializer = FlowMaterializer()
+
+  def receiveSource : Actor.Receive = {
+    case e: Sources.FileSource =>
+      log.info(s"Ingesting {}", e.name)
+      Source(e.source).foreach { case data =>
+        log.debug(s"Sending '{}'", data)
+        self ! KafkaMessageEnvelope[String, String](KafkaTopic, KafkaKey, data)
+      }
+  }
+
+  override def receive = receiveSource orElse super.receive
+
 }
 
-class HttpDataFeedActor(publisher: ActorRef) extends Actor with ActorLogging with ClientHelper {
-
+class HttpDataFeedActor(kafka: ActorRef) extends Actor with ActorLogging with ClientHelper {
   import akka.http.Http
-  import DataSourceEvent._
+  import Sources._
   import context.dispatcher
 
   implicit val system = context.system
   implicit val materializer = FlowMaterializer()
   implicit val askTimeout: Timeout = 500.millis
 
-  IO(Http) ! Http.Bind("localhost", 8080)
-
-  val toSource = (header: HttpHeader) => header.value.split(",").map(new JFile(_)).filter(_.exists)
+  IO(Http) ! Http.Bind(HttpHost, HttpPort)
 
   val requestHandler: HttpRequest => HttpResponse = {
     case HttpRequest(POST, Uri.Path("/weather/data"), headers, entity, _) =>
-      headers.collectFirst {
-        case header if isValid(header) =>
-          toSource(header) foreach { source =>
-            log.info(s"Received {}", source)
-            context.actorOf(Props(new KafkaIngestionActor(publisher)), source.getName) ! FileSource(source)
-          }
-        HttpResponse(200, entity = HttpEntity(MediaTypes.`text/html`, s"POST [$entity] successful."))
+      HttpSource.unapply(headers,entity).collect { case s: HeaderSource =>
+        Source(s.extract).foreach(kafka ! _)
+        HttpResponse(200, entity = HttpEntity(MediaTypes.`text/html`, s"POST successful."))
       }.getOrElse(
-        HttpResponse(404, entity = s"Unknown resource '$entity'"))
+        HttpResponse(404, entity = s"Unsupported request") )
     case _: HttpRequest =>
         HttpResponse(400, entity = "Unsupported request")
   }
@@ -141,47 +156,11 @@ class HttpDataFeedActor(publisher: ActorRef) extends Actor with ActorLogging wit
     case Http.ServerBinding(local, stream) => bound(local, stream)
   }
 
-  def bound(localAddress: InetSocketAddress, connectionStream: Publisher[IncomingConnection]): Unit = {
-    log.info("Connected to [{}] with [{}]", localAddress, connectionStream)
-    Source(connectionStream).foreach({
+  def bound(localAddress: InetSocketAddress, connection: Publisher[IncomingConnection]): Unit = {
+    Source(connection).foreach({
       case Http.IncomingConnection(remoteAddress, requestProducer, responseConsumer) =>
-        log.info("Accepted new connection from {}.", remoteAddress)
+        log.info("Connected to [{}] with [{}] from [{}]", localAddress, connection, remoteAddress)
         Source(requestProducer).map(requestHandler).to(Sink(responseConsumer)).run()
     })
   }
-
-  def isValid(header: HttpHeader): Boolean =
-    header.is("X-DATA-FEED") && header.value.nonEmpty && header.value.contains(JFile.separator)
 }
-
-/** This actor manages parsing file data into lines of raw data and publishing each
-  * to Kafka (vs bulk sends) by delegating to the [[KafkaPublisherActor]] who's
-  * instances are load-balanced. Once its work is completed, it shuts itself down. */
-class KafkaIngestionActor(publisher: ActorRef) extends Actor with ActorLogging with ClientHelper {
-
-  import KafkaEvent._
-  import DataSourceEvent._
-  import context.dispatcher
-
-  implicit val materializer = FlowMaterializer()
-
-  def receive : Actor.Receive = {
-    case e: FileSource => handle(e, sender)
-  }
-
-  def handle(e : FileSource, origin : ActorRef): Unit = {
-    val source = e.source
-    log.info(s"Ingesting {}", e.file.getAbsolutePath)
-
-    Source(source.getLines).foreach { case data =>
-      log.debug(s"Sending '{}'", data)
-      publisher ! KafkaMessageEnvelope[String, String](KafkaTopic, KafkaKey, data)
-    }.onComplete { _ =>
-      Try(source.close())
-      origin ! WeatherEvent.TaskCompleted
-      log.info("{} completed work, shutting down.", self.path)
-      context stop self
-    }
-  }
-}
-

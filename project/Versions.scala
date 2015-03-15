@@ -17,11 +17,11 @@
 object Versions {
 
   val Akka           = "2.3.9"
+  val AkkaStreams    = "0.11"
   val Albebird       = "0.8.1"
   val Bijection      = "0.7.0"
   val Cassandra      = "2.1.2"
   val CassandraDriver = "2.1.3"
-  val Config         = "1.2.1"
   val JDK            = "1.7"
   val JodaConvert    = "1.7"
   val JodaTime       = "2.4"
