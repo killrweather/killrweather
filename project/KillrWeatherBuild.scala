@@ -149,6 +149,6 @@ object Dependencies {
     Seq(algebird, bijection, kafka, kafkaStreaming, sparkML, sigar)
 
   val examples = connector ++ time ++ json ++
-    Seq(kafka, kafkaStreaming, sparkML)
+    Seq(kafka, kafkaStreaming, sparkML, "org.slf4j" % "slf4j-log4j12" % "1.6.1")
 }
 

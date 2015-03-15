@@ -7,7 +7,10 @@
     </appender>
 
     <!-- Change to debug to see data pathway logging. -->
-    <logger name="com.datastax.killrweather" level="INFO" />
+    <logger name="com.datastax.killrweather" level="DEBUG" />
+    <logger name="com.datastax.killrweather.cluster" level="INFO" />
+    <logger name="akka.cluster" level="INFO" />
+    <logger name="akka.cluster.ClusterHeartbeatSender" level="WARN"/>
 
     <logger name="com.datastax.driver" level="WARN" />
     <logger name="com.datastax.spark" level="WARN" />
