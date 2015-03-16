@@ -87,7 +87,8 @@ final class NodeGuardian extends ClusterAwareNodeGuardian with ClientHelper {
   cluster registerOnMemberUp {
 
     /* As http data is received, publishes to Kafka. */
-    context.actorOf(Props(new HttpDataFeedActor(router)), "dynamic-data-feed")
+    val router = context.actorOf(BalancingPool(10).props(
+      Props(new HttpDataFeedActor(router))), "dynamic-data-feed")
 
     log.info("Starting data ingestion on {}.", cluster.selfAddress)
 

@@ -20,8 +20,6 @@ import scala.concurrent.duration._
 abstract class ClusterAwareNodeGuardian extends ClusterAware {
   import akka.actor.SupervisorStrategy._
 
-
-
   // customize
   override val supervisorStrategy =
     OneForOneStrategy(maxNrOfRetries = 10, withinTimeRange = 1.minute) {
@@ -34,7 +32,7 @@ abstract class ClusterAwareNodeGuardian extends ClusterAware {
 
   override def preStart(): Unit = {
     super.preStart()
-    log.info("Starting at {}", cluster.selfAddress) 
+    log.info("Starting at {}", cluster.selfAddress)
   }
 
   override def postStop(): Unit = {
