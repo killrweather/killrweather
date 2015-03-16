@@ -49,10 +49,10 @@ object Settings extends Build {
     run in Compile <<= Defaults.runTask(fullClasspath in Compile, mainClass in (Compile, run), runner in (Compile, run)),
     ivyLoggingLevel in ThisBuild := UpdateLogging.Quiet,
     parallelExecution in ThisBuild := false,
-    parallelExecution in Global := false,
+    parallelExecution in Global := false/*,
     ivyXML := <dependencies>
       <exclude org="org.slf4j" module="slf4j-log4j12"/>
-    </dependencies>
+    </dependencies>*/
   )
 
   val tests = inConfig(Test)(Defaults.testTasks) ++ inConfig(IntegrationTest)(Defaults.itSettings)

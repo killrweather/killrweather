@@ -75,7 +75,7 @@ final class HttpNodeGuardian extends ClusterAwareNodeGuardian with ClientHelper 
 
   /** The [[KafkaPublisherActor]] as a load-balancing pool router
     * which sends messages to idle or less busy routees to handle work. */
-  val router = context.actorOf(BalancingPool(10).props(
+  val router = context.actorOf(BalancingPool(5).props(
     Props(new KafkaPublisherActor(KafkaHosts, KafkaBatchSendSize))), "kafka-ingestion-router")
 
   /** Wait for this node's [[akka.cluster.MemberStatus]] to be
@@ -87,7 +87,7 @@ final class HttpNodeGuardian extends ClusterAwareNodeGuardian with ClientHelper 
   cluster registerOnMemberUp {
 
     /* As http data is received, publishes to Kafka. */
-    val router = context.actorOf(BalancingPool(10).props(
+    context.actorOf(BalancingPool(10).props(
       Props(new HttpDataFeedActor(router))), "dynamic-data-feed")
 
     log.info("Starting data ingestion on {}.", cluster.selfAddress)
