@@ -16,17 +16,13 @@
 package com.datastax.killrweather
 
 import java.net.InetSocketAddress
-import java.io.{File => JFile}
-
-import com.datastax.killrweather.cluster.ClusterAwareNodeGuardian
-import com.typesafe.config.ConfigFactory
 
 import scala.util.Try
 import scala.concurrent.duration._
 import org.reactivestreams.Publisher
 import akka.http.Http.IncomingConnection
 import akka.stream.FlowMaterializer
-import akka.stream.scaladsl.{IteratorSource, Sink, Source}
+import akka.stream.scaladsl.{Source, Sink}
 import akka.http.model._
 import akka.http.model.HttpMethods._
 import akka.io.IO
@@ -36,7 +32,10 @@ import akka.util.Timeout
 import akka.routing.BalancingPool
 import kafka.producer.ProducerConfig
 import kafka.serializer.StringEncoder
+import com.typesafe.config.ConfigFactory
 import com.datastax.spark.connector.embedded._
+import com.datastax.killrweather.cluster.ClusterAwareNodeGuardian
+import com.datastax.spark.connector.embedded.KafkaEvent.KafkaMessageEnvelope
 
 /** Run with: sbt clients/run for automatic data file import to Kafka.
   *
@@ -76,7 +75,7 @@ final class NodeGuardian extends ClusterAwareNodeGuardian with ClientHelper {
 
   /** The [[KafkaPublisherActor]] as a load-balancing pool router
     * which sends messages to idle or less busy routees to handle work. */
-  val router = context.actorOf(BalancingPool(initialData.size).props(
+  val router = context.actorOf(BalancingPool(10).props(
     Props(new KafkaPublisherActor(KafkaHosts, KafkaBatchSendSize))), "kafka-ingestion-router")
 
   /** Wait for this node's [[akka.cluster.MemberStatus]] to be
@@ -90,12 +89,12 @@ final class NodeGuardian extends ClusterAwareNodeGuardian with ClientHelper {
     /* As http data is received, publishes to Kafka. */
     context.actorOf(Props(new HttpDataFeedActor(router)), "dynamic-data-feed")
 
-    log.info("Starting data file ingestion on {}.", cluster.selfAddress)
+    log.info("Starting data ingestion on {}.", cluster.selfAddress)
 
     /* Handles initial data ingestion in Kafka for running as a demo. */
-    for (source <- initialData) {
-      /* If this fails, we can resend the file data, handled idempotently. */
-      router ! source
+    for (fs <- initialData; data <- fs.data) {
+      log.info("Sending {} to Kafka", data)
+      router ! KafkaMessageEnvelope[String, String](KafkaTopic, KafkaKey, data)
     }
   }
 
@@ -104,32 +103,21 @@ final class NodeGuardian extends ClusterAwareNodeGuardian with ClientHelper {
   }
 }
 
-/** This actor manages parsing file data into lines of raw data and publishing each
-  * to Kafka (vs bulk sends) by delegating to the [[KafkaProducerActor]] who's
-  * instances are load-balanced. Once its work is completed, it shuts itself down. */
-class KafkaPublisherActor(val producerConfig: ProducerConfig) extends KafkaProducerActor[String, String] with ClientHelper {
+/** The KafkaPublisherActor receives initial data on startup (because this
+  * is for a runnable demo) and also receives data in runtime.
+  *
+  * Publishes [[com.datastax.spark.connector.embedded.KafkaEvent.KafkaMessageEnvelope]]
+  * to Kafka on a sender's behalf. Multiple instances are load-balanced in the [[NodeGuardian]].
+  */
+class KafkaPublisherActor(val producerConfig: ProducerConfig) extends KafkaProducerActor[String,String] {
 
   def this(hosts: Set[String], batchSize: Int) = this(KafkaProducer.createConfig(
     hosts, batchSize, "async", classOf[StringEncoder].getName))
 
-  import KafkaEvent._
-  import context.dispatcher
-
-  implicit val materializer = FlowMaterializer()
-
-  def receiveSource : Actor.Receive = {
-    case e: Sources.FileSource =>
-      log.info(s"Ingesting {}", e.name)
-      Source(e.source).foreach { case data =>
-        log.debug(s"Sending '{}'", data)
-        self ! KafkaMessageEnvelope[String, String](KafkaTopic, KafkaKey, data)
-      }
-  }
-
-  override def receive = receiveSource orElse super.receive
-
 }
 
+/** An Http server receiving requests containing header or entity based data which it sends to Kafka.
+  * by delegating to the [[KafkaPublisherActor]]. */
 class HttpDataFeedActor(kafka: ActorRef) extends Actor with ActorLogging with ClientHelper {
   import akka.http.Http
   import Sources._
@@ -143,11 +131,14 @@ class HttpDataFeedActor(kafka: ActorRef) extends Actor with ActorLogging with Cl
 
   val requestHandler: HttpRequest => HttpResponse = {
     case HttpRequest(POST, Uri.Path("/weather/data"), headers, entity, _) =>
-      HttpSource.unapply(headers,entity).collect { case s: HeaderSource =>
-        Source(s.extract).foreach(kafka ! _)
-        HttpResponse(200, entity = HttpEntity(MediaTypes.`text/html`, s"POST successful."))
+      HttpSource.unapply(headers,entity).collect { case hs: HeaderSource =>
+        hs.extract.foreach({ fs: FileSource =>
+          log.info(s"Ingesting {} and publishing {} data points to Kafka topic {}.", fs.name, fs.data.size, KafkaTopic)
+          kafka ! KafkaMessageEnvelope[String, String](KafkaTopic, KafkaKey, fs.data:_*)
+        })
+        HttpResponse(200, entity = HttpEntity(MediaTypes.`text/html`, s"POST [${hs.sources.mkString}] successful."))
       }.getOrElse(
-        HttpResponse(404, entity = s"Unsupported request") )
+        HttpResponse(404, entity = "Unsupported request") )
     case _: HttpRequest =>
         HttpResponse(400, entity = "Unsupported request")
   }

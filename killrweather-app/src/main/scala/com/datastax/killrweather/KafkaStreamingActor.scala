@@ -15,14 +15,12 @@
  */
 package com.datastax.killrweather
 
-import akka.actor.{Actor, ActorRef}
-import kafka.producer.ProducerConfig
+import akka.actor.{ActorLogging, Actor, ActorRef}
 import kafka.serializer.StringDecoder
 import org.apache.spark.streaming.StreamingContext
 import org.apache.spark.storage.StorageLevel
 import org.apache.spark.streaming.kafka.KafkaUtils
 import com.datastax.spark.connector.streaming._
-import com.datastax.spark.connector.embedded.KafkaProducerActor
 
 /** The KafkaStreamActor creates a streaming pipeline from Kafka to Cassandra via Spark.
   * It creates the Kafka stream which streams the raw data, transforms it, to
@@ -32,7 +30,7 @@ import com.datastax.spark.connector.embedded.KafkaProducerActor
 class KafkaStreamingActor(kafkaParams: Map[String, String],
                           ssc: StreamingContext,
                           settings: WeatherSettings,
-                          listener: ActorRef) extends AggregationActor {
+                          listener: ActorRef) extends AggregationActor with ActorLogging {
 
   import settings._
   import WeatherEvent._
@@ -40,7 +38,7 @@ class KafkaStreamingActor(kafkaParams: Map[String, String],
 
   val kafkaStream = KafkaUtils.createStream[String, String, StringDecoder, StringDecoder](
     ssc, kafkaParams, Map(KafkaTopicRaw -> 1), StorageLevel.DISK_ONLY_2)
-    .map { case (_, line) => line.split(",")}
+    .map(_._2.split(","))
     .map(RawWeatherData(_))
 
   /** Saves the raw data to Cassandra - raw table. */
@@ -65,6 +63,8 @@ class KafkaStreamingActor(kafkaParams: Map[String, String],
     (weather.wsid, weather.year, weather.month, weather.day, weather.oneHourPrecip)
   }.saveToCassandra(CassandraKeyspace, CassandraTableDailyPrecip)
 
+  kafkaStream.print // for demo purposes only
+
   /** Notifies the supervisor that the Spark Streams have been created and defined.
     * Now the [[StreamingContext]] can be started. */
   listener ! OutputStreamInitialized
@@ -73,14 +73,3 @@ class KafkaStreamingActor(kafkaParams: Map[String, String],
     case e => // ignore
   }
 }
-
-/** The KafkaPublisherActor loads data from /data/load files on startup (because this
-  * is for a runnable demo) and also receives
-  * [[com.datastax.spark.connector.embedded.KafkaEvent.KafkaMessageEnvelope]] messages and
-  * publishes them to Kafka on a sender's behalf.
-  *
-  * [[com.datastax.spark.connector.embedded.KafkaEvent.KafkaMessageEnvelope]]
-  * messages sent to this actor are handled by the [[KafkaProducerActor]]
-  * which it extends.
-  */
-class KafkaPublisherActor(val producerConfig: ProducerConfig) extends KafkaProducerActor[String, String]

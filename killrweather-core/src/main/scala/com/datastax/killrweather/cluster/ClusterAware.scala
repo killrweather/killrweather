@@ -1,7 +1,7 @@
 package com.datastax.killrweather.cluster
 
 import akka.actor.{Actor, ActorLogging}
-import akka.cluster.Cluster
+import akka.cluster.{Metric, NodeMetrics, Cluster}
 import akka.cluster.ClusterEvent._
 
 /**
@@ -28,7 +28,14 @@ abstract class ClusterAware extends Actor with ActorLogging {
     case MemberRemoved(member, previousStatus) =>
       log.info("Member is Removed: {} after {}", member.address, previousStatus)
     case ClusterMetricsChanged(forNode) =>
-      forNode collectFirst { case m if m.address == cluster.selfAddress => log.info("{}", m) }
+      forNode collectFirst { case m if m.address == cluster.selfAddress =>
+        log.debug("{}", filter(m.metrics))
+      }
     case _: MemberEvent =>
+  }
+
+  def filter(nodeMetrics: Set[Metric]): String = {
+    val filtered = nodeMetrics collect { case v if v.name != "processors" => s"${v.name}:${v.value}" }
+    s"NodeMetrics[${filtered.mkString(",")}]"
   }
 }

@@ -111,7 +111,7 @@ object Dependencies {
     val scalazContrib     = "org.typelevel"       %% "scalaz-contrib-210"                 % ScalazContrib   // MIT
     val scalazContribVal  = "org.typelevel"       %% "scalaz-contrib-validation"          % ScalazContrib   // MIT
     val scalazStream      = "org.scalaz.stream"   %% "scalaz-stream"                      % ScalazStream    // MIT
-    val slf4jApi          = "org.slf4j"           % "slf4j-api"                           % Slf4j % "provided"          // MIT
+    val slf4jApi          = "org.slf4j"           % "slf4j-api"                           % Slf4j           // MIT
     val sparkML           = "org.apache.spark"    %% "spark-mllib"                        % Spark sparkExclusions // ApacheV2
     val sparkCatalyst     = "org.apache.spark"    %% "spark-catalyst"                     % Spark sparkExclusions
     val sparkCassandra    = "com.datastax.spark"  %% "spark-cassandra-connector"          % SparkCassandra // ApacheV2

@@ -59,12 +59,15 @@ private[killrweather] object Sources {
   case class EntitySource[T](header: HttpHeader, entity: RequestEntity) extends HttpSource {
     def extract: Iterator[T] = Iterator.empty // not supported yet
   }
-  case class HeaderSource(header: HttpHeader, entity: RequestEntity) extends HttpSource {
-    def extract: Iterator[FileSource] = header.value.split(",")
-      .map(new JFile(_)).filter(_.exists).map(FileSource(_)).toIterator
+  case class HeaderSource(header: HttpHeader, entity: RequestEntity, sources: Array[String]) extends HttpSource {
+    def extract: Iterator[FileSource] = sources.map(new JFile(_)).filter(_.exists).map(FileSource(_)).toIterator
   }
-  case class FileSource(source: Iterator[String], name: String) {
-    def days: Seq[Day] = source.map(Day(_)).toSeq
+  object HeaderSource {
+    def apply(header: HttpHeader, entity: RequestEntity): HeaderSource =
+      HeaderSource(header, entity, header.value.split(","))
+  }
+  case class FileSource(data: Array[String], name: String) {
+    def days: Seq[Day] = data.map(Day(_)).toSeq
   }
   object FileSource {
     def apply(file: JFile): FileSource = {
@@ -76,14 +79,14 @@ private[killrweather] object Sources {
       }
       val read = src.getLines.toList
       Try(src.close())
-      FileSource(read.toIterator, file.getName)
+      FileSource(read.toArray, file.getName)
     }
   }
 
   private def fileSource(h: HttpHeader): Boolean =
-    h.is("X-DATA-FEED") && h.value.nonEmpty && h.value.contains(JFile.separator)
+    h.name == "X-DATA-FEED" && h.value.nonEmpty && h.value.contains(JFile.separator) // more validation..
 
   private def entitySource(h: HttpHeader, e: RequestEntity): Boolean =
-    h.is("X-DATA-FEED") && e.contentType == ContentTypes.`application/json` // more validation..
+    h.name == "X-DATA-FEED" && e.contentType == ContentTypes.`application/json` // more validation..
 }
 
