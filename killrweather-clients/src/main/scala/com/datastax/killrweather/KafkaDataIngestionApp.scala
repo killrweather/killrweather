@@ -52,7 +52,7 @@ object KafkaDataIngestionApp extends App {
   val system = ActorSystem("KillrWeather", ConfigFactory.parseString("akka.remote.netty.tcp.port = 2551"))
 
   /* The root supervisor and fault tolerance handler of the data ingestion nodes. */
-  val guardian = system.actorOf(Props[NodeGuardian], "node-guardian")
+  val guardian = system.actorOf(Props[HttpNodeGuardian], "node-guardian")
 
   system.registerOnTermination {
     guardian ! PoisonPill
@@ -71,7 +71,7 @@ object KafkaDataIngestionApp extends App {
  *
  * The ingested data is sent to the kafka actor for processing in the stream.
  */
-final class NodeGuardian extends ClusterAwareNodeGuardian with ClientHelper {
+final class HttpNodeGuardian extends ClusterAwareNodeGuardian with ClientHelper {
 
   /** The [[KafkaPublisherActor]] as a load-balancing pool router
     * which sends messages to idle or less busy routees to handle work. */
@@ -108,7 +108,7 @@ final class NodeGuardian extends ClusterAwareNodeGuardian with ClientHelper {
   * is for a runnable demo) and also receives data in runtime.
   *
   * Publishes [[com.datastax.spark.connector.embedded.KafkaEvent.KafkaMessageEnvelope]]
-  * to Kafka on a sender's behalf. Multiple instances are load-balanced in the [[NodeGuardian]].
+  * to Kafka on a sender's behalf. Multiple instances are load-balanced in the [[HttpNodeGuardian]].
   */
 class KafkaPublisherActor(val producerConfig: ProducerConfig) extends KafkaProducerActor[String,String] {
 
