@@ -1,0 +1,49 @@
+<!doctype html>
+<html lang="en" ng-app="killrWeather">
+<head>
+    <meta charset="utf-8">
+    <title>KillrWeather</title>
+    <link rel="stylesheet" href="lib/bootstrap/css/bootstrap.css">
+    <link rel="stylesheet" href="lib/c3/c3.css">
+    <link rel="stylesheet" href="stylesheets/app.css">
+
+
+    <script src="lib/d3js/d3.js"></script>
+    <script src="lib/c3/c3.js"></script>
+    <script src="lib/angularjs/angular.js"></script>
+    <script src="lib/angularjs/angular-route.js"></script>
+    <script src="lib/ng-websocket/ng-websocket.js"></script>
+    <script src="bower_components/ng-table/dist/ng-table.js"></script>
+
+    <script src="bower_components/c3-angular/c3-angular.min.js"></script>
+    <script type="text/javascript" src="bower_components/moment/moment.js"></script>
+    <link rel="stylesheet" href="bower_components/angular-bootstrap-datetimepicker/src/css/datetimepicker.css"/>
+    <script type="text/javascript" src="bower_components/angular-bootstrap-datetimepicker/src/js/datetimepicker.js"></script>
+
+    <script src="javascripts/app.js"></script>
+    <script src="javascripts/controllers.js"></script>
+    <script src="javascripts/services.js"></script>
+</head>
+<body>
+<nav class="navbar navbar-default navbar-static-top">
+    <div class="container">
+        <div class="navbar-header">
+            <button type="button" class="navbar-toggle collapsed" data-toggle="collapse" data-target="#navbar" aria-expanded="false" aria-controls="navbar">
+                <span class="sr-only">Toggle navigation</span>
+                <span class="icon-bar"></span>
+                <span class="icon-bar"></span>
+                <span class="icon-bar"></span>
+            </button>
+            <a class="navbar-brand" href="">Killr Weather</a>
+        </div>
+        <div id="navbar" class="navbar-collapse collapse">
+            <ul class="nav navbar-nav">
+                <li><a href="#/station">Stations</a></li>
+            </ul>
+        </div>
+    </div>
+</nav>
+<div class="col-lg-10 col-md-offset-1" ng-view></div>
+
+</body>
+</html>

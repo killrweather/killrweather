@@ -1,3 +1,5 @@
+resolvers += "Typesafe repository" at "https://repo.typesafe.com/typesafe/releases/"
+
 // pulls in: sbt-pgp, sbt-release, sbt-mima-plugin, sbt-dependency-graph, sbt-buildinfo, sbt-sonatype
 addSbtPlugin("org.typelevel" % "sbt-typelevel" % "0.3.1")
 
@@ -10,3 +12,5 @@ addSbtPlugin("com.scalapenos" % "sbt-prompt" % "0.2.1")
 // For Intellij users of older versions:
 // This might already be in ~/.sbt.. for Scala users
 addSbtPlugin("com.github.mpeltonen" % "sbt-idea" % "1.6.0")
+
+addSbtPlugin("com.typesafe.play" % "sbt-plugin" % "2.3.8")
