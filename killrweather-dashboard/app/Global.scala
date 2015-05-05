@@ -13,21 +13,24 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-import com.datastax.driver.core.Cluster
+
+import akka.actor.{Props, ActorSystem}
+import com.datastax.killrweather.DashboardApiActor
 import com.datastax.killrweather.controllers.{LoadGenerationController, WeatherController}
-import com.datastax.killrweather.infrastructure.WeatherStationDao
-import com.datastax.killrweather.service.{LoadGenerationService, WeatherService}
+import com.datastax.killrweather.service.LoadGenerationService
+import com.typesafe.config.ConfigFactory
 import play.api._
+
 
 object Global extends GlobalSettings {
 
-  // poor man's DI
-  val cluster = Cluster.builder().addContactPoint("localhost").build()
-  val weatherStationDao = new WeatherStationDao(cluster.connect("isd_weather_data"))
-  val weatherService = new WeatherService(weatherStationDao)
-  val weatherDataGenerator = new LoadGenerationService
+  // not using Play's system as you can't override the name
+  val system = ActorSystem("KillrWeather", ConfigFactory.load("cluster.conf"))
+  val dashboardApi = system.actorOf(Props[DashboardApiActor])
 
-  val weatherController = new WeatherController(weatherStationDao, weatherService)
+  // poor man's DI
+  val weatherDataGenerator = new LoadGenerationService
+  val weatherController = new WeatherController(dashboardApi)
   val loadController = new LoadGenerationController(weatherDataGenerator)
 
   val controllers = Map[Class[_], AnyRef](

@@ -16,31 +16,37 @@
 package com.datastax.killrweather.controllers
 
 import akka.actor.{Props, ActorLogging, Actor, ActorRef}
+import akka.util.Timeout
+import com.datastax.killrweather.DashboardApiActor.GetWeatherStationWithPrecipitation
 import com.datastax.killrweather.WeatherStationId
 import com.datastax.killrweather.controllers.WeatherStreamActor.WeatherUpdate
-import com.datastax.killrweather.service.WeatherService
+import com.datastax.killrweather.service.WeatherStationInfo
+import akka.pattern.ask
 import play.Logger
 import play.api.libs.json.Json
 import scala.concurrent.duration._
 import scala.language.postfixOps
 import play.api.libs.concurrent.Execution.Implicits.defaultContext
 
-class WeatherStreamActor(weatherService: WeatherService, out: ActorRef, weatherStationId: WeatherStationId) extends Actor with ActorLogging {
+class WeatherStreamActor(apiActor: ActorRef, out: ActorRef, weatherStationId: WeatherStationId) extends Actor with ActorLogging {
   context.system.scheduler.schedule(5 seconds, 5 seconds, self, WeatherUpdate)
 
   import Implicits._
 
+  implicit val timeout = Timeout(5 seconds)
+
   override def receive: Receive = {
     case WeatherUpdate =>
-      weatherService.getWeatherStation(weatherStationId).map {
+      val newPrecipitation = apiActor ? GetWeatherStationWithPrecipitation(weatherStationId)
+      newPrecipitation.map({
         case weatherStationInfo@Some(station) =>
-          val newWeatherData = Json.toJson(weatherStationInfo).toString()
+          val newWeatherData = Json.toJson(station.asInstanceOf[WeatherStationInfo]).toString()
           val eventMsg: String = s"""{"event":"weatherUpdate","data":$newWeatherData}"""
           log.info(s"Sending updated weather data $eventMsg")
           out ! eventMsg
         case None => log.warning(s"Looks like weather station has vanished $weatherStationId")
-      }
-    case msg@_ => log.warning(s"Received unexpected message $msg")
+      })
+
   }
 
   override def postStop() = {
@@ -49,7 +55,6 @@ class WeatherStreamActor(weatherService: WeatherService, out: ActorRef, weatherS
 }
 
 object WeatherStreamActor {
-  def props(weatherService: WeatherService, out: ActorRef, weatherStationId: WeatherStationId) = Props(new WeatherStreamActor(weatherService, out, weatherStationId))
-
+  def props(api: ActorRef, out: ActorRef, weatherStationId: WeatherStationId) = Props(new WeatherStreamActor(api, out, weatherStationId))
   case object WeatherUpdate
 }

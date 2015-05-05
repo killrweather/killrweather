@@ -24,7 +24,6 @@ object Versions {
   val Bootstrap      = "3.0.0"
   val Cassandra      = "2.1.2"
   val CassandraDriver = "2.1.3"
-  val CassandraUnit  = "2.1.3.1"
   val C3             = "0.4.9"
   val DateTimePicker = "0.3.8"
   val JDK            = "1.7"

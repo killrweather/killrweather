@@ -15,7 +15,6 @@
  */
 package com.datastax.killrweather
 
-
 import kafka.producer.ProducerConfig
 import kafka.serializer.StringEncoder
 

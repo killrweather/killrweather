@@ -98,9 +98,9 @@ class NodeGuardianSpec extends ActorSparkSpec {
       }
     }
     "Return the top k temps for any station in a given year" in {
-      guardian ! GetTopKPrecipitation(sample.wsid, sample.year, k = 10)
+      guardian ! GetTopKPrecipitationForYear(sample.wsid, sample.year, k = 10)
       expectMsgPF(timeout.duration) {
-        case a: TopKPrecipitation =>
+        case a: TopKPrecipitationForYear =>
           a.wsid should be (sample.wsid)
           a.year should be (sample.year)
           a.top.size should be (10)

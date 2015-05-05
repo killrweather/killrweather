@@ -107,7 +107,6 @@ object Dependencies {
     val algebird          = "com.twitter"         %% "algebird-core"                      % Albebird
     val bijection         = "com.twitter"         %% "bijection-core"                     % Bijection
     val driver            = "com.datastax.cassandra" % "cassandra-driver-core"            % CassandraDriver driverExclusions
-    val driverWithGuava   = "com.datastax.cassandra" % "cassandra-driver-core"            % CassandraDriver
     val jodaTime          = "joda-time"           % "joda-time"                           % JodaTime   % "compile;runtime" // ApacheV2
     val jodaConvert       = "org.joda"            % "joda-convert"                        % JodaConvert % "compile;runtime" // ApacheV2
     val json4sCore        = "org.json4s"          %% "json4s-core"                        % Json4s          // ApacheV2
@@ -138,8 +137,6 @@ object Dependencies {
 
   object Test {
     val akkaTestKit     = "com.typesafe.akka"     %% "akka-testkit"                       % Akka          % "test,it" // ApacheV2
-    val cassandraUnit   = "org.cassandraunit"     % "cassandra-unit"                      % CassandraUnit % "test"
-    val mockito         = "org.mockito"           % "mockito-all"                         % Mockito       % "test"
     val pegdown         = "org.pegdown"           % "pegdown"                             % Pegdown       % "test"
     val scalatest       = "org.scalatest"         %% "scalatest"                          % ScalaTest     % "test,it"
     val scalaTestPlay   = "org.scalatestplus"     %% "play"                               % ScalaTestPlay % "test"
@@ -168,7 +165,7 @@ object Dependencies {
   /** Module deps */
   val client = akka ++ logging ++ scalaz ++ Seq(sparkCassandraEmb, sigar)
 
-  val dashboard = client ++ time ++ web ++ Seq(akkaTestKit, cassandraUnit, driverWithGuava, kafka, mockito, pegdown, scalaTestPlay, sigar)
+  val dashboard = client ++ time ++ web ++ Seq(akkaTestKit, kafka, pegdown, scalaTestPlay, sigar)
 
   val core = akka ++ logging ++ time
 

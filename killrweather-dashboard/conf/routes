@@ -2,5 +2,5 @@ GET        /                    @com.datastax.killrweather.controllers.WeatherCo
 GET        /station             @com.datastax.killrweather.controllers.WeatherController.stations
 GET        /station/:id         @com.datastax.killrweather.controllers.WeatherController.station(id)
 GET        /stream/station/:id  @com.datastax.killrweather.controllers.WeatherController.stream(id)
-POST       /load                @com.datastax.killrweather.controllers.LoadGenerationController.generateLoad()
+POST       /load                @com.datastax.killrweather.controllers.LoadGenerationController.generateLoad
 GET        /assets/*file        controllers.Assets.at(path = "/public", file)

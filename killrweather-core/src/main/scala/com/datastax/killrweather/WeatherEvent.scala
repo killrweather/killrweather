@@ -36,11 +36,13 @@ object WeatherEvent {
   sealed trait WeatherRequest extends WeatherEvent
   trait WeatherStationRequest extends WeatherRequest
   case class GetWeatherStation(sid: String) extends WeatherStationRequest
+  case object GetWeatherStations extends WeatherStationRequest
   case class GetCurrentWeather(wsid: String, timestamp: Option[DateTime]= None) extends WeatherStationRequest
 
   trait PrecipitationRequest extends WeatherRequest
   case class GetPrecipitation(wsid: String, year: Int) extends PrecipitationRequest
-  case class GetTopKPrecipitation(wsid: String, year: Int, k: Int) extends PrecipitationRequest
+  case class GetTopKPrecipitationForYear(wsid: String, year: Int, k: Int) extends PrecipitationRequest
+  case class GetTopKPrecipitation(wsid: String, k: Int) extends PrecipitationRequest
 
   trait TemperatureRequest extends WeatherRequest
   case class GetDailyTemperature(day: Day) extends TemperatureRequest

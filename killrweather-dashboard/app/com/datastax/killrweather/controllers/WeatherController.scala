@@ -15,21 +15,28 @@
  */
 package com.datastax.killrweather.controllers
 
+import akka.actor.ActorRef
+import akka.pattern.ask
+import akka.util.Timeout
+import com.datastax.killrweather.DashboardApiActor.GetWeatherStationWithPrecipitation
+import com.datastax.killrweather.Weather.WeatherStation
+import com.datastax.killrweather.WeatherEvent.GetWeatherStations
 import com.datastax.killrweather.WeatherStationId
-import com.datastax.killrweather.infrastructure.WeatherStationDao
-import com.datastax.killrweather.service.WeatherService
+import com.datastax.killrweather.service.WeatherStationInfo
 import play.Logger
 import play.api.Play.current
 import play.api.libs.json.Json
 import play.api.mvc.{Action, Controller, WebSocket}
 
+import scala.concurrent.duration._
 import scala.language.postfixOps
 
-class WeatherController(weatherStationDao: WeatherStationDao,
-                        weatherService: WeatherService) extends Controller {
+class WeatherController(dashboardApi: ActorRef) extends Controller {
 
+  import com.datastax.killrweather.controllers.Implicits._
   import play.api.libs.concurrent.Execution.Implicits.defaultContext
-  import Implicits._
+
+  implicit val timeout = Timeout(5 seconds)
 
   def index = Action {
     Logger.info("Index")
@@ -38,18 +45,20 @@ class WeatherController(weatherStationDao: WeatherStationDao,
 
   def stations = Action.async {
     Logger.info("Stations")
-    weatherStationDao.retrieveWeatherStations()
-      .map(weatherStations => Ok(Json.toJson(weatherStations)))
-  }
-
-  def station(id: String) = Action.async {
-    weatherService.getWeatherStation(WeatherStationId(id)).map {
-        case weatherStationInfo @ Some(station) => Ok(Json.toJson(weatherStationInfo))
-        case None => NotFound
-      }
+    (dashboardApi ? GetWeatherStations)
+      .map(weatherStations => Ok(Json.toJson(weatherStations.asInstanceOf[Seq[WeatherStation]])))
   }
 
   def stream(id: String) = WebSocket.acceptWithActor[String, String] { request => out =>
-    WeatherStreamActor.props(weatherService, out, WeatherStationId(id))
+    WeatherStreamActor.props(dashboardApi, out, WeatherStationId(id))
+  }
+
+  def station(id: String) = Action.async {
+    val response= dashboardApi ? GetWeatherStationWithPrecipitation(WeatherStationId(id))
+    val station = response.map(body => body.asInstanceOf[Option[WeatherStationInfo]])
+    station.map {
+      case Some(s) => Ok(Json.toJson(s))
+      case None => NotFound
+    }
   }
 }
