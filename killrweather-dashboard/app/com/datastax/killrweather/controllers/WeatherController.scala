@@ -15,21 +15,20 @@
  */
 package com.datastax.killrweather.controllers
 
+
+import scala.concurrent.duration._
+import scala.language.postfixOps
 import akka.actor.ActorRef
 import akka.pattern.ask
 import akka.util.Timeout
-import com.datastax.killrweather.DashboardApiActor.GetWeatherStationWithPrecipitation
-import com.datastax.killrweather.Weather.WeatherStation
-import com.datastax.killrweather.WeatherEvent.GetWeatherStations
-import com.datastax.killrweather.WeatherStationId
-import com.datastax.killrweather.service.WeatherStationInfo
 import play.Logger
 import play.api.Play.current
 import play.api.libs.json.Json
 import play.api.mvc.{Action, Controller, WebSocket}
+import com.datastax.killrweather.Weather.WeatherStation
+import com.datastax.killrweather.WeatherEvent.{GetWeatherStationWithPrecipitation, GetWeatherStations}
+import com.datastax.killrweather.service.WeatherStationInfo
 
-import scala.concurrent.duration._
-import scala.language.postfixOps
 
 class WeatherController(dashboardApi: ActorRef) extends Controller {
 
@@ -50,12 +49,12 @@ class WeatherController(dashboardApi: ActorRef) extends Controller {
   }
 
   def stream(id: String) = WebSocket.acceptWithActor[String, String] { request => out =>
-    WeatherStreamActor.props(dashboardApi, out, WeatherStationId(id))
+    WeatherStreamActor.props(dashboardApi, out, id)
   }
 
   def station(id: String) = Action.async {
-    val response= dashboardApi ? GetWeatherStationWithPrecipitation(WeatherStationId(id))
-    val station = response.map(body => body.asInstanceOf[Option[WeatherStationInfo]])
+    val response = dashboardApi ? GetWeatherStationWithPrecipitation(id)
+    val station = response.mapTo[Option[WeatherStationInfo]]
     station.map {
       case Some(s) => Ok(Json.toJson(s))
       case None => NotFound

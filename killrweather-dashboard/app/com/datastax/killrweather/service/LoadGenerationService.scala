@@ -15,13 +15,14 @@
  */
 package com.datastax.killrweather.service
 
-import akka.actor.Props
-import com.datastax.killrweather.{KafkaProperties, KafkaPublisherActor, WeatherStationId}
-import play.libs.Akka
-
 import scala.util.Random
+import akka.actor.Props
+import play.libs.Akka
+import com.datastax.killrweather.WeatherEvent.{LoadSpec, WeatherStationId}
+import com.datastax.killrweather.{DashboardProperties, KafkaPublisherActor}
 
-class LoadGenerationService extends KafkaProperties {
+
+class LoadGenerationService extends DashboardProperties {
 
   def generateLoad(weatherStationId: WeatherStationId, loadSpec: LoadSpec) = {
     val kafkaProducer = Akka.system().actorOf(Props(new KafkaPublisherActor(KafkaHosts, 1)))

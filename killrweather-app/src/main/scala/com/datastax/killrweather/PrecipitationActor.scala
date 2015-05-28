@@ -30,9 +30,9 @@ class PrecipitationActor(ssc: StreamingContext, settings: WeatherSettings)
   import settings.{CassandraTableDailyPrecip => dailytable}
 
   def receive : Actor.Receive = {
-    case GetPrecipitation(wsid, year)        => cumulative(wsid, year, sender)
+    case GetPrecipitation(wsid, year)               => cumulative(wsid, year, sender)
     case GetTopKPrecipitationForYear(wsid, year, k) => topK(wsid, year, k, sender)
-    case GetTopKPrecipitation(wsid, k) => topK(wsid, k, sender)
+    case GetTopKPrecipitation(wsid, k)              => topK(wsid, k, sender)
   }
 
   /** Computes and sends the annual aggregation to the `requester` actor.

@@ -78,7 +78,7 @@ killrControllers.controller('LoadGenerationCtrl', ['$scope', '$http', '$routePar
         $scope.sendLoad = function() {
             $scope.submissionSuccess = false;
             $scope.submissionFailure = false;
-            var data = {weatherStation: {id: $routeParams.id}, loadSpec: $scope.loadSpec};
+            var data = {id: $routeParams.id, loadSpec: $scope.loadSpec};
             console.info("To send: " + JSON.stringify(data));
             $http.post("/load", data).
                 success(function(data, status, headers, config) {

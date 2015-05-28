@@ -13,8 +13,17 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.datastax.killrweather.service
+package com.datastax.killrweather
 
-import org.joda.time.{Duration, DateTime}
+import akka.japi.Util.immutableSeq
+import com.typesafe.config.ConfigFactory
 
-case class LoadSpec(startDate: DateTime, endDate: DateTime, interval: Duration)
+private[killrweather] trait DashboardProperties {
+
+  private val config = ConfigFactory.load
+  protected val KafkaHosts = immutableSeq(config.getStringList("kafka.hosts")).toSet
+  protected val KafkaTopic = config.getString("kafka.topic.raw")
+  protected val KafkaKey = config.getString("kafka.group.id")
+  protected val KafkaBatchSendSize = config.getInt("kafka.batch.send.size")
+  protected val WeatherEvents = config.getInt("dashboard.weather-events")
+}

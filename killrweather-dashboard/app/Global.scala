@@ -15,11 +15,11 @@
  */
 
 import akka.actor.{Props, ActorSystem}
+import play.api._
 import com.datastax.killrweather.DashboardApiActor
 import com.datastax.killrweather.controllers.{LoadGenerationController, WeatherController}
 import com.datastax.killrweather.service.LoadGenerationService
 import com.typesafe.config.ConfigFactory
-import play.api._
 
 
 object Global extends GlobalSettings {

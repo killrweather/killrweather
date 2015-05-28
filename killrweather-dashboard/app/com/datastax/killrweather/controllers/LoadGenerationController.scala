@@ -15,14 +15,14 @@
  */
 package com.datastax.killrweather.controllers
 
-import com.datastax.killrweather.WeatherStationId
-import com.datastax.killrweather.service.{LoadGenerationService, LoadSpec}
 import org.joda.time.Duration
 import org.joda.time.format.ISODateTimeFormat
 import play.Logger
 import play.api.libs.functional.syntax._
 import play.api.libs.json._
 import play.api.mvc.{Action, BodyParsers, Controller}
+import com.datastax.killrweather.WeatherEvent.{LoadSpec, LoadGenerationInput, WeatherStationId}
+import com.datastax.killrweather.service.LoadGenerationService
 
 import scala.language.postfixOps
 
@@ -40,14 +40,10 @@ class LoadGenerationController(loadGenerationService: LoadGenerationService) ext
     }
   }
 
-  implicit val weatherStationReads: Reads[WeatherStationId] = Json.format[WeatherStationId]
-
   implicit val loadGenerationInput: Reads[LoadGenerationInput] = (
     (JsPath \ "weatherStation").read[WeatherStationId] and
     (JsPath \ "loadSpec").read[LoadSpec]
   )(LoadGenerationInput.apply _)
-
-  case class LoadGenerationInput(id: WeatherStationId, loadSpec: LoadSpec)
 
   def generateLoad(): Action[JsValue] = Action(BodyParsers.parse.json) { request =>
     Logger.info(s"Received load generation request ${request.body}")
@@ -55,9 +51,7 @@ class LoadGenerationController(loadGenerationService: LoadGenerationService) ext
     Logger.info(s"Parsed load spec $input")
 
     input.fold(
-      errors => {
-        BadRequest(Json.obj("errorMessage" -> JsError.toFlatJson(errors)))
-      },
+      errors => BadRequest(Json.obj("errorMessage" -> JsError.toFlatJson(errors))),
       stationAndSpec => {
         loadGenerationService.generateLoad(stationAndSpec.id, stationAndSpec.loadSpec)
         Ok("OK")

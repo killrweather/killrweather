@@ -17,16 +17,17 @@ package com.datastax.killrweather.service
 
 import java.util.concurrent.TimeUnit
 
-import akka.actor.{Actor, ActorRef}
-import com.datastax.killrweather.{KafkaProperties, WeatherStationId}
-import com.datastax.spark.connector.embedded.KafkaEvent.KafkaMessageEnvelope
-import play.api.Logger
-import play.api.libs.concurrent.Execution.Implicits._
+import scala.util.Random
 import scala.concurrent.duration._
 import scala.language.postfixOps
-import scala.util.Random
+import akka.actor.{Actor, ActorRef}
+import play.api.Logger
+import play.api.libs.concurrent.Execution.Implicits._
+import com.datastax.killrweather.WeatherEvent.{LoadSpec, WeatherStationId}
+import com.datastax.killrweather.DashboardProperties
+import com.datastax.spark.connector.embedded.KafkaEvent.KafkaMessageEnvelope
 
-class DataGeneratorActor(kafkaProducer: ActorRef, weatherStation: WeatherStationId, random: Random) extends Actor with KafkaProperties {
+class DataGeneratorActor(kafkaProducer: ActorRef, weatherStation: WeatherStationId, random: Random) extends Actor with DashboardProperties {
 
   private val MaxHourlyPrecipitation = 5
 
@@ -35,7 +36,7 @@ class DataGeneratorActor(kafkaProducer: ActorRef, weatherStation: WeatherStation
       val currentDate = loadSpec.startDate
       // this is the one the daily aggregate table is calculated from
       val hourlyPrecipitation = random.nextDouble() * MaxHourlyPrecipitation
-      val rawData = s"${weatherStation.id},${currentDate.year().get()},${currentDate.monthOfYear().get()},${currentDate.dayOfMonth().get()},00,5.0,-3.9,1020.4,270,4.6,2,$hourlyPrecipitation,5.0"
+      val rawData = s"$weatherStation,${currentDate.year().get()},${currentDate.monthOfYear().get()},${currentDate.dayOfMonth().get()},00,5.0,-3.9,1020.4,270,4.6,2,$hourlyPrecipitation,5.0"
       Logger.info(s"Sending message to Kafka, $loadSpec AND message $rawData")
       kafkaProducer ! KafkaMessageEnvelope[String, String](KafkaTopic, KafkaKey, rawData)
       if (currentDate.isAfter(loadSpec.endDate)) {

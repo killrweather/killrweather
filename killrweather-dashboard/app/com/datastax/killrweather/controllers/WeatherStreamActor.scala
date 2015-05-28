@@ -15,18 +15,16 @@
  */
 package com.datastax.killrweather.controllers
 
+import scala.concurrent.duration._
+import scala.language.postfixOps
 import akka.actor.{Props, ActorLogging, Actor, ActorRef}
 import akka.util.Timeout
-import com.datastax.killrweather.DashboardApiActor.GetWeatherStationWithPrecipitation
-import com.datastax.killrweather.WeatherStationId
-import com.datastax.killrweather.controllers.WeatherStreamActor.WeatherUpdate
-import com.datastax.killrweather.service.WeatherStationInfo
 import akka.pattern.ask
 import play.Logger
 import play.api.libs.json.Json
-import scala.concurrent.duration._
-import scala.language.postfixOps
 import play.api.libs.concurrent.Execution.Implicits.defaultContext
+import com.datastax.killrweather.WeatherEvent.{WeatherUpdate, WeatherStationId, GetWeatherStationWithPrecipitation}
+import com.datastax.killrweather.service.WeatherStationInfo
 
 class WeatherStreamActor(apiActor: ActorRef, out: ActorRef, weatherStationId: WeatherStationId) extends Actor with ActorLogging {
   context.system.scheduler.schedule(5 seconds, 5 seconds, self, WeatherUpdate)
@@ -37,16 +35,20 @@ class WeatherStreamActor(apiActor: ActorRef, out: ActorRef, weatherStationId: We
 
   override def receive: Receive = {
     case WeatherUpdate =>
-      val newPrecipitation = apiActor ? GetWeatherStationWithPrecipitation(weatherStationId)
-      newPrecipitation.map({
-        case weatherStationInfo@Some(station) =>
-          val newWeatherData = Json.toJson(station.asInstanceOf[WeatherStationInfo]).toString()
-          val eventMsg: String = s"""{"event":"weatherUpdate","data":$newWeatherData}"""
-          log.info(s"Sending updated weather data $eventMsg")
-          out ! eventMsg
-        case None => log.warning(s"Looks like weather station has vanished $weatherStationId")
-      })
+      weatherUpdate()
 
+  }
+
+  def weatherUpdate() = {
+    val newPrecipitation = apiActor ? GetWeatherStationWithPrecipitation(weatherStationId)
+    newPrecipitation.map({
+      case weatherStationInfo@Some(station) =>
+        val newWeatherData = Json.toJson(station.asInstanceOf[WeatherStationInfo]).toString()
+        val eventMsg: String = s"""{"event":"weatherUpdate","data":$newWeatherData}"""
+        log.info(s"Sending updated weather data $eventMsg")
+        out ! eventMsg
+      case None => log.warning(s"Looks like weather station has vanished $weatherStationId")
+    })
   }
 
   override def postStop() = {
@@ -56,5 +58,4 @@ class WeatherStreamActor(apiActor: ActorRef, out: ActorRef, weatherStationId: We
 
 object WeatherStreamActor {
   def props(api: ActorRef, out: ActorRef, weatherStationId: WeatherStationId) = Props(new WeatherStreamActor(api, out, weatherStationId))
-  case object WeatherUpdate
 }

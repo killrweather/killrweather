@@ -15,10 +15,10 @@
  */
 package com.datastax.killrweather.controllers
 
-import com.datastax.killrweather.Weather.WeatherStation
-import com.datastax.killrweather.service.{WeatherStationInfo, DayPrecipitation}
 import play.api.libs.functional.syntax._
 import play.api.libs.json.{Json, JsPath, Writes}
+import com.datastax.killrweather.Weather.WeatherStation
+import com.datastax.killrweather.service.{WeatherStationInfo, DayPrecipitation}
 
 object Implicits {
   implicit val weatherStationWrites: Writes[WeatherStation] = Json.format[WeatherStation]

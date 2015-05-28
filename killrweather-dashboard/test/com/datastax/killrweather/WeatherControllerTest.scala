@@ -2,9 +2,8 @@ package com.datastax.killrweather
 
 import akka.actor.ActorSystem
 import akka.testkit.{TestKit, TestProbe}
-import com.datastax.killrweather.DashboardApiActor.GetWeatherStationWithPrecipitation
 import com.datastax.killrweather.Weather.WeatherStation
-import com.datastax.killrweather.WeatherEvent.GetWeatherStations
+import com.datastax.killrweather.WeatherEvent.{GetWeatherStationWithPrecipitation, GetWeatherStations}
 import com.datastax.killrweather.controllers.Implicits._
 import com.datastax.killrweather.controllers.WeatherController
 import com.datastax.killrweather.service.{DayPrecipitation, WeatherStationInfo}
@@ -47,7 +46,7 @@ class WeatherControllerTest extends TestKit(ActorSystem("WeatherStreamActorTest"
 
       val result = underTest.station(stationId)(FakeRequest())
 
-      testProbe.expectMsg(GetWeatherStationWithPrecipitation(WeatherStationId(stationId)))
+      testProbe.expectMsg(GetWeatherStationWithPrecipitation(stationId))
       testProbe.reply(Some(station))
       status(result) should be(200)
       contentAsString(result) should be(s"""{"weatherStation":{"id":"$stationId","name":"Name","countryCode":"GB","callSign":"BBB","lat":1.0,"long":2.0,"elevation":3.0},"dailyPrecipitation":[{"date":"2015-3-30","precipitation":10.0}]}""".stripMargin)
@@ -59,7 +58,7 @@ class WeatherControllerTest extends TestKit(ActorSystem("WeatherStreamActorTest"
 
       val result = underTest.station("12345")(FakeRequest())
 
-      testProbe.expectMsg(GetWeatherStationWithPrecipitation(WeatherStationId("12345")))
+      testProbe.expectMsg(GetWeatherStationWithPrecipitation("12345"))
       testProbe.reply(None)
       status(result) should be(404)
     }
