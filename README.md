@@ -3,6 +3,9 @@
 KillrWeather is a reference application (which we are constantly improving) showing how to easily leverage and integrate [Apache Spark](http://spark.apache.org),
 [Apache Cassandra](http://cassandra.apache.org), and [Apache Kafka](http://kafka.apache.org) for fast, streaming computations in asynchronous [Akka](http://akka.io) event-driven environments. This application focuses on the use case of  **[time series data](https://github.com/killrweather/killrweather/wiki/4.-Time-Series-Data-Model)**.  
   
+## Sample Use Case
+I need fast access to historical data  on the fly for  predictive modeling  with real time data from the stream. 
+
 ## Basic Samples
 [Basic Spark, Kafka, Cassandra Samples](https://github.com/killrweather/killrweather/tree/master/killrweather-examples/src/main/scala/com/datastax/killrweather)
 
