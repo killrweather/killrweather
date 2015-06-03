@@ -17,18 +17,15 @@ package com.datastax.killrweather
 
 import java.net.InetSocketAddress
 
-import scala.util.Try
+import scala.concurrent.Future
 import scala.concurrent.duration._
 import org.reactivestreams.Publisher
-import akka.http.Http.IncomingConnection
-import akka.stream.FlowMaterializer
-import akka.stream.scaladsl.{Source, Sink}
-import akka.http.model._
-import akka.http.model.HttpMethods._
-import akka.io.IO
+import akka.stream.{ActorFlowMaterializerSettings, ActorFlowMaterializer}
 import akka.actor._
 import akka.cluster.Cluster
 import akka.util.Timeout
+import akka.http.scaladsl.Http
+import akka.http.scaladsl.model._
 import akka.routing.BalancingPool
 import kafka.producer.ProducerConfig
 import kafka.serializer.StringEncoder
@@ -72,6 +69,9 @@ object KafkaDataIngestionApp extends App {
  * The ingested data is sent to the kafka actor for processing in the stream.
  */
 final class HttpNodeGuardian extends ClusterAwareNodeGuardian with ClientHelper {
+
+  cluster.joinSeedNodes(Vector(cluster.selfAddress))
+
 
   /** The [[KafkaPublisherActor]] as a load-balancing pool router
     * which sends messages to idle or less busy routees to handle work. */
@@ -120,39 +120,41 @@ class KafkaPublisherActor(val producerConfig: ProducerConfig) extends KafkaProdu
 /** An Http server receiving requests containing header or entity based data which it sends to Kafka.
   * by delegating to the [[KafkaPublisherActor]]. */
 class HttpDataFeedActor(kafka: ActorRef) extends Actor with ActorLogging with ClientHelper {
-  import akka.http.Http
+
   import Sources._
   import context.dispatcher
+  import akka.stream.scaladsl._
+  import akka.stream.scaladsl.Flow
 
   implicit val system = context.system
-  implicit val materializer = FlowMaterializer()
+
   implicit val askTimeout: Timeout = 500.millis
 
-  IO(Http) ! Http.Bind(HttpHost, HttpPort)
+  implicit val materializer = ActorFlowMaterializer(
+    ActorFlowMaterializerSettings(system)
+  )
 
   val requestHandler: HttpRequest => HttpResponse = {
-    case HttpRequest(POST, Uri.Path("/weather/data"), headers, entity, _) =>
+    case HttpRequest(HttpMethods.POST, Uri.Path("/weather/data"), headers, entity, _) =>
       HttpSource.unapply(headers,entity).collect { case hs: HeaderSource =>
         hs.extract.foreach({ fs: FileSource =>
           log.info(s"Ingesting {} and publishing {} data points to Kafka topic {}.", fs.name, fs.data.size, KafkaTopic)
           kafka ! KafkaMessageEnvelope[String, String](KafkaTopic, KafkaKey, fs.data:_*)
         })
         HttpResponse(200, entity = HttpEntity(MediaTypes.`text/html`, s"POST [${hs.sources.mkString}] successful."))
-      }.getOrElse(
-        HttpResponse(404, entity = "Unsupported request") )
+      }.getOrElse(HttpResponse(404, entity = "Unsupported request") )
     case _: HttpRequest =>
-        HttpResponse(400, entity = "Unsupported request")
+      HttpResponse(400, entity = "Unsupported request")
   }
+
+  Http(system)
+    .bind(interface = HttpHost, port = HttpPort)
+    .map { case connection  =>
+      log.info("Accepted new connection from " + connection.remoteAddress)
+      connection.handleWithSyncHandler(requestHandler)
+    }
 
   def receive : Actor.Receive = {
-    case Http.ServerBinding(local, stream) => bound(local, stream)
-  }
-
-  def bound(localAddress: InetSocketAddress, connection: Publisher[IncomingConnection]): Unit = {
-    Source(connection).foreach({
-      case Http.IncomingConnection(remoteAddress, requestProducer, responseConsumer) =>
-        log.info("Connected to [{}] with [{}] from [{}]", localAddress, connection, remoteAddress)
-        Source(requestProducer).map(requestHandler).to(Sink(responseConsumer)).run()
-    })
+    case e =>
   }
 }

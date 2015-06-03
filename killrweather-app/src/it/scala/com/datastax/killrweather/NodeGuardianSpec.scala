@@ -20,7 +20,7 @@ import java.util.concurrent.atomic.AtomicInteger
 import scala.concurrent.duration._
 import akka.actor.Props
 import org.joda.time.{DateTimeZone, DateTime}
-import org.apache.spark.streaming.{Seconds, StreamingContext}
+import org.apache.spark.streaming.{Milliseconds, StreamingContext}
 import com.datastax.spark.connector.streaming._
 import com.datastax.spark.connector._
 import com.datastax.spark.connector.embedded.{KafkaConsumer, EmbeddedKafka}
@@ -39,14 +39,14 @@ class NodeGuardianSpec extends ActorSparkSpec {
   val duration = 60.seconds
 
   // === Don't modify ===
-  system.eventStream.subscribe(self, classOf[NodeInitialized])
+  system.eventStream.subscribe(self, NodeInitialized.getClass)
 
   val atomic = new AtomicInteger(0)
 
   val kafka = new EmbeddedKafka
   kafka.createTopic(KafkaTopicRaw)
 
-  val ssc = new StreamingContext(sc, Seconds(SparkStreamingBatchInterval))
+  val ssc = new StreamingContext(sc, Milliseconds(SparkStreamingBatchInterval))
 
   val consumer = new KafkaConsumer(kafka.kafkaConfig.zkConnect, KafkaTopicRaw, KafkaGroupId, 1, 10, atomic)
 

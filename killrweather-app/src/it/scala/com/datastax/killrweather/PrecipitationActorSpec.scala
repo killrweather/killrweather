@@ -17,7 +17,7 @@ package com.datastax.killrweather
 
 import scala.concurrent.duration._
 import akka.actor._
-import org.apache.spark.streaming.{Seconds, StreamingContext}
+import org.apache.spark.streaming.{Milliseconds, StreamingContext}
 import com.datastax.spark.connector.embedded.EmbeddedKafka
 
 class PrecipitationActorSpec extends ActorSparkSpec {
@@ -30,10 +30,10 @@ class PrecipitationActorSpec extends ActorSparkSpec {
 
   kafka.createTopic(KafkaTopicRaw)
 
-  val ssc = new StreamingContext(sc, Seconds(SparkStreamingBatchInterval))
+  val ssc = new StreamingContext(sc, Milliseconds(SparkStreamingBatchInterval))
 
   override val kafkaActor = Some(system.actorOf(Props(new KafkaStreamingActor(
-    kafka.kafkaParams, kafka.kafkaConfig, ssc, settings, self)), "kafka-stream"))
+    kafka.kafkaParams, ssc, settings, self)), "kafka-stream"))
 
   val precipitation = system.actorOf(Props(new PrecipitationActor(ssc, settings)), "precipitation")
 

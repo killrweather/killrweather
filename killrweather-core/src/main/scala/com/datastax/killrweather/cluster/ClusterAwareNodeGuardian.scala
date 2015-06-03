@@ -2,12 +2,55 @@ package com.datastax.killrweather.cluster
 
 import java.util.concurrent.TimeoutException
 
-import akka.actor._
-import akka.pattern.gracefulStop
-import akka.util.Timeout
-import com.datastax.killrweather.WeatherEvent.{NodeInitialized, OutputStreamInitialized}
-
+import scala.concurrent.Future
 import scala.concurrent.duration._
+import scala.util.control.NonFatal
+import akka.actor._
+import akka.util.Timeout
+import akka.cluster.{Member, Metric, NodeMetrics, Cluster}
+import akka.cluster.ClusterEvent._
+import com.datastax.killrweather.WeatherEvent
+
+/**
+ * Creates the [[Cluster]] and does any cluster lifecycle handling
+ * aside from join and leave so that the implementing applications can
+ * customize when this is done.
+ *
+ * Implemented by [[ClusterAwareNodeGuardian]].
+ */
+abstract class ClusterAware extends Actor with ActorLogging {
+
+  val cluster = Cluster(context.system)
+
+  /** subscribe to cluster changes, re-subscribe when restart. */
+  override def preStart(): Unit = cluster.subscribe(self, classOf[ClusterDomainEvent])
+
+  override def postStop(): Unit = cluster.unsubscribe(self)
+
+  def receive : Actor.Receive = {
+    case MemberUp(member) => watch(member)
+    case UnreachableMember(member) =>
+      log.info("Member detected as unreachable: {}", member)
+    case MemberRemoved(member, previousStatus) =>
+      log.info("Member is Removed: {} after {}", member.address, previousStatus)
+    case ClusterMetricsChanged(forNode) =>
+      forNode collectFirst { case m if m.address == cluster.selfAddress =>
+        log.debug("{}", filter(m.metrics))
+      }
+    case _: MemberEvent =>
+  }
+
+  /** Initiated when node receives a [[akka.cluster.ClusterEvent.MemberUp]]. */
+  private def watch(member: Member): Unit = {
+    log.debug("Member [{}] joined cluster.", member.address)
+  }
+
+    def filter(nodeMetrics: Set[Metric]): String = {
+    val filtered = nodeMetrics collect { case v if v.name != "processors" => s"${v.name}:${v.value}" }
+    s"NodeMetrics[${filtered.mkString(",")}]"
+  }
+}
+
 
 /** A `NodeGuardian` is the root of each KillrWeather deployed application, where
  * any special application logic is handled in its implementers, but the cluster
@@ -18,7 +61,11 @@ import scala.concurrent.duration._
  *
  * `NodeGuardianLike` also handles graceful shutdown of the node and all child actors. */
 abstract class ClusterAwareNodeGuardian extends ClusterAware {
-  import akka.actor.SupervisorStrategy._
+
+  import WeatherEvent.{NodeInitialized, OutputStreamInitialized}
+  import SupervisorStrategy._
+  import akka.pattern.gracefulStop
+  import context.dispatcher
 
   // customize
   override val supervisorStrategy =
@@ -38,8 +85,6 @@ abstract class ClusterAwareNodeGuardian extends ClusterAware {
   override def postStop(): Unit = {
     super.postStop()
     log.info("Node {} shutting down.", cluster.selfAddress)
-    cluster.leave(self.path.address)
-    gracefulShutdown()
   }
 
   /** On startup, actor is in an [[uninitialized]] state. */
@@ -60,9 +105,18 @@ abstract class ClusterAwareNodeGuardian extends ClusterAware {
   /** Must be implemented by an Actor. */
   def initialized: Actor.Receive
 
-  def gracefulShutdown(): Unit = {
-    val timeout = Timeout(5.seconds)
-    context.children foreach (gracefulStop(_, timeout.duration))
+  protected def gracefulShutdown(listener: ActorRef): Unit = {
+    implicit val timeout = Timeout(5.seconds)
+    val status = Future.sequence(context.children.map(shutdown))
+    listener ! status
     log.info(s"Graceful shutdown completed.")
   }
+
+  /** Executes [[akka.pattern.gracefulStop( )]] on `child`.*/
+  private def shutdown(child: ActorRef)(implicit t: Timeout): Future[Boolean] =
+    try gracefulStop(child, t.duration + 1.seconds) catch {
+      case NonFatal(e) =>
+        log.error("Error shutting down {}, cause {}", child.path, e.toString)
+        Future(false)
+    }
 }

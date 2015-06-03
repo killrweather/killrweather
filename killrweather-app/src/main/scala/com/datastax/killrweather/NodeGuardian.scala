@@ -34,7 +34,7 @@ import com.datastax.spark.connector.embedded._
  * weather station), and saves the new data to the cassandra raw data table on arrival.
  */
 class NodeGuardian(ssc: StreamingContext, kafka: EmbeddedKafka, settings: WeatherSettings)
-  extends ClusterAwareNodeGuardian with AggregationActor with Assertions {
+  extends ClusterAwareNodeGuardian with AggregationActor {
   import WeatherEvent._
   import settings._
 
@@ -71,6 +71,7 @@ class NodeGuardian(ssc: StreamingContext, kafka: EmbeddedKafka, settings: Weathe
     case e: TemperatureRequest    => temperature forward e
     case e: PrecipitationRequest  => precipitation forward e
     case e: WeatherStationRequest => station forward e
+    case GracefulShutdown => gracefulShutdown(sender())
   }
 
 }

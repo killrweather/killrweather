@@ -50,6 +50,7 @@ object WeatherEvent {
 
   sealed trait Task extends Serializable
   case object QueryTask extends Task
+  case object GracefulShutdown extends LifeCycleEvent
 
   /**
    * Quick access lookup table for sky_condition. Useful for potential analytics.

@@ -17,11 +17,11 @@
 object Versions {
 
   val Akka           = "2.3.9"
-  val AkkaStreams    = "0.11"
+  val AkkaStreams    = "1.0-RC3"
   val Albebird       = "0.8.1"
   val Bijection      = "0.7.0"
   val Cassandra      = "2.1.3"
-  val CassandraDriver = "2.1.3"
+  val CassandraDriver = "2.1.5"
   val JDK            = "1.7"
   val JodaConvert    = "1.7"
   val JodaTime       = "2.4"
@@ -31,12 +31,12 @@ object Versions {
   val Logback        = "1.0.13"
   val Scala          = "2.10.5"// waiting for spark-streaming-kafka to be supported in scala 2.11
   val Pickling       = "0.10.1"
-  val ScalaTest      = "2.2.1"
+  val ScalaTest      = "2.2.2"
   val Scalaz         = "7.1.0"
   val ScalazContrib  = "0.1.5"
   val ScalazStream   = "0.1"
   val Sigar          = "1.6.4"
   val Slf4j          = "1.6.1"
-  val Spark          = "1.2.1"
-  val SparkCassandra = "1.2.1"
+  val Spark          = "1.3.1"
+  val SparkCassandra = "1.3.0-M1"
 }

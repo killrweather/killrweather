@@ -18,12 +18,11 @@ package com.datastax.killrweather
 import java.io.{BufferedInputStream, FileInputStream, File => JFile}
 import java.util.zip.GZIPInputStream
 
-import com.datastax.killrweather.Weather.Day
-
 import scala.util.Try
-import akka.http.model.{ContentTypes, RequestEntity, HttpHeader}
 import akka.japi.Util.immutableSeq
+import akka.http.scaladsl.model.{ContentTypes, HttpHeader, RequestEntity}
 import com.typesafe.config.ConfigFactory
+import Weather.Day
 
 private[killrweather] trait ClientHelper {
   import Sources._

@@ -19,8 +19,7 @@ import akka.actor.ActorRef
 import com.datastax.spark.connector._
 import com.datastax.spark.connector.cql.CassandraConnector
 import com.datastax.spark.connector.embedded.KafkaEvent.KafkaMessageEnvelope
-import com.datastax.spark.connector.util.Logging
-import org.apache.spark.SparkContext
+import org.apache.spark.{Logging, SparkContext}
 import org.apache.spark.rdd.RDD
 
 /**

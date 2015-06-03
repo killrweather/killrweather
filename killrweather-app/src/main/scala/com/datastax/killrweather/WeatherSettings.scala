@@ -15,6 +15,8 @@
  */
 package com.datastax.killrweather
 
+import java.net.InetAddress
+
 import scala.util.Try
 import com.datastax.driver.core.ConsistencyLevel
 import com.datastax.spark.connector.cql.{AuthConf, NoAuthConf, PasswordAuthConf}
@@ -43,6 +45,8 @@ import com.typesafe.config.{Config, ConfigFactory}
  */
 final class WeatherSettings(conf: Option[Config] = None) extends Serializable {
 
+  val localAddress = InetAddress.getLocalHost.getHostAddress
+
   val rootConfig = conf match {
     case Some(c) => c.withFallback(ConfigFactory.load)
     case _ => ConfigFactory.load
@@ -60,12 +64,12 @@ final class WeatherSettings(conf: Option[Config] = None) extends Serializable {
     "spark.cleaner.ttl") getOrElse (3600*2)
 
   val SparkStreamingBatchInterval = withFallback[Int](Try(spark.getInt("streaming.batch.interval")),
-    "spark.streaming.batch.interval") getOrElse 1
+    "spark.streaming.batch.interval") getOrElse 1000
 
   val SparkCheckpointDir = killrweather.getString("spark.checkpoint.dir")
 
   val CassandraHosts = withFallback[String](Try(cassandra.getString("connection.host")),
-    "spark.cassandra.connection.host") getOrElse "127.0.0.1"
+    "spark.cassandra.connection.host") getOrElse localAddress
 
   val CassandraAuthUsername: Option[String] = Try(cassandra.getString("auth.username")).toOption
     .orElse(sys.props.get("spark.cassandra.auth.username"))
@@ -144,7 +148,6 @@ final class WeatherSettings(conf: Option[Config] = None) extends Serializable {
 
   val CassandraDefaultMeasuredInsertsCount: Int = 128
 
-  //val KafkaHosts: immutable.Seq[String] = Util.immutableSeq(kafka.getStringList("hosts"))
   val KafkaGroupId = kafka.getString("group.id")
   val KafkaTopicRaw = kafka.getString("topic.raw")
   val KafkaEncoderFqcn = kafka.getString("encoder.fqcn")
