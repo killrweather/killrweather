@@ -35,6 +35,7 @@ class WeatherStationActor(sc: SparkContext, settings: WeatherSettings)
   def receive : Actor.Receive = {
     case GetCurrentWeather(wsid, dt) => current(wsid, dt, sender)
     case GetWeatherStation(wsid)     => weatherStation(wsid, sender)
+    case GetWeatherStations          => weatherStations(sender)
   }
 
   /** Computes and sends the current weather conditions for a given weather station,
@@ -56,5 +57,12 @@ class WeatherStationActor(sc: SparkContext, settings: WeatherSettings)
     sc.cassandraTable[Weather.WeatherStation](keyspace, weatherstations)
       .where("id = ?", wsid)
       .collectAsync.map(_.headOption) pipeTo requester
+
+  def weatherStations(requester: ActorRef): Unit = {
+    log.info("Received request for all weather stations")
+    sc.cassandraTable[Weather.WeatherStation](keyspace, weatherstations)
+      .limit(100) // will need to implement paging if we want all the stations
+      .collectAsync pipeTo requester
+  }
 
 }

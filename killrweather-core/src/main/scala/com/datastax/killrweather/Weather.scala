@@ -96,7 +96,6 @@ object Weather {
 
   trait WeatherAggregate extends WeatherModel with Serializable {
     def wsid: String
-    def year: Int
   }
 
   case class Day(wsid: String, year: Int, month: Int, day: Int) extends WeatherAggregate
@@ -133,8 +132,11 @@ object Weather {
     def apply(aggregate: Seq[Double], wsid: String, year: Int): AnnualPrecipitation =
       AnnualPrecipitation(wsid, year, aggregate.sum)
   }
-  case class TopKPrecipitation(wsid: String,
+  case class TopKPrecipitationForYear(wsid: String,
                                year: Int,
+                               top: Seq[Double]) extends WeatherAggregate
+
+  case class TopKPrecipitation(wsid: String,
                                top: Seq[Double]) extends WeatherAggregate
 
   /* Temperature */

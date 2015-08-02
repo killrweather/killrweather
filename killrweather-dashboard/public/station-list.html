@@ -1,0 +1,29 @@
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-md-10">
+
+            <table ng-table="tableParams" show-filter="true" class="table table-striped">
+                <tr ng-repeat="station in stations">
+                    <td data-title="'ID'" filter="{ 'name': 'text' }">
+                        {{station.id}}
+                    </td>
+                    <td data-title="'Name'">
+                        <a href="#/station/{{ station.id}}">{{station.name}}</a>
+                    </td>
+                    <td data-title="'Country Code'">
+                        {{station.countryCode}}
+                    </td>
+                    <td data-title="'Call Sign'">
+                        {{station.callSign}}
+                    </td>
+                    <td data-title="'Latitude'">
+                        {{station.lat}}
+                    </td>
+                    <td data-title="'Longitude'">
+                        {{station.long}}
+                    </td>
+                </tr>
+            </table>
+        </div>
+    </div>
+</div>

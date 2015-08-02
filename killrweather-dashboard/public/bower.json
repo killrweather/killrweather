@@ -1,0 +1,8 @@
+{
+  "name": "killrweather-dashboard",
+  "dependencies": {
+    "ng-table": "latest",
+    "c3-angular": "latest",
+    "angular-bootstrap-datetimepicker": "latest"
+  }
+}

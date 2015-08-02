@@ -17,6 +17,7 @@
 
 import sbt._
 import sbt.Keys._
+import play.PlayScala
 
 object KillrWeatherBuild extends Build {
   import Settings._
@@ -25,7 +26,7 @@ object KillrWeatherBuild extends Build {
     id = "root",
     base = file("."),
     settings = parentSettings,
-    aggregate = Seq(core, app, clients, examples)
+    aggregate = Seq(core, app, clients, examples, dashboard)
   )
 
   lazy val core = Project(
@@ -54,6 +55,12 @@ object KillrWeatherBuild extends Build {
     settings = defaultSettings ++ Seq(libraryDependencies ++= Dependencies.examples)
   )
 
+  lazy val dashboard = Project(
+    id = "dashboard",
+    dependencies = Seq(core),
+    base = file("./killrweather-dashboard"),
+    settings = dashboardTestSettings ++ Seq(libraryDependencies ++= Dependencies.dashboard)
+  ).enablePlugins(PlayScala) configs IntegrationTest
 }
 
 /** To use the connector, the only dependency required is:
@@ -119,12 +126,25 @@ object Dependencies {
     val sigar             = "org.fusesource"      % "sigar"                               % Sigar
   }
 
+  object Web {
+    val angular           = "org.webjars"         % "angularjs"                           % AngularJs
+    val bootstrap         = "org.webjars"         % "bootstrap"                           % Bootstrap
+    val c3                = "org.webjars"         % "c3"                                  % C3
+    val dateTimePicker    = "org.webjars"         % "angular-bootstrap-datetimepicker"    % DateTimePicker
+    val ngWebsocket       = "org.webjars.bower"   % "ng-websocket"                        % NgWebsocket
+    val webJars           = "org.webjars"         %% "webjars-play"                       % WebJars
+  }
+
   object Test {
-    val akkaTestKit     = "com.typesafe.akka"     %% "akka-testkit"                       % Akka      % "test,it" // ApacheV2
-    val scalatest       = "org.scalatest"         %% "scalatest"                          % ScalaTest % "test,it"
+    val akkaTestKit     = "com.typesafe.akka"     %% "akka-testkit"                       % Akka          % "test,it" // ApacheV2
+    val pegdown         = "org.pegdown"           % "pegdown"                             % Pegdown       % "test"
+    val scalatest       = "org.scalatest"         %% "scalatest"                          % ScalaTest     % "test,it"
+    val scalaTestPlay   = "org.scalatestplus"     %% "play"                               % ScalaTestPlay % "test"
   }
 
   import Compile._
+  import Web._
+  import Test._
 
   val akka = Seq(akkaStream, akkaHttpCore, akkaActor, akkaCluster, akkaRemote, akkaSlf4j)
 
@@ -138,10 +158,14 @@ object Dependencies {
 
   val time = Seq(jodaConvert, jodaTime)
 
-  val test = Seq(Test.akkaTestKit, Test.scalatest)
+  val web = Seq(angular, bootstrap, c3, dateTimePicker, ngWebsocket, webJars)
+
+  val test = Seq(akkaTestKit, scalatest)
 
   /** Module deps */
   val client = akka ++ logging ++ scalaz ++ Seq(sparkCassandraEmb, sigar)
+
+  val dashboard = client ++ time ++ web ++ Seq(akkaTestKit, kafka, pegdown, scalaTestPlay, sigar)
 
   val core = akka ++ logging ++ time
 
