@@ -20,7 +20,7 @@ import java.net.InetSocketAddress
 import scala.concurrent.Future
 import scala.concurrent.duration._
 import org.reactivestreams.Publisher
-import akka.stream.{ActorFlowMaterializerSettings, ActorFlowMaterializer}
+import akka.stream.{ActorMaterializerSettings, ActorMaterializer}
 import akka.actor._
 import akka.cluster.Cluster
 import akka.util.Timeout
@@ -33,6 +33,7 @@ import com.typesafe.config.ConfigFactory
 import com.datastax.spark.connector.embedded._
 import com.datastax.killrweather.cluster.ClusterAwareNodeGuardian
 import com.datastax.spark.connector.embedded.KafkaEvent.KafkaMessageEnvelope
+
 
 /** Run with: sbt clients/run for automatic data file import to Kafka.
   *
@@ -125,13 +126,16 @@ class HttpDataFeedActor(kafka: ActorRef) extends Actor with ActorLogging with Cl
   import context.dispatcher
   import akka.stream.scaladsl._
   import akka.stream.scaladsl.Flow
+  import HttpProtocols._
+  import MediaTypes._
+  import HttpCharsets._
 
   implicit val system = context.system
 
   implicit val askTimeout: Timeout = 500.millis
 
-  implicit val materializer = ActorFlowMaterializer(
-    ActorFlowMaterializerSettings(system)
+  implicit val materializer = ActorMaterializer(
+    ActorMaterializerSettings(system)
   )
 
   val requestHandler: HttpRequest => HttpResponse = {
@@ -141,7 +145,7 @@ class HttpDataFeedActor(kafka: ActorRef) extends Actor with ActorLogging with Cl
           log.info(s"Ingesting {} and publishing {} data points to Kafka topic {}.", fs.name, fs.data.size, KafkaTopic)
           kafka ! KafkaMessageEnvelope[String, String](KafkaTopic, KafkaKey, fs.data:_*)
         })
-        HttpResponse(200, entity = HttpEntity(MediaTypes.`text/html`, s"POST [${hs.sources.mkString}] successful."))
+        HttpResponse(200, entity = HttpEntity(`text/html` withCharset `UTF-8`, s"POST [${hs.sources.mkString}] successful."))
       }.getOrElse(HttpResponse(404, entity = "Unsupported request") )
     case _: HttpRequest =>
       HttpResponse(400, entity = "Unsupported request")
