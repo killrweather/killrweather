@@ -118,7 +118,7 @@ final class WeatherSettings(conf: Option[Config] = None) extends Serializable {
       "spark.cassandra.input.consistency.level") getOrElse ConsistencyLevel.LOCAL_ONE.name)
 
   val CassandraReadSplitSize = withFallback[Long](Try(cassandra.getLong("read.split.size")),
-    "spark.cassandra.input.split.size") getOrElse 100000
+    "spark.cassandra.input.split.size") getOrElse 100000L
 
   /* Writes */
 
