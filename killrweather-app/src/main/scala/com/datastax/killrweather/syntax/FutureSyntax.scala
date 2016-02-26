@@ -1,9 +1,8 @@
 package com.datastax.killrweather.syntax
 
 package object future {
-  import scala.concurrent._
+  import scala.concurrent.{Future, ExecutionContext}
   import scalaz._
-  import scalaz.contrib.std.scalaFuture._
   import scala.annotation.unchecked.uncheckedVariance
   
   type FutureT[+A] = EitherT[Future, Throwable, A @uncheckedVariance]
