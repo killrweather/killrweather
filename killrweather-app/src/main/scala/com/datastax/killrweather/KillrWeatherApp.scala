@@ -111,7 +111,7 @@ class KillrWeather(system: ExtendedActorSystem) extends Extension {
 
       (guardian ? GracefulShutdown).mapTo[Future[Boolean]]
         .onComplete { _ =>
-        system.shutdown()
+        system.terminate()
         system.awaitTermination(timeout.duration)
       }
     }
