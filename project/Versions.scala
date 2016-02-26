@@ -25,10 +25,11 @@ object Versions {
   val JodaConvert    = "1.8"
   val JodaTime       = "2.9.2"
   val Json4s         = "3.2.11"
-  val Kafka          = "0.9.0.1"
+  val Kafka          = "0.8.2.2"
+  val KafkaReactive	 = "0.10.0" // https://github.com/manub/scalatest-embedded-kafka/issues/6
   val Kryo           = "3.0.0"
   val Logback        = "1.1.5"
-  val Scala          = "2.11.7"// waiting for spark-streaming-kafka to be supported in scala 2.11
+  val Scala          = "2.11.7"
   val Pickling       = "0.10.1"
   val ScalaTest      = "2.2.6"
   val Scalaz         = "7.2.0"
@@ -37,5 +38,5 @@ object Versions {
   val Sigar          = "1.6.4"
   val Slf4j          = "1.7.16"
   val Spark          = "1.6.0"
-  val SparkCassandra = "1.5.0"
+  val SparkCassandra = "1.6.0-M1"
 }

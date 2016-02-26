@@ -107,6 +107,7 @@ object Dependencies {
     val json4sNative      = "org.json4s"          %% "json4s-native"                      % Json4s          // ApacheV2
     val kafka             = "org.apache.kafka"    %% "kafka"                              % Kafka kafkaExclusions // ApacheV2
     val kafkaStreaming    = "org.apache.spark"    %% "spark-streaming-kafka"              % Spark sparkExclusions // ApacheV2
+    val kafkaReactive 	  = "com.softwaremill.reactivekafka" %% "reactive-kafka-core" 	  % KafkaReactive 
     val logback           = "ch.qos.logback"      % "logback-classic"                     % Logback
     val scalazContrib     = "org.typelevel"       %% "scalaz-contrib-210"                 % ScalazContrib   // MIT
     val scalazContribVal  = "org.typelevel"       %% "scalaz-contrib-validation"          % ScalazContrib   // MIT
@@ -147,7 +148,7 @@ object Dependencies {
   val core = akka ++ logging ++ time
 
   val app = connector ++ json ++ scalaz ++ test ++
-    Seq(algebird, bijection, kafka, kafkaStreaming, pickling, sparkML, sigar)
+    Seq(algebird, bijection, kafka, kafkaReactive, kafkaStreaming, pickling, sparkML, sigar)
 
   val examples = connector ++ time ++ json ++
     Seq(kafka, kafkaStreaming, sparkML, "org.slf4j" % "slf4j-log4j12" % "1.6.1")
