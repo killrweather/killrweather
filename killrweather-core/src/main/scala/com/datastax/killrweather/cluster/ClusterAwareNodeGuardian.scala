@@ -7,7 +7,8 @@ import scala.concurrent.duration._
 import scala.util.control.NonFatal
 import akka.actor._
 import akka.util.Timeout
-import akka.cluster.{Member, Metric, NodeMetrics, Cluster}
+import akka.cluster.{Member, Cluster}
+import akka.cluster.metrics.{Metric, NodeMetrics, ClusterMetricsChanged}
 import akka.cluster.ClusterEvent._
 import com.datastax.killrweather.WeatherEvent
 

@@ -50,12 +50,18 @@ trait TestFileHelper {
   }
 }
 
+// http://doc.akka.io/docs/akka/2.4.2/scala/cluster-metrics.html#Subscribe_to_Metrics_Events
 class MetricsListener(cluster: Cluster) extends Actor with ActorLogging {
-  import akka.cluster.ClusterEvent.ClusterMetricsChanged
+  import akka.actor.ActorLogging
+  import akka.actor.Actor
+  import akka.cluster.Cluster
+  import akka.cluster.metrics.ClusterMetricsEvent
+  import akka.cluster.metrics.ClusterMetricsChanged
   import akka.cluster.ClusterEvent.CurrentClusterState
-  import akka.cluster.NodeMetrics
-  import akka.cluster.StandardMetrics.HeapMemory
-  import akka.cluster.StandardMetrics.Cpu
+  import akka.cluster.metrics.NodeMetrics
+  import akka.cluster.metrics.StandardMetrics.HeapMemory
+  import akka.cluster.metrics.StandardMetrics.Cpu
+  import akka.cluster.metrics.ClusterMetricsExtension
 
   val selfAddress = cluster.selfAddress
 
@@ -78,7 +84,7 @@ class MetricsListener(cluster: Cluster) extends Actor with ActorLogging {
   }
 
   def logCpu(nodeMetrics: NodeMetrics): Unit = nodeMetrics match {
-    case Cpu(address, timestamp, Some(systemLoadAverage), cpuCombined, processors) =>
+    case Cpu(address, timestamp, Some(systemLoadAverage), cpuCombined, cpuStolen, processors) =>
       log.debug("System Load Avg: {} ({} processors)", systemLoadAverage, processors)
     case _ => // no cpu info
   }
