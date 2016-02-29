@@ -70,59 +70,9 @@ final class ApiNodeGuardian extends ClusterAwareNodeGuardian with ClientHelper {
 }
 
 /** For simplicity, these just go through Akka. */
-private[killrweather] class AutomatedApiActor extends Actor with ActorLogging with ClientHelper {
-
-  import Weather._
-  import WeatherEvent._
-
+abstract class AutomatedApiActor extends Actor with ActorLogging with ClientHelper {
+  
   val guardian = context.actorSelection(Cluster(context.system).selfAddress
     .copy(port = Some(BasePort)) + "/user/node-guardian")
 
-  var queried: Set[Day] = Set(Day("725030:14732", 2008, 12, 31)) // just the initial one
-
-  override def preStart(): Unit = log.info("Starting.")
-
-  def receive: Actor.Receive = {
-    case e: WeatherAggregate =>
-      log.debug("Received {} from {}", e, sender)
-    case e: WeatherModel =>
-      log.debug("Received {} from {}", e, sender)
-    case Event.QueryTask => queries()
-  }
-
-  def queries(): Unit = {
-
-    val previous = (day: Day) => {
-      val key = day.wsid.split(":")(0)
-      queried.exists(_.month > day.month)
-      // run more queries than queried.exists(_.wsid.startsWith(key)) until more wsid data
-    }
-
-    val toSample = (source: Sources.FileSource) => source.days.filterNot(previous).headOption
-
-    initialData.flatMap(toSample(_)).headOption map { sample =>
-      log.debug("Requesting the current weather for weather station {}", sample.wsid)
-      // because we load from historic file data vs stream in the cloud for this sample app ;)
-      val timestamp = new DateTime(DateTimeZone.UTC).withYear(sample.year)
-        .withMonthOfYear(sample.month).withDayOfMonth(sample.day)
-      guardian ! GetCurrentWeather(sample.wsid, Some(timestamp))
-
-      log.debug("Requesting annual precipitation for weather station {} in year {}", sample.wsid, sample.year)
-      guardian ! GetPrecipitation(sample.wsid, sample.year)
-
-      log.debug("Requesting top-k Precipitation for weather station {}", sample.wsid)
-      guardian ! GetTopKPrecipitation(sample.wsid, sample.year, k = 10)
-
-      log.debug("Requesting the daily temperature aggregate for weather station {}", sample.wsid)
-      guardian ! GetDailyTemperature(sample)
-
-      log.debug("Requesting the high-low temperature aggregate for weather station {}",sample.wsid)
-      guardian ! GetMonthlyHiLowTemperature(sample.wsid, sample.year, sample.month)
-
-      log.debug("Requesting weather station {}", sample.wsid)
-      guardian ! GetWeatherStation(sample.wsid)
-
-      queried += sample
-    }
-  }
 }
