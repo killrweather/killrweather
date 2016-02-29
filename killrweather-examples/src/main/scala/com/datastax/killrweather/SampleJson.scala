@@ -44,7 +44,7 @@ object SampleJson extends App {
   val sqlContext = new SQLContext(sc)
   val json = sc.parallelize(Seq("""{"user":"helena","commits":98, "month":12, "year":2014}""","""{"user":"pkolaczk", "commits":42, "month":12, "year":2014}"""))
 
-  sqlContext.jsonRDD(json).map(MonthlyCommits(_)).saveToCassandra("githubstats","monthly_commits")
+  sqlContext.read.json(json).map(MonthlyCommits(_)).saveToCassandra("githubstats","monthly_commits")
 
   sc.cassandraTable[MonthlyCommits]("githubstats","monthly_commits").collect foreach println
 
