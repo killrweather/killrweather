@@ -1,0 +1,31 @@
+<configuration>
+    <appender name="STDOUT" class="ch.qos.logback.core.ConsoleAppender">
+        <encoder>
+            <pattern>[%level] [%date{ISO8601}] [%logger]: %msg%n</pattern>
+            <!-- %X{akkaSource} -->
+        </encoder>
+    </appender>
+
+    <!-- Change to debug to see data pathway logging. -->
+    <logger name="com.datastax.killrweather" level="DEBUG" />
+    <logger name="com.datastax.killrweather.cluster" level="INFO" />
+    <logger name="akka.cluster" level="INFO" />
+    <logger name="akka.cluster.ClusterHeartbeatSender" level="WARN"/>
+
+    <logger name="com.datastax.driver" level="WARN" />
+    <logger name="com.datastax.spark" level="WARN" />
+    <logger name="org.apache.spark" level="WARN" />
+    <logger name="kafka" level="ERROR" />
+
+    <logger name="org.apache.zookeeper" level="ERROR"/>
+    <logger name="org.eclipse.jetty" level="ERROR" />
+    <logger name="org.apache.spark.storage.BlockManager" level="ERROR" />
+    <logger name="org.apache.thrift" level="ERROR"/>
+    <logger name="org.apache.cassandra.db.SystemKeyspace" level="ERROR"/>
+    <logger name="org.apache.spark.storage.BlockManager" level="ERROR" />
+    <logger name="org.apache.hadoop" level="ERROR" />
+
+    <root level="info">
+        <appender-ref ref="STDOUT"/>
+    </root>
+</configuration>

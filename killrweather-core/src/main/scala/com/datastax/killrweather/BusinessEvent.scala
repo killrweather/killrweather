@@ -13,19 +13,18 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+
 package com.datastax.killrweather
 
 import org.joda.time.DateTime
 
 // TODO document the Event API
-object WeatherEvent {
-  import Weather._
-
+object BusinessEvent {
   /** Base marker trait. */
   @SerialVersionUID(1L)
-  sealed trait WeatherEvent extends Serializable
+  /*sealed*/ trait BusinessEvent extends Serializable
 
-  sealed trait LifeCycleEvent extends WeatherEvent
+  /*sealed*/ trait LifeCycleEvent extends BusinessEvent
   case object OutputStreamInitialized extends LifeCycleEvent
   case object NodeInitialized extends LifeCycleEvent
   case object Start extends LifeCycleEvent
@@ -33,7 +32,7 @@ object WeatherEvent {
   case object Shutdown extends LifeCycleEvent
   case object TaskCompleted extends LifeCycleEvent
 
-  sealed trait WeatherRequest extends WeatherEvent
+/*  sealed trait WeatherRequest extends BusinessEvent
   trait WeatherStationRequest extends WeatherRequest
   case class GetWeatherStation(sid: String) extends WeatherStationRequest
   case class GetCurrentWeather(wsid: String, timestamp: Option[DateTime]= None) extends WeatherStationRequest
@@ -46,7 +45,7 @@ object WeatherEvent {
   case class GetDailyTemperature(day: Day) extends TemperatureRequest
   case class GetMonthlyHiLowTemperature(wsid: String, year: Int, month: Int) extends TemperatureRequest
   case class GetMonthlyTemperature(wsid: String, year: Int, month: Int) extends TemperatureRequest
-
+*/
 
   sealed trait Task extends Serializable
   case object QueryTask extends Task
@@ -56,6 +55,6 @@ object WeatherEvent {
    * Quick access lookup table for sky_condition. Useful for potential analytics.
    * See http://en.wikipedia.org/wiki/Okta
    */
-  case class GetSkyConditionLookup(code: Int) extends WeatherRequest
+//  case class GetSkyConditionLookup(code: Int) extends WeatherRequest
 
 }

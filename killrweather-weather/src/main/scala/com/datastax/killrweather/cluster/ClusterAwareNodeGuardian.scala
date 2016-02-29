@@ -1,6 +1,7 @@
 package com.datastax.killrweather.cluster
 
 import java.util.concurrent.TimeoutException
+
 import scala.concurrent.Future
 import scala.concurrent.duration._
 import scala.util.control.NonFatal

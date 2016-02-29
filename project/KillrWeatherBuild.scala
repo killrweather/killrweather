@@ -15,6 +15,10 @@
 * limitations under the License.
 */
 
+/*
+ * Copyright 2016 Logimethods - Laurent Magnin
+ */
+
 import sbt._
 import sbt.Keys._
 
@@ -25,7 +29,7 @@ object KillrWeatherBuild extends Build {
     id = "root",
     base = file("."),
     settings = parentSettings,
-    aggregate = Seq(core, app, clients, examples)
+    aggregate = Seq(core, weather, app, clients, examples)
   )
 
   lazy val core = Project(
@@ -34,17 +38,24 @@ object KillrWeatherBuild extends Build {
     settings = defaultSettings ++ Seq(libraryDependencies ++= Dependencies.core)
   )
 
+  lazy val weather = Project(
+    id = "weather",
+    base = file("./killrweather-weather"),
+    dependencies = Seq(core),
+    settings = defaultSettings ++ Seq(libraryDependencies ++= Dependencies.weather)
+  )
+
   lazy val app = Project(
     id = "app",
     base = file("./killrweather-app"),
-    dependencies = Seq(core),
+    dependencies = Seq(weather),
     settings = defaultSettings ++ Seq(libraryDependencies ++= Dependencies.app)
   ) configs IntegrationTest
 
   lazy val clients = Project(
     id = "clients",
     base = file("./killrweather-clients"),
-    dependencies = Seq(core),
+    dependencies = Seq(weather),
     settings = defaultSettings ++ Seq(libraryDependencies ++= Dependencies.client)
   )
 
@@ -147,6 +158,8 @@ object Dependencies {
   val client = akka ++ logging ++ scalaz ++ Seq(pickling, sparkCassandraEmb, sigar)
 
   val core = akka ++ logging ++ time
+
+  val weather = akka ++ logging ++ time
 
   val app = connector ++ json ++ scalaz ++ test ++
     Seq(algebird, bijection, kafka, kafkaReactive, kafkaStreaming, pickling, sparkML, sigar)
