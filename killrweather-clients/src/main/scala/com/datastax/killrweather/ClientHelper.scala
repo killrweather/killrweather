@@ -22,9 +22,8 @@ import scala.util.Try
 import akka.japi.Util.immutableSeq
 import akka.http.scaladsl.model.{ContentTypes, HttpHeader, RequestEntity}
 import com.typesafe.config.ConfigFactory
-import Weather.Day
 
-private[killrweather] trait ClientHelper {
+trait ClientHelper {
   import Sources._
 
   private val config = ConfigFactory.load
@@ -43,7 +42,7 @@ private[killrweather] trait ClientHelper {
     }.toSet
 }
 
-private[killrweather] object Sources {
+object Sources {
   sealed trait HttpSource extends Serializable {
     def header: HttpHeader
     def entity: RequestEntity
@@ -66,7 +65,7 @@ private[killrweather] object Sources {
       HeaderSource(header, entity, header.value.split(","))
   }
   case class FileSource(data: Array[String], name: String) {
-    def days: Seq[Day] = data.map(Day(_)).toSeq
+//    def days: Seq[Day] = data.map(Day(_)).toSeq
   }
   object FileSource {
     def apply(file: JFile): FileSource = {
