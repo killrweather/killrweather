@@ -48,14 +48,14 @@ object KillrWeatherBuild extends Build {
   lazy val app = Project(
     id = "app",
     base = file("./killrweather-app"),
-    dependencies = Seq(weather),
+    dependencies = Seq(core, weather),
     settings = defaultSettings ++ Seq(libraryDependencies ++= Dependencies.app)
   ) configs IntegrationTest
 
   lazy val clients = Project(
     id = "clients",
     base = file("./killrweather-clients"),
-    dependencies = Seq(weather),
+    dependencies = Seq(core, weather),
     settings = defaultSettings ++ Seq(libraryDependencies ++= Dependencies.client)
   )
 

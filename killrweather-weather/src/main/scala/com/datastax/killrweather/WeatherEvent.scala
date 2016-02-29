@@ -16,23 +16,14 @@
 package com.datastax.killrweather
 
 import org.joda.time.DateTime
-import com.datastax.killrweather.BusinessEvent
 
 // TODO document the Event API
-object WeatherEvent extends BusinessEvent {
+object WeatherEvent {
   import Weather._
 
   /** Base marker trait. */
   @SerialVersionUID(1L)
   sealed trait WeatherEvent extends Serializable
-
-  sealed trait LifeCycleEvent extends WeatherEvent
-  case object OutputStreamInitialized extends LifeCycleEvent
-  case object NodeInitialized extends LifeCycleEvent
-  case object Start extends LifeCycleEvent
-  case object DataFeedStarted extends LifeCycleEvent
-  case object Shutdown extends LifeCycleEvent
-  case object TaskCompleted extends LifeCycleEvent
 
   sealed trait WeatherRequest extends WeatherEvent
   trait WeatherStationRequest extends WeatherRequest
@@ -47,11 +38,6 @@ object WeatherEvent extends BusinessEvent {
   case class GetDailyTemperature(day: Day) extends TemperatureRequest
   case class GetMonthlyHiLowTemperature(wsid: String, year: Int, month: Int) extends TemperatureRequest
   case class GetMonthlyTemperature(wsid: String, year: Int, month: Int) extends TemperatureRequest
-
-
-  sealed trait Task extends Serializable
-  case object QueryTask extends Task
-  case object GracefulShutdown extends LifeCycleEvent
 
   /**
    * Quick access lookup table for sky_condition. Useful for potential analytics.

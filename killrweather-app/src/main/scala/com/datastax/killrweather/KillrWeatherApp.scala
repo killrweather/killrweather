@@ -56,7 +56,7 @@ object KillrWeather extends ExtensionId[KillrWeather] with ExtensionIdProvider {
 }
 
 class KillrWeather(system: ExtendedActorSystem) extends Extension {
-  import WeatherEvent.GracefulShutdown
+  import Event.GracefulShutdown
 
   import system.dispatcher
 
