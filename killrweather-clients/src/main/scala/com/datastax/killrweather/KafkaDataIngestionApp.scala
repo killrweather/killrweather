@@ -101,7 +101,7 @@ final class HttpNodeGuardian extends ClusterAwareNodeGuardian with ClientHelper 
   }
 
   def initialized: Actor.Receive = {
-    case WeatherEvent.TaskCompleted => // ignore for now
+    case BusinessEvent.TaskCompleted => // ignore for now
   }
 }
 

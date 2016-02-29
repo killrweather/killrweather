@@ -19,12 +19,12 @@ package com.datastax.killrweather
 import org.joda.time.DateTime
 
 // TODO document the Event API
-object Event {
+object BusinessEvent {
   /** Base marker trait. */
   @SerialVersionUID(1L)
-  sealed trait Event extends Serializable
+  sealed trait BusinessEvent extends Serializable
 
-  sealed trait LifeCycleEvent extends Event
+  sealed trait LifeCycleEvent extends BusinessEvent
   case object OutputStreamInitialized extends LifeCycleEvent
   case object NodeInitialized extends LifeCycleEvent
   case object Start extends LifeCycleEvent
