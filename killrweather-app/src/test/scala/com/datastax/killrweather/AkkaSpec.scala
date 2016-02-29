@@ -35,7 +35,7 @@ abstract class AkkaSpec extends TestKit(ActorSystem()) with AbstractSpec with Im
    protected val log = akka.event.Logging(system, system.name)
 
    override def afterAll() {
-     system.shutdown()
+     system.terminate()
   }
 }
 
