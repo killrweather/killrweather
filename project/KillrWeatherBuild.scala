@@ -38,24 +38,17 @@ object KillrWeatherBuild extends Build {
     settings = defaultSettings ++ Seq(libraryDependencies ++= Dependencies.core)
   )
 
-  lazy val weather = Project(
-    id = "weather",
-    base = file("./killrweather-weather"),
-    dependencies = Seq(core),
-    settings = defaultSettings ++ Seq(libraryDependencies ++= Dependencies.weather)
-  )
-
   lazy val app = Project(
     id = "app",
     base = file("./killrweather-app"),
-    dependencies = Seq(core, weather),
+    dependencies = Seq(core),
     settings = defaultSettings ++ Seq(libraryDependencies ++= Dependencies.app)
   ) configs IntegrationTest
 
   lazy val clients = Project(
     id = "clients",
     base = file("./killrweather-clients"),
-    dependencies = Seq(core, weather),
+    dependencies = Seq(core),
     settings = defaultSettings ++ Seq(libraryDependencies ++= Dependencies.client)
   )
 
@@ -63,6 +56,30 @@ object KillrWeatherBuild extends Build {
     id = "examples",
     base = file("./killrweather-examples"),
     settings = defaultSettings ++ Seq(libraryDependencies ++= Dependencies.examples)
+  )
+
+  // Weather Specific Projects
+
+  lazy val weather = Project(
+    id = "weather",
+    base = file("./killrweather-weather"),
+    dependencies = Seq(core),
+	// TODO: avoid side-effect on libraryDependencies
+    settings = defaultSettings ++ Seq(libraryDependencies ++= Dependencies.weather)
+  )
+
+  lazy val weather_app = Project(
+    id = "weather_app",
+    base = file("./killrweather-weather_app"),
+    dependencies = Seq(core, app, weather),
+    settings = defaultSettings ++ Seq(libraryDependencies ++= Dependencies.weather)
+  ) configs IntegrationTest
+
+  lazy val weather_clients = Project(
+    id = "weather_clients",
+    base = file("./killrweather-weather_clients"),
+    dependencies = Seq(core, clients, weather),
+    settings = defaultSettings ++ Seq(libraryDependencies ++= Dependencies.weather)
   )
 
 }
