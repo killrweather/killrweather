@@ -112,7 +112,9 @@ class KillrWeather(system: ExtendedActorSystem) extends Extension {
       (guardian ? GracefulShutdown).mapTo[Future[Boolean]]
         .onComplete { _ =>
         system.terminate()
-        system.awaitTermination(timeout.duration)
+        // http://stackoverflow.com/questions/12436397/how-to-wait-for-akka-actor-system-to-terminate
+        import scala.concurrent.Await
+        Await.result(system.whenTerminated, timeout.duration)
       }
     }
   }
