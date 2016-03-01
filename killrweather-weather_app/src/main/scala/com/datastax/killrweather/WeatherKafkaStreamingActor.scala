@@ -29,7 +29,7 @@ import com.datastax.killrweather.BusinessEvent.{NodeInitialized, OutputStreamIni
   * a column entry for a specific weather station[[com.datastax.killrweather.Weather.RawWeatherData]],
   * and saves the new data to the cassandra table as it arrives.
   */
-class KafkaWeatherStreamingActor(kafkaParams: Map[String, String],
+class WeatherKafkaStreamingActor(kafkaParams: Map[String, String],
                           ssc: StreamingContext,
                           settings: WeatherSettings,
                           listener: ActorRef) 
@@ -79,3 +79,20 @@ class KafkaWeatherStreamingActor(kafkaParams: Map[String, String],
     case e => // ignore
   }*/
 }
+
+
+// Implementation
+trait WeatherKafkaStreamingActorComponentImpl extends KafkaStreamingActorComponent { // For expressing dependencies
+  // Dependencies
+  this: KafkaStreamingActorComponent =>
+  
+  def kafkaStreamingActor(kafkaParams: Map[String, String],
+                          ssc: StreamingContext,
+                          settings: WeatherSettings,
+                          listener: ActorRef): KafkaStreamingActor // Way to obtain the dependency
+    = new WeatherKafkaStreamingActor(kafkaParams: Map[String, String],
+                          ssc: StreamingContext,
+                          settings: WeatherSettings,
+                          listener: ActorRef)
+}
+

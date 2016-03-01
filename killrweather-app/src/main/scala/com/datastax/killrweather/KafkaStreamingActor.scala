@@ -73,3 +73,12 @@ class KafkaStreamingActor(kafkaParams: Map[String, String],
     case e => // ignore
   }
 }
+
+// http://www.warski.org/blog/2010/12/di-in-scala-cake-pattern/
+// Interface
+trait KafkaStreamingActorComponent { // For expressing dependencies
+  def kafkaStreamingActor(kafkaParams: Map[String, String],
+                          ssc: StreamingContext,
+                          settings: WeatherSettings,
+                          listener: ActorRef): KafkaStreamingActor // Way to obtain the dependency
+}

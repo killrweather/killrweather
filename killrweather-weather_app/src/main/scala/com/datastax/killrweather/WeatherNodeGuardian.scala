@@ -36,7 +36,7 @@ import scala.Vector
  * weather station), and saves the new data to the cassandra raw data table on arrival.
  */
 class WeatherNodeGuardian(ssc: StreamingContext, kafka: EmbeddedKafka, settings: WeatherSettings)
-  extends NodeGuardian(ssc, kafka, settings) {
+                        extends NodeGuardian(ssc, kafka, settings) with WeatherKafkaStreamingActorComponentImpl {
   import BusinessEvent._
   import settings._
 

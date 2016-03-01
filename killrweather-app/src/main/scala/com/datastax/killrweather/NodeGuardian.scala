@@ -33,14 +33,14 @@ import scala.Vector
  * weather station), and saves the new data to the cassandra raw data table on arrival.
  */
 abstract class NodeGuardian(ssc: StreamingContext, kafka: EmbeddedKafka, settings: WeatherSettings)
-  extends ClusterAwareNodeGuardian with AggregationActor {
+  extends ClusterAwareNodeGuardian with AggregationActor with KafkaStreamingActorComponent {
 //  import BusinessEvent._
   import settings._
 //  import com.softwaremill.macwire._
 
   /** Creates the Kafka stream saving raw data and aggregated data to cassandra. */
-  lazy val kafkaStreamingActor = //KafkaStreamingActorFactory.create(kafka.kafkaParams, ssc, settings, self)  
-     new KafkaStreamingActor(kafka.kafkaParams, ssc, settings, self)
+  //KafkaStreamingActorFactory.create(kafka.kafkaParams, ssc, settings, self)  
+  lazy val kafkaStreamingActor: KafkaStreamingActor = kafkaStreamingActor(kafka.kafkaParams, ssc, settings, self)
   context.actorOf(Props(kafkaStreamingActor), "kafka-stream")
 
   /** The Spark/Cassandra computation actors: For the tutorial we just use 2005 for now. */
