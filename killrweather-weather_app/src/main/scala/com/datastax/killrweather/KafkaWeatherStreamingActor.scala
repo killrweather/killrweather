@@ -21,18 +21,19 @@ import org.apache.spark.streaming.StreamingContext
 import org.apache.spark.storage.StorageLevel
 import org.apache.spark.streaming.kafka.KafkaUtils
 import com.datastax.spark.connector.streaming._
+import com.datastax.killrweather.WeatherSettings
 
 /** The KafkaStreamActor creates a streaming pipeline from Kafka to Cassandra via Spark.
   * It creates the Kafka stream which streams the raw data, transforms it, to
   * a column entry for a specific weather station[[com.datastax.killrweather.Weather.RawWeatherData]],
   * and saves the new data to the cassandra table as it arrives.
   */
-class KafkaStreamingActor(kafkaParams: Map[String, String],
+class KafkaWeatherStreamingActor(kafkaParams: Map[String, String],
                           ssc: StreamingContext,
                           settings: WeatherSettings,
-                          listener: ActorRef) extends AggregationActor with ActorLogging {
+                          listener: ActorRef) extends KafkaStreamingActor {
 
-/*  import settings._
+  import settings._
   import WeatherEvent._
   import Weather._
 
@@ -41,10 +42,10 @@ class KafkaStreamingActor(kafkaParams: Map[String, String],
     .map(_._2.split(","))
     .map(RawWeatherData(_))
 
-  *//** Saves the raw data to Cassandra - raw table. *//*
+  /** Saves the raw data to Cassandra - raw table. */
   kafkaStream.saveToCassandra(CassandraKeyspace, CassandraTableRaw)
 
-  *//** For a given weather station, year, month, day, aggregates hourly precipitation values by day.
+  /** For a given weather station, year, month, day, aggregates hourly precipitation values by day.
     * Weather station first gets you the partition key - data locality - which spark gets via the
     * connector, so the data transfer between spark and cassandra is very fast per node.
     *
@@ -58,17 +59,17 @@ class KafkaStreamingActor(kafkaParams: Map[String, String],
     *
     * This new functionality in Cassandra 2.1.1 is going to make time series work even faster:
     * https://issues.apache.org/jira/browse/CASSANDRA-6602
-    *//*
+    */
   kafkaStream.map { weather =>
     (weather.wsid, weather.year, weather.month, weather.day, weather.oneHourPrecip)
   }.saveToCassandra(CassandraKeyspace, CassandraTableDailyPrecip)
 
   kafkaStream.print // for demo purposes only
 
-  *//** Notifies the supervisor that the Spark Streams have been created and defined.
-    * Now the [[StreamingContext]] can be started. *//*
+  /** Notifies the supervisor that the Spark Streams have been created and defined.
+    * Now the [[StreamingContext]] can be started. */
   listener ! OutputStreamInitialized
-*/
+
   def receive : Actor.Receive = {
     case e => // ignore
   }

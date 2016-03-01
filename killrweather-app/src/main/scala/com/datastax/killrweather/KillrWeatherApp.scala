@@ -16,14 +16,13 @@
 package com.datastax.killrweather
 
 import java.util.concurrent.atomic.AtomicBoolean
-
 import akka.actor._
 import akka.cluster.Cluster
 import org.apache.spark.streaming.{Milliseconds, StreamingContext}
 import org.apache.spark.SparkConf
 import com.datastax.spark.connector.embedded.EmbeddedKafka
-
 import scala.concurrent.Future
+import com.datastax.killrweather.NodeGuardian
 
 /** Runnable. Requires running these in cqlsh
   * {{{
@@ -56,7 +55,7 @@ object KillrWeather extends ExtensionId[KillrWeather] with ExtensionIdProvider {
 }
 
 class KillrWeather(system: ExtendedActorSystem) extends Extension {
-  import Event.GracefulShutdown
+  import BusinessEvent.GracefulShutdown
 
   import system.dispatcher
 

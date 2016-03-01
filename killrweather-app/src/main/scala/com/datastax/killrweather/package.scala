@@ -16,8 +16,19 @@
 package com.datastax
 
 import org.json4s.{NoTypeHints, native, Formats}
+import akka.actor.{Actor, Props, ActorRef}
+import org.apache.spark.streaming.StreamingContext
 
 package object killrweather {
 
   implicit val formats: Formats = native.Serialization.formats(NoTypeHints)
+  
+  object KafkaStreamingActorFactory {
+    import com.softwaremill.macwire._
+    def create = (kafkaParams: Map[String, String],
+                  ssc: StreamingContext,
+                  settings: WeatherSettings,
+                  listener: ActorRef) => wire[KafkaStreamingActor]
+  }
+
 }

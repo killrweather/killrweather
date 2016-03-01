@@ -138,6 +138,9 @@ object Dependencies {
     val kafkaStreaming    = "org.apache.spark"    %% "spark-streaming-kafka"              % Spark sparkExclusions // ApacheV2
     val kafkaReactive 	  = "com.softwaremill.reactivekafka" %% "reactive-kafka-core" 	  % KafkaReactive kafkaExclusions
     val logback           = "ch.qos.logback"      % "logback-classic"                     % Logback
+    val macwireMacro      = "com.softwaremill.macwire" %% "macros"                        % Macwire % "provided"
+    val macwireUtil       = "com.softwaremill.macwire" %% "util"                          % Macwire
+    val macwireProxy      = "com.softwaremill.macwire" %% "proxy"                         % Macwire
     val scalazContrib     = "org.typelevel"       %% "scalaz-contrib-210"                 % ScalazContrib   // MIT
     val scalazContribVal  = "org.typelevel"       %% "scalaz-contrib-validation"          % ScalazContrib   // MIT
     val pickling          = "org.scala-lang.modules" %% "scala-pickling"                  % Pickling
@@ -158,6 +161,8 @@ object Dependencies {
   import Compile._
 
   val akka = Seq(akkaStream, akkaHttpCore, akkaActor, akkaCluster, akkaClusterMetrics, akkaRemote, akkaSlf4j)
+  
+  val macwire = Seq(macwireMacro, macwireUtil, macwireProxy)
 
   val connector = Seq(driver, sparkCassandra, sparkCatalyst, sparkCassandraEmb)
 
@@ -172,13 +177,13 @@ object Dependencies {
   val test = Seq(Test.akkaTestKit, Test.scalatest)
 
   /** Module deps */
-  val client = akka ++ logging ++ scalaz ++ Seq(pickling, sparkCassandraEmb, sigar)
+  val client = akka ++ macwire ++ logging ++ scalaz ++ Seq(pickling, sparkCassandraEmb, sigar)
 
-  val core = akka ++ logging ++ time
+  val core = akka ++ macwire ++ logging ++ time
 
-  val weather = akka ++ logging ++ time
+  val weather = akka ++ macwire ++ logging ++ time
 
-  val app = connector ++ json ++ scalaz ++ test ++
+  val app = connector ++ macwire ++ json ++ scalaz ++ test ++
     Seq(algebird, bijection, kafka, kafkaReactive, kafkaStreaming, pickling, sparkML, sigar)
 
   val examples = connector ++ time ++ json ++

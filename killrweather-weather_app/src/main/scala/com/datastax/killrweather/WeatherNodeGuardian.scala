@@ -16,8 +16,10 @@
 package com.datastax.killrweather
 
 import com.datastax.killrweather.cluster.ClusterAwareNodeGuardian
+import com.datastax.killrweather.NodeGuardian
+import com.datastax.killrweather.WeatherSettings
 import scala.concurrent.duration._
-import akka.actor.{Actor, Props, ActorRef}
+import akka.actor.{Actor, Props}
 import org.apache.spark.streaming.StreamingContext
 import com.datastax.spark.connector.embedded._
 import scala.Vector
@@ -32,34 +34,31 @@ import scala.Vector
  * transforms data to [[com.datastax.killrweather.Weather.RawWeatherData]] (hourly per
  * weather station), and saves the new data to the cassandra raw data table on arrival.
  */
-class NodeGuardian(ssc: StreamingContext, kafka: EmbeddedKafka, settings: WeatherSettings)
-  extends ClusterAwareNodeGuardian with AggregationActor {
+class WeatherNodeGuardian(ssc: StreamingContext, kafka: EmbeddedKafka, settings: WeatherSettings)
+  extends NodeGuardian {
   import BusinessEvent._
   import settings._
-  import com.softwaremill.macwire._
 
   /** Creates the Kafka stream saving raw data and aggregated data to cassandra. */
-  lazy val kafkaStreamingActor = KafkaStreamingActorFactory.create(kafka.kafkaParams, ssc, settings, self)  
-    // new KafkaStreamingActor(kafka.kafkaParams, ssc, settings, self)
-  context.actorOf(Props(kafkaStreamingActor), "kafka-stream")
+///  context.actorOf(Props(new KafkaStreamingActor(kafka.kafkaParams, ssc, settings, self)), "kafka-stream")
 
   /** The Spark/Cassandra computation actors: For the tutorial we just use 2005 for now. */
-/*  val temperature = context.actorOf(Props(new TemperatureActor(ssc.sparkContext, settings)), "temperature")
+  val temperature = context.actorOf(Props(new TemperatureActor(ssc.sparkContext, settings)), "temperature")
   val precipitation = context.actorOf(Props(new PrecipitationActor(ssc, settings)), "precipitation")
   val station = context.actorOf(Props(new WeatherStationActor(ssc.sparkContext, settings)), "weather-station")
-*/
-  override def preStart(): Unit = {
+
+/*  override def preStart(): Unit = {
     super.preStart()
     cluster.joinSeedNodes(Vector(cluster.selfAddress))
   }
 
-  /** When [[OutputStreamInitialized]] is received in the parent actor, [[ClusterAwareNodeGuardian]],
+  *//** When [[OutputStreamInitialized]] is received in the parent actor, [[ClusterAwareNodeGuardian]],
     * from the [[KafkaStreamingActor]] after it creates and defines the [[KafkaInputDStream]],
     * the Spark Streaming checkpoint can be set, the [[StreamingContext]] can be started, and the
     * node guardian actor moves from [[uninitialized]] to [[initialized]]with [[akka.actor.ActorContext.become()]].
     *
     * @see [[ClusterAwareNodeGuardian]]
-    */
+    *//*
   override def initialize(): Unit = {
     super.initialize()
     ssc.checkpoint(SparkCheckpointDir)
@@ -67,9 +66,12 @@ class NodeGuardian(ssc: StreamingContext, kafka: EmbeddedKafka, settings: Weathe
 
     context become initialized
   }
-
+*/
   /** This node guardian's customer behavior once initialized. */
   def initialized: Actor.Receive = {
+    case e: TemperatureRequest    => temperature forward e
+    case e: PrecipitationRequest  => precipitation forward e
+    case e: WeatherStationRequest => station forward e
     case GracefulShutdown => gracefulShutdown(sender())
   }
 
