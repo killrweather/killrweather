@@ -22,7 +22,7 @@ import org.apache.spark.streaming.StreamingContext
 import com.datastax.spark.connector.streaming._
 
 /** For a given weather station, calculates annual cumulative precip - or year to date. */
-class PrecipitationActor(ssc: StreamingContext, settings: WeatherSettings)
+class PrecipitationActor(ssc: StreamingContext, settings: Settings)
   extends AggregationActor with ActorLogging {
   import Weather._
   import WeatherEvent._

@@ -36,7 +36,7 @@ import com.datastax.killrweather.Application
   */
 object WeatherApp extends App {
 
-  val settings = new WeatherSettings
+  val settings = new Settings
   import settings._
 
   /** Creates the ActorSystem. */

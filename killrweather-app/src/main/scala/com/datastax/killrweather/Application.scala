@@ -36,7 +36,7 @@ abstract class Application(system: ExtendedActorSystem) extends Extension with N
 
   protected val _isTerminated = new AtomicBoolean(false)
 
-  val settings = new WeatherSettings
+  val settings = new Settings
   import settings._
 
   implicit private val timeout = system.settings.CreationTimeout
@@ -58,7 +58,7 @@ abstract class Application(system: ExtendedActorSystem) extends Extension with N
 
   /* The root supervisor and traffic controller of the app. All inbound messages go through this actor. */
   // NodeGuardian is provided by the NodeGuardianComponent
-  val nodeGuardianInstance: NodeGuardian = nodeGuardian(ssc: StreamingContext, kafka: EmbeddedKafka, settings: WeatherSettings)
+  val nodeGuardianInstance: NodeGuardian = nodeGuardian(ssc: StreamingContext, kafka: EmbeddedKafka, settings: Settings)
   private val guardian = system.actorOf(Props(nodeGuardianInstance), "node-guardian")
 
   private val cluster = Cluster(system)

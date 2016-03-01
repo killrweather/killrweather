@@ -26,7 +26,7 @@ import org.apache.spark.rdd.RDD
  * -Dkillrweather.initialize=true. The default is false,
  * assumes manual creation by running the cql scripts.
  */
-private[killrweather] class Initializer(sc: SparkContext, settings: WeatherSettings)
+private[killrweather] class Initializer(sc: SparkContext, settings: Settings)
   extends Serializable with TestFileHelper with Logging {
 
   import com.datastax.killrweather.Weather._

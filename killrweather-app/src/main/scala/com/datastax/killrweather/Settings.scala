@@ -43,7 +43,7 @@ import com.typesafe.config.{Config, ConfigFactory}
  *
  * @param conf Optional config for test
  */
-final class WeatherSettings(conf: Option[Config] = None) extends Serializable {
+final class Settings(conf: Option[Config] = None) extends Serializable {
 
   val localAddress = InetAddress.getLocalHost.getHostAddress
 

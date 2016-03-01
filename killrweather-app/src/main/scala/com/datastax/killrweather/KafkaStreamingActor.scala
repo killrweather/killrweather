@@ -29,7 +29,7 @@ import com.datastax.spark.connector.streaming._
   */
 class KafkaStreamingActor(kafkaParams: Map[String, String],
                           ssc: StreamingContext,
-                          settings: WeatherSettings,
+                          settings: Settings,
                           listener: ActorRef) extends AggregationActor with ActorLogging {
 
 /*  import settings._
@@ -79,6 +79,6 @@ class KafkaStreamingActor(kafkaParams: Map[String, String],
 trait KafkaStreamingActorComponent { // For expressing dependencies
   def kafkaStreamingActor(kafkaParams: Map[String, String],
                           ssc: StreamingContext,
-                          settings: WeatherSettings,
+                          settings: Settings,
                           listener: ActorRef): KafkaStreamingActor // Way to obtain the dependency
 }

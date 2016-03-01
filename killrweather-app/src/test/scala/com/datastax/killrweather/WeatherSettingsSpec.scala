@@ -15,12 +15,12 @@
  */
 package com.datastax.killrweather
 
-class WeatherSettingsSpec extends AbstractSpec with TestFileHelper {
+class SettingsSpec extends AbstractSpec with TestFileHelper {
 
-  val settings = new WeatherSettings()
+  val settings = new Settings()
   import settings._
 
-  "WeatherSettings" must {
+  "Settings" must {
     "get the expected configurations" in {
       fileFeed(DataLoadPath, DataFileExtension).nonEmpty should be (true)
     }

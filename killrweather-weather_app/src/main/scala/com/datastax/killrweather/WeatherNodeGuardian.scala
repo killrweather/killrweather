@@ -17,7 +17,7 @@ package com.datastax.killrweather
 
 import com.datastax.killrweather.cluster.ClusterAwareNodeGuardian
 import com.datastax.killrweather.NodeGuardian
-import com.datastax.killrweather.WeatherSettings
+import com.datastax.killrweather.Settings
 import scala.concurrent.duration._
 import akka.actor.{Actor, Props}
 import org.apache.spark.streaming.StreamingContext
@@ -35,7 +35,7 @@ import scala.Vector
  * transforms data to [[com.datastax.killrweather.Weather.RawWeatherData]] (hourly per
  * weather station), and saves the new data to the cassandra raw data table on arrival.
  */
-class WeatherNodeGuardian(ssc: StreamingContext, kafka: EmbeddedKafka, settings: WeatherSettings)
+class WeatherNodeGuardian(ssc: StreamingContext, kafka: EmbeddedKafka, settings: Settings)
                         extends NodeGuardian(ssc, kafka, settings) with WeatherKafkaStreamingActorComponentImpl {
   import BusinessEvent._
   import settings._
@@ -83,6 +83,6 @@ trait WeatherNodeGuardianComponentImpl extends NodeGuardianComponent { // For ex
   // Dependencies
   this: NodeGuardianComponent =>
   
-  def nodeGuardian(ssc: StreamingContext, kafka: EmbeddedKafka, settings: WeatherSettings): NodeGuardian
-    = new WeatherNodeGuardian(ssc: StreamingContext, kafka: EmbeddedKafka, settings: WeatherSettings)
+  def nodeGuardian(ssc: StreamingContext, kafka: EmbeddedKafka, settings: Settings): NodeGuardian
+    = new WeatherNodeGuardian(ssc: StreamingContext, kafka: EmbeddedKafka, settings: Settings)
 }

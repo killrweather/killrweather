@@ -23,7 +23,7 @@ import com.datastax.spark.connector._
 import org.joda.time.DateTime
 
 /** For a given weather station id, retrieves the full station data. */
-class WeatherStationActor(sc: SparkContext, settings: WeatherSettings)
+class WeatherStationActor(sc: SparkContext, settings: Settings)
   extends AggregationActor with ActorLogging {
 
   import settings.{CassandraKeyspace => keyspace }

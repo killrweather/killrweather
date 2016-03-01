@@ -32,7 +32,7 @@ import scala.Vector
  * transforms data to [[com.datastax.killrweather.Weather.RawWeatherData]] (hourly per
  * weather station), and saves the new data to the cassandra raw data table on arrival.
  */
-abstract class NodeGuardian(ssc: StreamingContext, kafka: EmbeddedKafka, settings: WeatherSettings)
+abstract class NodeGuardian(ssc: StreamingContext, kafka: EmbeddedKafka, settings: Settings)
   extends ClusterAwareNodeGuardian with AggregationActor with KafkaStreamingActorComponent {
 //  import BusinessEvent._
   import settings._
@@ -75,7 +75,7 @@ abstract class NodeGuardian(ssc: StreamingContext, kafka: EmbeddedKafka, setting
   }
 }
 
-/*class DefaultNodeGuardian(ssc: StreamingContext, kafka: EmbeddedKafka, settings: WeatherSettings)
+/*class DefaultNodeGuardian(ssc: StreamingContext, kafka: EmbeddedKafka, settings: Settings)
   extends NodeGuardian(ssc, kafka, settings) {
 
   import BusinessEvent._
@@ -89,6 +89,6 @@ abstract class NodeGuardian(ssc: StreamingContext, kafka: EmbeddedKafka, setting
 // http://www.warski.org/blog/2010/12/di-in-scala-cake-pattern/
 // Interface
 trait NodeGuardianComponent { // For expressing dependencies
-  def nodeGuardian(ssc: StreamingContext, kafka: EmbeddedKafka, settings: WeatherSettings): NodeGuardian // Way to obtain the dependency
+  def nodeGuardian(ssc: StreamingContext, kafka: EmbeddedKafka, settings: Settings): NodeGuardian // Way to obtain the dependency
 }
 
