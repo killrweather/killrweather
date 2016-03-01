@@ -119,8 +119,8 @@ object Dependencies {
 
   object Compile {
 
-    val akkaStream        = "com.typesafe.akka"   %% "akka-stream"           			  % Akka
-    val akkaHttpCore      = "com.typesafe.akka"   %% "akka-http-core"        			  % Akka
+    val akkaStream        = "com.typesafe.akka"   %% "akka-stream"           			        % Akka
+    val akkaHttpCore      = "com.typesafe.akka"   %% "akka-http-core"        			        % Akka
     val akkaActor         = "com.typesafe.akka"   %% "akka-actor"                         % Akka
     val akkaCluster       = "com.typesafe.akka"   %% "akka-cluster"                       % Akka
     val akkaClusterMetrics= "com.typesafe.akka"   %% "akka-cluster-metrics"               % Akka
@@ -141,9 +141,10 @@ object Dependencies {
     val macwireMacro      = "com.softwaremill.macwire" %% "macros"                        % Macwire % "provided"
     val macwireUtil       = "com.softwaremill.macwire" %% "util"                          % Macwire
     val macwireProxy      = "com.softwaremill.macwire" %% "proxy"                         % Macwire
+    val pickling          = "org.scala-lang.modules" %% "scala-pickling"                  % Pickling
+    val scalaGuice        = "net.codingwell"      %% "scala-guice"                        % ScalaGuice 
     val scalazContrib     = "org.typelevel"       %% "scalaz-contrib-210"                 % ScalazContrib   // MIT
     val scalazContribVal  = "org.typelevel"       %% "scalaz-contrib-validation"          % ScalazContrib   // MIT
-    val pickling          = "org.scala-lang.modules" %% "scala-pickling"                  % Pickling
     val scalazStream      = "org.scalaz.stream"   %% "scalaz-stream"                      % ScalazStream    // MIT
     val slf4jApi          = "org.slf4j"           % "slf4j-api"                           % Slf4j           // MIT
     val sparkML           = "org.apache.spark"    %% "spark-mllib"                        % Spark sparkExclusions // ApacheV2
@@ -167,6 +168,8 @@ object Dependencies {
   val connector = Seq(driver, sparkCassandra, sparkCatalyst, sparkCassandraEmb)
 
   val json = Seq(json4sCore, json4sJackson, json4sNative)
+  
+  val guice = Seq(scalaGuice)
 
   val logging = Seq(logback, slf4jApi)
 
@@ -177,13 +180,13 @@ object Dependencies {
   val test = Seq(Test.akkaTestKit, Test.scalatest)
 
   /** Module deps */
-  val client = akka ++ macwire ++ logging ++ scalaz ++ Seq(pickling, sparkCassandraEmb, sigar)
+  val client = akka ++ guice ++ logging ++ scalaz ++ Seq(pickling, sparkCassandraEmb, sigar)
 
-  val core = akka ++ macwire ++ logging ++ time
+  val core = akka ++ guice ++ logging ++ time
 
-  val weather = akka ++ macwire ++ logging ++ time
+  val weather = akka ++ guice ++ logging ++ time
 
-  val app = connector ++ macwire ++ json ++ scalaz ++ test ++
+  val app = connector ++ guice ++ json ++ scalaz ++ test ++
     Seq(algebird, bijection, kafka, kafkaReactive, kafkaStreaming, pickling, sparkML, sigar)
 
   val examples = connector ++ time ++ json ++
