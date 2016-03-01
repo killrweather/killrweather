@@ -16,19 +16,33 @@
 package com.datastax
 
 import org.json4s.{NoTypeHints, native, Formats}
-import akka.actor.{Actor, Props, ActorRef}
-import org.apache.spark.streaming.StreamingContext
+import net.codingwell.scalaguice._
+import com.google.inject._
 
 package object killrweather {
 
   implicit val formats: Formats = native.Serialization.formats(NoTypeHints)
   
-  object KafkaStreamingActorFactory {
+/*  trait KafkaStreamingActorFactory {
+    def create: KafkaStreamingActor(kafkaParams: Map[String, String],
+                  ssc: StreamingContext,
+                  settings: WeatherSettings,
+                  listener: ActorRef)
+  }*/
+  
+/*  object KafkaStreamingActorFactory {
     import com.softwaremill.macwire._
     def create = (kafkaParams: Map[String, String],
                   ssc: StreamingContext,
                   settings: WeatherSettings,
                   listener: ActorRef) => wire[KafkaStreamingActor]
+  }*/
+/*  
+  object DefaultDependencyModule extends AbstractModule with ScalaModule {
+    def configure {
+      bind[NodeGuardian].to[DefaultNodeGuardian]
+    }
   }
 
+  val injector = Guice.createInjector(DefaultDependencyModule)*/
 }

@@ -69,11 +69,20 @@ class WeatherNodeGuardian(ssc: StreamingContext, kafka: EmbeddedKafka, settings:
   }
 */
   /** This node guardian's customer behavior once initialized. */
-  def initialized: Actor.Receive = {
+  override def initialized: Actor.Receive = {
     case e: TemperatureRequest    => temperature forward e
     case e: PrecipitationRequest  => precipitation forward e
     case e: WeatherStationRequest => station forward e
     case GracefulShutdown => gracefulShutdown(sender())
   }
 
+}
+
+// Implementation
+trait WeatherNodeGuardianComponentImpl extends NodeGuardianComponent { // For expressing dependencies
+  // Dependencies
+  this: NodeGuardianComponent =>
+  
+  def nodeGuardian(ssc: StreamingContext, kafka: EmbeddedKafka, settings: WeatherSettings): NodeGuardian
+    = new WeatherNodeGuardian(ssc: StreamingContext, kafka: EmbeddedKafka, settings: WeatherSettings)
 }

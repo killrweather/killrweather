@@ -36,11 +36,11 @@ abstract class NodeGuardian(ssc: StreamingContext, kafka: EmbeddedKafka, setting
   extends ClusterAwareNodeGuardian with AggregationActor {
 //  import BusinessEvent._
   import settings._
-  import com.softwaremill.macwire._
+//  import com.softwaremill.macwire._
 
   /** Creates the Kafka stream saving raw data and aggregated data to cassandra. */
-  lazy val kafkaStreamingActor = KafkaStreamingActorFactory.create(kafka.kafkaParams, ssc, settings, self)  
-    // new KafkaStreamingActor(kafka.kafkaParams, ssc, settings, self)
+  lazy val kafkaStreamingActor = //KafkaStreamingActorFactory.create(kafka.kafkaParams, ssc, settings, self)  
+     new KafkaStreamingActor(kafka.kafkaParams, ssc, settings, self)
   context.actorOf(Props(kafkaStreamingActor), "kafka-stream")
 
   /** The Spark/Cassandra computation actors: For the tutorial we just use 2005 for now. */
@@ -67,17 +67,28 @@ abstract class NodeGuardian(ssc: StreamingContext, kafka: EmbeddedKafka, setting
 
     context become initialized
   }
+
+  /** This node guardian's customer behavior once initialized. */
+  import BusinessEvent._
+  def initialized: Actor.Receive = {
+    case GracefulShutdown => gracefulShutdown(sender())
+  }
 }
 
-class DefaultNodeGuardian(ssc: StreamingContext, kafka: EmbeddedKafka, settings: WeatherSettings)
+/*class DefaultNodeGuardian(ssc: StreamingContext, kafka: EmbeddedKafka, settings: WeatherSettings)
   extends NodeGuardian(ssc, kafka, settings) {
 
   import BusinessEvent._
 
-  /** This node guardian's customer behavior once initialized. */
+  *//** This node guardian's customer behavior once initialized. *//*
   def initialized: Actor.Receive = {
     case GracefulShutdown => gracefulShutdown(sender())
   }
+}*/
 
+// http://www.warski.org/blog/2010/12/di-in-scala-cake-pattern/
+// Interface
+trait NodeGuardianComponent { // For expressing dependencies
+  def nodeGuardian(ssc: StreamingContext, kafka: EmbeddedKafka, settings: WeatherSettings): NodeGuardian // Way to obtain the dependency
 }
 

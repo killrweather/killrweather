@@ -22,39 +22,8 @@ import org.apache.spark.streaming.{Milliseconds, StreamingContext}
 import org.apache.spark.SparkConf
 import com.datastax.spark.connector.embedded.EmbeddedKafka
 import scala.concurrent.Future
-import com.datastax.killrweather.NodeGuardian
 
-/** Runnable. Requires running these in cqlsh
-  * {{{
-  *   cqlsh> source 'create-timeseries.cql';
-  *   cqlsh> source 'load-timeseries.cql';
-  * }}}
-  *
-  * Run with SBT: sbt app/run
-  *
-  * See: https://github.com/killrweather/killrweather/wiki/2.%20Code%20and%20Data%20Setup#data-setup
-  */
-object KillrWeatherApp extends App {
-
-  val settings = new WeatherSettings
-  import settings._
-
-  /** Creates the ActorSystem. */
-  val system = ActorSystem(AppName)
-
-  val killrWeather = KillrWeather(system)
-
-}
-
-object KillrWeather extends ExtensionId[KillrWeather] with ExtensionIdProvider {
-
-  override def lookup: ExtensionId[_ <: Extension] = KillrWeather
-
-  override def createExtension(system: ExtendedActorSystem) = new KillrWeather(system)
-
-}
-
-class KillrWeather(system: ExtendedActorSystem) extends Extension {
+abstract class KillrWeather(system: ExtendedActorSystem) extends Extension with NodeGuardianComponent {
   import BusinessEvent.GracefulShutdown
 
   import system.dispatcher
@@ -88,7 +57,11 @@ class KillrWeather(system: ExtendedActorSystem) extends Extension {
   protected val ssc = new StreamingContext(conf, Milliseconds(SparkStreamingBatchInterval))
 
   /* The root supervisor and traffic controller of the app. All inbound messages go through this actor. */
-  private val guardian = system.actorOf(Props(new DefaultNodeGuardian(ssc, kafka, settings)), "node-guardian")
+  import net.codingwell.scalaguice.InjectorExtensions._
+  // NodeGuardian is provided by the NodeGuardianComponent
+  val nodeGuardianInstance: NodeGuardian = nodeGuardian(ssc: StreamingContext, kafka: EmbeddedKafka, settings: WeatherSettings)
+    //injector.instance[NodeGuardian](ssc, kafka, settings)
+  private val guardian = system.actorOf(Props(/*new DefaultNodeGuardian(ssc, kafka, settings)*/ nodeGuardianInstance), "node-guardian")
 
   private val cluster = Cluster(system)
 
