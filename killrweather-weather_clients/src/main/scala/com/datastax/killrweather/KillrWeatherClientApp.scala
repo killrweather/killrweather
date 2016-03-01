@@ -24,6 +24,8 @@ import akka.actor._
 import org.joda.time.{DateTime, DateTimeZone}
 import com.datastax.spark.connector.embedded.Event
 
+import com.datastax.killrweather.ApiNodeGuardian
+
 /** Automates demo activity every 2 seconds for demos by sending requests to `KillrWeatherApp` instances. */
 object KillrWeatherClientApp extends App with ClientHelper {
 
@@ -36,43 +38,5 @@ object KillrWeatherClientApp extends App with ClientHelper {
   system.registerOnTermination {
     guardian ! PoisonPill
   }
-
-}
-
-/** Automates demo activity every 2 seconds for demos by sending requests to `KillrWeatherApp` instances. */
-final class ApiNodeGuardian extends ClusterAwareNodeGuardian with ClientHelper {
-  import context.dispatcher
-
-  val api = context.actorOf(Props[AutomatedApiActor], "automated-api")
-
-  var task: Option[Cancellable] = None
-
- /* override def preStart(): Unit = {
-    super.preStart()
-    cluster.join(base)
-    cluster.joinSeedNodes(Vector(base))
-  }
-*/
-  Cluster(context.system).registerOnMemberUp {
-    task = Some(context.system.scheduler.schedule(Duration.Zero, 2.seconds) {
-      api ! Event.QueryTask
-    })
-  }
-
-  override def postStop(): Unit = {
-    task.map(_.cancel())
-    super.postStop()
-  }
-
-  def initialized: Actor.Receive = {
-    case e =>
-  }
-}
-
-/** For simplicity, these just go through Akka. */
-abstract class AutomatedApiActor extends Actor with ActorLogging with ClientHelper {
-  
-  val guardian = context.actorSelection(Cluster(context.system).selfAddress
-    .copy(port = Some(BasePort)) + "/user/node-guardian")
 
 }

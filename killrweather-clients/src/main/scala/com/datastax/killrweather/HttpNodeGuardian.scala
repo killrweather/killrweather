@@ -44,18 +44,18 @@ import com.datastax.spark.connector.embedded.KafkaEvent.KafkaMessageEnvelope
   *
   * NOTE does not support running on Windows
   */
-object KafkaDataIngestionApp extends App {
+/*object KafkaDataIngestionApp extends App {
 
-  /** Creates the ActorSystem. */
+  *//** Creates the ActorSystem. *//*
   val system = ActorSystem("KillrWeather", ConfigFactory.parseString("akka.remote.netty.tcp.port = 2551"))
 
-  /* The root supervisor and fault tolerance handler of the data ingestion nodes. */
+   The root supervisor and fault tolerance handler of the data ingestion nodes. 
   val guardian = system.actorOf(Props[HttpNodeGuardian], "node-guardian")
 
   system.registerOnTermination {
     guardian ! PoisonPill
   }
-}
+}*/
 
 /**
  * Transforms raw weather data .gz files to line data and publishes to the Kafka topic.
@@ -69,7 +69,7 @@ object KafkaDataIngestionApp extends App {
  *
  * The ingested data is sent to the kafka actor for processing in the stream.
  */
-final class HttpNodeGuardian extends ClusterAwareNodeGuardian with ClientHelper {
+class HttpNodeGuardian extends ClusterAwareNodeGuardian with ClientHelper {
 
   cluster.joinSeedNodes(Vector(cluster.selfAddress))
 
