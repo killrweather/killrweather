@@ -58,8 +58,8 @@ abstract class Application(system: ExtendedActorSystem) extends Extension with N
 
   /* The root supervisor and traffic controller of the app. All inbound messages go through this actor. */
   // NodeGuardian is provided by the NodeGuardianComponent
-  val nodeGuardianInstance: NodeGuardian = nodeGuardian(ssc: StreamingContext, kafka: EmbeddedKafka, settings: Settings)
-  private val guardian = system.actorOf(Props(nodeGuardianInstance), "node-guardian")
+//  val nodeGuardianInstance: NodeGuardian = nodeGuardian(ssc: StreamingContext, kafka: EmbeddedKafka, settings: Settings)
+  private val guardian = system.actorOf(Props(nodeGuardian(ssc: StreamingContext, kafka: EmbeddedKafka, settings: Settings)), "node-guardian")
 
   private val cluster = Cluster(system)
 
