@@ -57,11 +57,9 @@ abstract class KillrWeather(system: ExtendedActorSystem) extends Extension with 
   protected val ssc = new StreamingContext(conf, Milliseconds(SparkStreamingBatchInterval))
 
   /* The root supervisor and traffic controller of the app. All inbound messages go through this actor. */
-  import net.codingwell.scalaguice.InjectorExtensions._
   // NodeGuardian is provided by the NodeGuardianComponent
   val nodeGuardianInstance: NodeGuardian = nodeGuardian(ssc: StreamingContext, kafka: EmbeddedKafka, settings: WeatherSettings)
-    //injector.instance[NodeGuardian](ssc, kafka, settings)
-  private val guardian = system.actorOf(Props(/*new DefaultNodeGuardian(ssc, kafka, settings)*/ nodeGuardianInstance), "node-guardian")
+  private val guardian = system.actorOf(Props(nodeGuardianInstance), "node-guardian")
 
   private val cluster = Cluster(system)
 
