@@ -25,10 +25,12 @@ import org.joda.time.{DateTime, DateTimeZone}
 import com.datastax.spark.connector.embedded.Event
 
 /** Automates demo activity every 2 seconds for demos by sending requests to `KillrWeatherApp` instances. */
-class ApiNodeGuardian extends ClusterAwareNodeGuardian with ClientHelper {
+abstract class ApiNodeGuardian extends ClusterAwareNodeGuardian with ClientHelper with AutomatedApiActorComponent {
   import context.dispatcher
 
-  val api = context.actorOf(Props[AutomatedApiActor], "automated-api")
+//  val api = context.actorOf(Props[AutomatedApiActor], "automated-api")
+  val props = automatedApiActorProps //Props[AutomatedApiActor]  
+  val api = context.actorOf(props, "automated-api")
 
   var task: Option[Cancellable] = None
 
@@ -60,4 +62,10 @@ abstract class AutomatedApiActor extends Actor with ActorLogging with ClientHelp
   val guardian = context.actorSelection(Cluster(context.system).selfAddress
     .copy(port = Some(BasePort)) + "/user/node-guardian")
 
+}
+
+// http://www.warski.org/blog/2010/12/di-in-scala-cake-pattern/
+// Interface
+trait AutomatedApiActorComponent { // For expressing dependencies
+  def automatedApiActorProps: Props // Way to obtain the dependency
 }

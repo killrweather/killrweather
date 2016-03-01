@@ -24,16 +24,14 @@ import akka.actor._
 import org.joda.time.{DateTime, DateTimeZone}
 import com.datastax.spark.connector.embedded.Event
 
-import com.datastax.killrweather.ApiNodeGuardian
-
 /** Automates demo activity every 2 seconds for demos by sending requests to `KillrWeatherApp` instances. */
-object KillrWeatherClientApp extends App with ClientHelper {
+object KillrWeatherClientApp extends App with ClientHelper with WeatherApiActorComponent {
 
   /** Creates the ActorSystem. */
   val system = ActorSystem("KillrWeather", ConfigFactory.parseString("akka.remote.netty.tcp.port = 2552"))
 
   /* The root supervisor and fault tolerance handler of the data ingestion nodes. */
-  val guardian = system.actorOf(Props[ApiNodeGuardian], "node-guardian")
+  val guardian = system.actorOf(Props[WeatherApiNodeGuardian], "node-guardian")
 
   system.registerOnTermination {
     guardian ! PoisonPill
