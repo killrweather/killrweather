@@ -22,6 +22,7 @@ import org.apache.spark.storage.StorageLevel
 import org.apache.spark.streaming.kafka.KafkaUtils
 import com.datastax.spark.connector.streaming._
 import com.datastax.killrweather.WeatherSettings
+import com.datastax.killrweather.BusinessEvent.{NodeInitialized, OutputStreamInitialized}
 
 /** The KafkaStreamActor creates a streaming pipeline from Kafka to Cassandra via Spark.
   * It creates the Kafka stream which streams the raw data, transforms it, to
@@ -31,7 +32,11 @@ import com.datastax.killrweather.WeatherSettings
 class KafkaWeatherStreamingActor(kafkaParams: Map[String, String],
                           ssc: StreamingContext,
                           settings: WeatherSettings,
-                          listener: ActorRef) extends KafkaStreamingActor {
+                          listener: ActorRef) 
+     extends KafkaStreamingActor(kafkaParams,
+                          ssc,
+                          settings,
+                          listener) {
 
   import settings._
   import WeatherEvent._
@@ -70,7 +75,7 @@ class KafkaWeatherStreamingActor(kafkaParams: Map[String, String],
     * Now the [[StreamingContext]] can be started. */
   listener ! OutputStreamInitialized
 
-  def receive : Actor.Receive = {
+/*  def receive : Actor.Receive = {
     case e => // ignore
-  }
+  }*/
 }

@@ -22,6 +22,7 @@ import scala.concurrent.duration._
 import akka.actor.{Actor, Props}
 import org.apache.spark.streaming.StreamingContext
 import com.datastax.spark.connector.embedded._
+import com.datastax.killrweather.WeatherEvent._
 import scala.Vector
 
 /** A `NodeGuardian` manages the worker actors at the root of each KillrWeather
@@ -35,7 +36,7 @@ import scala.Vector
  * weather station), and saves the new data to the cassandra raw data table on arrival.
  */
 class WeatherNodeGuardian(ssc: StreamingContext, kafka: EmbeddedKafka, settings: WeatherSettings)
-  extends NodeGuardian {
+  extends NodeGuardian(ssc, kafka, settings) {
   import BusinessEvent._
   import settings._
 
