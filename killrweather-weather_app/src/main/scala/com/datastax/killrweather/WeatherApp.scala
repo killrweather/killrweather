@@ -22,7 +22,7 @@ import org.apache.spark.streaming.{Milliseconds, StreamingContext}
 import org.apache.spark.SparkConf
 import com.datastax.spark.connector.embedded.EmbeddedKafka
 import scala.concurrent.Future
-import com.datastax.killrweather.NodeGuardian
+import com.datastax.killrweather.Application
 
 /** Runnable. Requires running these in cqlsh
   * {{{
@@ -34,7 +34,7 @@ import com.datastax.killrweather.NodeGuardian
   *
   * See: https://github.com/killrweather/killrweather/wiki/2.%20Code%20and%20Data%20Setup#data-setup
   */
-object KillrWeatherApp extends App {
+object WeatherApp extends App {
 
   val settings = new WeatherSettings
   import settings._
@@ -42,20 +42,18 @@ object KillrWeatherApp extends App {
   /** Creates the ActorSystem. */
   val system = ActorSystem(AppName)
 
-  val killrWeather = MyKillrWeather(system)
+  val killrWeather = WeatherApplication(system)
 
 }
 
-object MyKillrWeather extends ExtensionId[MyKillrWeather] with ExtensionIdProvider {
+object WeatherApplication extends ExtensionId[WeatherApplication] with ExtensionIdProvider {
 
-  override def lookup: ExtensionId[_ <: Extension] = MyKillrWeather
+  override def lookup: ExtensionId[_ <: Extension] = WeatherApplication
 
-  override def createExtension(system: ExtendedActorSystem) = new MyKillrWeather(system)
+  override def createExtension(system: ExtendedActorSystem) = new WeatherApplication(system)
 
 }
 
-import com.datastax.killrweather.KillrWeather
-
-class MyKillrWeather(system: ExtendedActorSystem) extends KillrWeather(system: ExtendedActorSystem) with WeatherNodeGuardianComponentImpl {
+class WeatherApplication(system: ExtendedActorSystem) extends Application(system: ExtendedActorSystem) with WeatherNodeGuardianComponentImpl {
 }
 

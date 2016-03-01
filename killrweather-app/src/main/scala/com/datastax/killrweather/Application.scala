@@ -23,7 +23,7 @@ import org.apache.spark.SparkConf
 import com.datastax.spark.connector.embedded.EmbeddedKafka
 import scala.concurrent.Future
 
-abstract class KillrWeather(system: ExtendedActorSystem) extends Extension with NodeGuardianComponent {
+abstract class Application(system: ExtendedActorSystem) extends Extension with NodeGuardianComponent {
   import BusinessEvent.GracefulShutdown
 
   import system.dispatcher
