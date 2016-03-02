@@ -23,10 +23,8 @@ import akka.cluster.Cluster
 import akka.actor._
 import org.joda.time.{DateTime, DateTimeZone}
 import com.datastax.spark.connector.embedded.Event
-//import akka.routing.BalancingPool
 
-import com.datastax.killrweather.AutomatedApiActor
-import com.datastax.killrweather.ApiNodeGuardian
+import com.datastax.killrweather._
 
 /** For simplicity, these just go through Akka. */
 private[killrweather] class WeatherAutomatedApiActor extends AutomatedApiActor {
