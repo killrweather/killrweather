@@ -91,41 +91,5 @@ trait WeatherAutomatedApiActorComponent { // For expressing dependencies
 
 class WeatherAutomatedApiNodeGuardian extends ApiNodeGuardian with WeatherAutomatedApiActorComponent { 
   import context.dispatcher
-
- /* override def preStart(): Unit = {
-    super.preStart()
-    cluster.join(base)
-    cluster.joinSeedNodes(Vector(base))
-  }
- */
-//  val clusterX = Cluster(context.system)
-//  log.info("Cluster to register {}", clusterX.selfAddress)
-//  log.info("context.system" + context.system)
-//  log.info("clusterX" + clusterX)
-//  log.info("cluster" + cluster)
-
-  cluster.joinSeedNodes(Vector(cluster.selfAddress))
-
-
-  /** The [[KafkaPublisherActor]] as a load-balancing pool router
-    * which sends messages to idle or less busy routees to handle work. */
-//  val router = context.actorOf(BalancingPool(5).props(
-//    Props(new KafkaPublisherActor(KafkaHosts, KafkaBatchSendSize))), "kafka-ingestion-router")
-
-  /** Wait for this node's [[akka.cluster.MemberStatus]] to be
-    * [[akka.cluster.ClusterEvent.MemberUp]] before starting work, which means
-    * it's membership in the [[Cluster]] node ring has been gossipped, and we
-    * can leverage the cluster's adaptive load balancing which will route data
-    * to the `KillrWeatherApp` nodes based on most healthy, by their health metrics
-    * - cpu, system load average and heap. */
-  cluster registerOnMemberUp {
-    log.info("Registering to cluster on {}.", cluster.selfAddress)
-
-    task = Some(context.system.scheduler.schedule(Duration.Zero, 2.seconds) {
-      api ! Event.QueryTask
-    })
-          
-    log.info("Registered to cluster on {}.", cluster.selfAddress)
-  }
 }
 
