@@ -41,6 +41,8 @@ class WeatherKafkaStreamingActor(kafkaParams: Map[String, String],
   import settings._
   import WeatherEvent._
   import Weather._
+  
+  log.info("kafkaParams: {}.", kafkaParams)
 
   val kafkaStream = KafkaUtils.createStream[String, String, StringDecoder, StringDecoder](
     ssc, kafkaParams, Map(KafkaTopicRaw -> 1), StorageLevel.DISK_ONLY_2)
@@ -69,7 +71,9 @@ class WeatherKafkaStreamingActor(kafkaParams: Map[String, String],
     (weather.wsid, weather.year, weather.month, weather.day, weather.oneHourPrecip)
   }.saveToCassandra(CassandraKeyspace, CassandraTableDailyPrecip)
 
-  kafkaStream.print // for demo purposes only
+  if (log.isDebugEnabled) {
+	  kafkaStream.print // for demo/debug purposes only
+  }
 
   /** Notifies the supervisor that the Spark Streams have been created and defined.
     * Now the [[StreamingContext]] can be started. */
