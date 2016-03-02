@@ -94,7 +94,7 @@ To change any package log levels and see more activity, simply modify
 #### From Command Line
 1.Start `KillrWeather`
     cd /path/to/killrweather
-    sbt app/run
+    sbt weather_app/run
 
 As the `KillrWeather` app initializes, you will see Akka Cluster start, Zookeeper and the Kafka servers start.
 
@@ -104,7 +104,7 @@ this would leverage the health of each node for load balancing as the rest of th
 2.Start the Kafka data feed app
 In a second shell run:
 
-    sbt clients/run
+    sbt weather_clients/run
 
 You should see:
 
