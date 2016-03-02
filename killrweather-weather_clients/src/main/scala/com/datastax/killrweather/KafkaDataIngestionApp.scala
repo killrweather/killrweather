@@ -33,7 +33,7 @@ import com.typesafe.config.ConfigFactory
 import com.datastax.spark.connector.embedded._
 import com.datastax.killrweather.cluster.ClusterAwareNodeGuardian
 import com.datastax.spark.connector.embedded.KafkaEvent.KafkaMessageEnvelope
-import com.datastax.killrweather.HttpNodeGuardian
+import com.datastax.killrweather._
 
 
 /** Run with: sbt clients/run for automatic data file import to Kafka.
