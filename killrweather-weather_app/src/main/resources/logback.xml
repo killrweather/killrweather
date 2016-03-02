@@ -25,9 +25,9 @@
     <logger name="org.apache.spark.storage.BlockManager" level="ERROR" />
     <logger name="org.apache.hadoop" level="ERROR" />
     
-    <logger name="org.apache.spark.streaming.util.WriteAheadLogManager" level="ERROR" />
+    <!-- <logger name="org.apache.spark.streaming.util.*" level="ERROR" /> -->
 
-    <root level="info">
+    <root level="warn">
         <appender-ref ref="STDOUT"/>
     </root>
 </configuration>
