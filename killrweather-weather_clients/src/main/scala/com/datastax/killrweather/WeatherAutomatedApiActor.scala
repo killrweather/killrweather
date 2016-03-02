@@ -89,5 +89,28 @@ trait WeatherAutomatedApiActorComponent { // For expressing dependencies
 }
 
 class WeatherAutomatedApiNodeGuardian extends ApiNodeGuardian with WeatherAutomatedApiActorComponent { 
+  import context.dispatcher
+
+ /* override def preStart(): Unit = {
+    super.preStart()
+    cluster.join(base)
+    cluster.joinSeedNodes(Vector(base))
+  }
+ */
+  val clusterX = Cluster(context.system)
+  log.info("Cluster to register {}", clusterX.selfAddress)
+//  log.info("context.system" + context.system)
+//  log.info("clusterX" + clusterX)
+//  log.info("cluster" + cluster)
+
+  clusterX.registerOnMemberUp {         
+    log.info("Registering to cluster on {}.", clusterX.selfAddress)
+
+    task = Some(context.system.scheduler.schedule(Duration.Zero, 2.seconds) {
+      api ! Event.QueryTask
+    })
+          
+    log.info("Registered to cluster on {}.", clusterX.selfAddress)
+  }
 }
 
