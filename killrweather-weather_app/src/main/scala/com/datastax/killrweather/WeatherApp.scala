@@ -30,7 +30,7 @@ import com.datastax.killrweather.Application
   *   cqlsh> source 'load-timeseries.cql';
   * }}}
   *
-  * Run with SBT: sbt app/run
+  * Run with SBT: sbt app/weather_run
   *
   * See: https://github.com/killrweather/killrweather/wiki/2.%20Code%20and%20Data%20Setup#data-setup
   */
