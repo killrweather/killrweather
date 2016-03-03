@@ -25,7 +25,7 @@ import org.joda.time.format.DateTimeFormat
 import org.joda.time.{DateTime, DateTimeZone}
 
 /** A base actor for weather data computation. */
-private[killrweather] trait AggregationActor extends Actor {
+trait AggregationActor extends Actor {
 
   implicit val timeout = Timeout(5.seconds)
 
