@@ -48,34 +48,59 @@ object KillrWeatherBuild extends Build {
     settings = defaultSettings ++ Seq(libraryDependencies ++= Dependencies.client)
   )
 
+  lazy val examplesLibraryDependencies = libraryDependencies
   lazy val examples = Project(
     id = "examples",
     base = file("./killrweather-examples"),
-    settings = defaultSettings ++ Seq(libraryDependencies ++= Dependencies.examples)
+    settings = defaultSettings ++ Seq(examplesLibraryDependencies ++= Dependencies.examples)
   )
 
   // Weather Specific Projects
 
+  lazy val weatherLibraryDependencies = libraryDependencies
   lazy val weather = Project(
     id = "weather",
     base = file("./killrweather-weather"),
     dependencies = Seq(core),
-	// TODO: avoid side-effect on libraryDependencies
-    settings = defaultSettings ++ Seq(libraryDependencies ++= Dependencies.weather)
+    settings = defaultSettings ++ Seq(weatherLibraryDependencies ++= Dependencies.weather)
   )
 
   lazy val weather_app = Project(
     id = "weather_app",
     base = file("./killrweather-weather_app"),
     dependencies = Seq(core, app, weather),
-    settings = defaultSettings ++ Seq(libraryDependencies ++= Dependencies.weather)
+    settings = defaultSettings ++ Seq(weatherLibraryDependencies ++= Dependencies.weather)
   ) configs IntegrationTest
 
   lazy val weather_clients = Project(
     id = "weather_clients",
     base = file("./killrweather-weather_clients"),
     dependencies = Seq(core, clients, weather),
-    settings = defaultSettings ++ Seq(libraryDependencies ++= Dependencies.weather)
+    settings = defaultSettings ++ Seq(weatherLibraryDependencies ++= Dependencies.weather)
+  )
+
+  // Electric Specific Projects
+
+  lazy val electricLibraryDependencies = libraryDependencies
+  lazy val electric = Project(
+    id = "electric",
+    base = file("./project-electric"),
+    dependencies = Seq(core),
+    settings = defaultSettings ++ Seq(electricLibraryDependencies ++= Dependencies.electric)
+  )
+
+  lazy val electric_app = Project(
+    id = "electric_app",
+    base = file("./project-electric_app"),
+    dependencies = Seq(core, app, electric),
+    settings = defaultSettings ++ Seq(electricLibraryDependencies ++= Dependencies.electric)
+  ) configs IntegrationTest
+
+  lazy val electric_clients = Project(
+    id = "electric_clients",
+    base = file("./project-electric_clients"),
+    dependencies = Seq(core, clients, electric),
+    settings = defaultSettings ++ Seq(electricLibraryDependencies ++= Dependencies.electric)
   )
 
 }
@@ -173,6 +198,8 @@ object Dependencies {
   val core = akka ++ logging ++ time
 
   val weather = akka ++ logging ++ time
+
+  val electric = akka ++ logging ++ time
 
   val app = connector ++ json ++ scalaz ++ test ++
     Seq(algebird, bijection, kafka, kafkaReactive, kafkaStreaming, pickling, sparkML, sigar)
