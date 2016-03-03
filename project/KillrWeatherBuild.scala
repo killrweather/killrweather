@@ -79,30 +79,6 @@ object KillrWeatherBuild extends Build {
     settings = defaultSettings ++ Seq(weatherLibraryDependencies ++= Dependencies.weather)
   )
 
-  // Electric Specific Projects
-
-  lazy val electricLibraryDependencies = libraryDependencies
-  lazy val electric = Project(
-    id = "electric",
-    base = file("./project-electric"),
-    dependencies = Seq(core),
-    settings = defaultSettings ++ Seq(electricLibraryDependencies ++= Dependencies.electric)
-  )
-
-  lazy val electric_app = Project(
-    id = "electric_app",
-    base = file("./project-electric_app"),
-    dependencies = Seq(core, app, electric),
-    settings = defaultSettings ++ Seq(electricLibraryDependencies ++= Dependencies.electric)
-  ) configs IntegrationTest
-
-  lazy val electric_clients = Project(
-    id = "electric_clients",
-    base = file("./project-electric_clients"),
-    dependencies = Seq(core, clients, electric),
-    settings = defaultSettings ++ Seq(electricLibraryDependencies ++= Dependencies.electric)
-  )
-
 }
 
 /** To use the connector, the only dependency required is:
@@ -198,8 +174,6 @@ object Dependencies {
   val core = akka ++ logging ++ time
 
   val weather = akka ++ logging ++ time
-
-  val electric = akka ++ logging ++ time
 
   val app = connector ++ json ++ scalaz ++ test ++
     Seq(algebird, bijection, kafka, kafkaReactive, kafkaStreaming, pickling, sparkML, sigar)
