@@ -29,7 +29,7 @@ object KillrWeatherBuild extends Build {
     id = "root",
     base = file("."),
     settings = parentSettings,
-    aggregate = Seq(core, weather, app, clients, examples)
+    aggregate = Seq(core, app, clients, examples)
   )
 
   lazy val core = Project(
