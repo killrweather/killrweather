@@ -26,55 +26,23 @@ import com.datastax.spark.connector.streaming._
   * It creates the Kafka stream which streams the raw data, transforms it, to
   * a column entry for a specific weather station[[com.datastax.killrweather.Weather.RawWeatherData]],
   * and saves the new data to the cassandra table as it arrives.
+  * 
+  * All Domain Specific code should be define by a dedicated subclass of KafkaStreamingActor
+  * (like [[com.datastax.killrweather.WeatherKafkaStreamingActor]]), 
+  * which class should be referenced by an extension of NodeGuardianComponent
+  * (like [[com.datastax.killrweather.WeatherKafkaStreamingActorComponentImpl]]).
   */
-class KafkaStreamingActor(kafkaParams: Map[String, String],
+abstract class KafkaStreamingActor(kafkaParams: Map[String, String],
                           ssc: StreamingContext,
                           settings: Settings,
                           listener: ActorRef) extends AggregationActor with ActorLogging {
-
-/*  import settings._
-  import WeatherEvent._
-  import Weather._
-
-  val kafkaStream = KafkaUtils.createStream[String, String, StringDecoder, StringDecoder](
-    ssc, kafkaParams, Map(KafkaTopicRaw -> 1), StorageLevel.DISK_ONLY_2)
-    .map(_._2.split(","))
-    .map(RawWeatherData(_))
-
-  *//** Saves the raw data to Cassandra - raw table. *//*
-  kafkaStream.saveToCassandra(CassandraKeyspace, CassandraTableRaw)
-
-  *//** For a given weather station, year, month, day, aggregates hourly precipitation values by day.
-    * Weather station first gets you the partition key - data locality - which spark gets via the
-    * connector, so the data transfer between spark and cassandra is very fast per node.
-    *
-    * Persists daily aggregate data to Cassandra daily precip table by weather station,
-    * automatically sorted by most recent (due to how we set up the Cassandra schema:
-    * @see https://github.com/killrweather/killrweather/blob/master/data/create-timeseries.cql.
-    *
-    * Because the 'oneHourPrecip' column is a Cassandra Counter we do not have to do a spark
-    * reduceByKey, which is expensive. We simply let Cassandra do it - not expensive and fast.
-    * This is a Cassandra 2.1 counter functionality ;)
-    *
-    * This new functionality in Cassandra 2.1.1 is going to make time series work even faster:
-    * https://issues.apache.org/jira/browse/CASSANDRA-6602
-    *//*
-  kafkaStream.map { weather =>
-    (weather.wsid, weather.year, weather.month, weather.day, weather.oneHourPrecip)
-  }.saveToCassandra(CassandraKeyspace, CassandraTableDailyPrecip)
-
-  kafkaStream.print // for demo purposes only
-
-  *//** Notifies the supervisor that the Spark Streams have been created and defined.
-    * Now the [[StreamingContext]] can be started. *//*
-  listener ! OutputStreamInitialized
-*/
+  
   def receive : Actor.Receive = {
     case e => // ignore
   }
 }
 
-// http://www.warski.org/blog/2010/12/di-in-scala-cake-pattern/
+// @see http://www.warski.org/blog/2010/12/di-in-scala-cake-pattern/
 // Interface
 trait KafkaStreamingActorComponent { // For expressing dependencies
   def kafkaStreamingActor(kafkaParams: Map[String, String],

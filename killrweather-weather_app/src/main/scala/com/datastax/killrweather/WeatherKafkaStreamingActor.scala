@@ -21,7 +21,7 @@ import org.apache.spark.streaming.StreamingContext
 import org.apache.spark.storage.StorageLevel
 import org.apache.spark.streaming.kafka.KafkaUtils
 import com.datastax.spark.connector.streaming._
-import com.datastax.killrweather.Settings
+import com.datastax.killrweather._
 import com.datastax.killrweather.BusinessEvent.{NodeInitialized, OutputStreamInitialized}
 
 /** The KafkaStreamActor creates a streaming pipeline from Kafka to Cassandra via Spark.
@@ -42,7 +42,7 @@ class WeatherKafkaStreamingActor(kafkaParams: Map[String, String],
   import WeatherEvent._
   import Weather._
   
-  log.info("kafkaParams: {}.", kafkaParams)
+  log.debug("kafkaParams: {}.", kafkaParams)
 
   val kafkaStream = KafkaUtils.createStream[String, String, StringDecoder, StringDecoder](
     ssc, kafkaParams, Map(KafkaTopicRaw -> 1), StorageLevel.DISK_ONLY_2)
@@ -78,10 +78,6 @@ class WeatherKafkaStreamingActor(kafkaParams: Map[String, String],
   /** Notifies the supervisor that the Spark Streams have been created and defined.
     * Now the [[StreamingContext]] can be started. */
   listener ! OutputStreamInitialized
-
-/*  def receive : Actor.Receive = {
-    case e => // ignore
-  }*/
 }
 
 

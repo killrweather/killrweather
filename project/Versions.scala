@@ -29,10 +29,8 @@ object Versions {
   val KafkaReactive	 = "0.10.0" // https://github.com/manub/scalatest-embedded-kafka/issues/6
   val Kryo           = "3.0.0"
   val Logback        = "1.1.5"
-//  val Macwire        = "2.2.2"
   val Pickling       = "0.10.1"
   val Scala          = "2.11.7"
-//  val ScalaGuice     = "4.0.1"
   val ScalaTest      = "2.2.6"
   val Scalaz         = "7.2.0"
   val ScalazContrib  = "0.2"

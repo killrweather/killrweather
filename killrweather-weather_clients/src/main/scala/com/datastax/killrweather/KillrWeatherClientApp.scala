@@ -25,7 +25,7 @@ import org.joda.time.{DateTime, DateTimeZone}
 import com.datastax.spark.connector.embedded.Event
 
 /** Automates demo activity every 2 seconds for demos by sending requests to `KillrWeatherApp` instances. */
-object KillrWeatherClientApp extends App with ClientHelper with WeatherAutomatedApiActorComponent {
+object KillrWeatherClientApp extends App with ClientHelper {
 
   /** Creates the ActorSystem. */
   val system = ActorSystem("KillrWeather", ConfigFactory.parseString("akka.remote.netty.tcp.port = 2552"))

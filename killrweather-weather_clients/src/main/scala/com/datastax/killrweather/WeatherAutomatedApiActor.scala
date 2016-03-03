@@ -26,6 +26,10 @@ import com.datastax.spark.connector.embedded.Event
 
 import com.datastax.killrweather._
 
+class WeatherAutomatedApiNodeGuardian extends ApiNodeGuardian with WeatherAutomatedApiActorComponentImpl { 
+  import context.dispatcher
+}
+
 /** For simplicity, these just go through Akka. */
 private[killrweather] class WeatherAutomatedApiActor extends AutomatedApiActor {
 
@@ -83,11 +87,7 @@ private[killrweather] class WeatherAutomatedApiActor extends AutomatedApiActor {
 
 // http://www.warski.org/blog/2010/12/di-in-scala-cake-pattern/
 // Interface
-trait WeatherAutomatedApiActorComponent { // For expressing dependencies
+trait WeatherAutomatedApiActorComponentImpl extends AutomatedApiActorComponent { // For expressing dependencies
   def automatedApiActorProps: Props = Props[WeatherAutomatedApiActor] // Way to obtain the dependency
-}
-
-class WeatherAutomatedApiNodeGuardian extends ApiNodeGuardian with WeatherAutomatedApiActorComponent { 
-  import context.dispatcher
 }
 

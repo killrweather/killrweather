@@ -16,8 +16,7 @@
 package com.datastax.killrweather
 
 import com.datastax.killrweather.cluster.ClusterAwareNodeGuardian
-import com.datastax.killrweather.NodeGuardian
-import com.datastax.killrweather.Settings
+import com.datastax.killrweather._
 import scala.concurrent.duration._
 import akka.actor.{Actor, Props}
 import org.apache.spark.streaming.StreamingContext
@@ -40,34 +39,11 @@ class WeatherNodeGuardian(ssc: StreamingContext, kafka: EmbeddedKafka, settings:
   import BusinessEvent._
   import settings._
 
-  /** Creates the Kafka stream saving raw data and aggregated data to cassandra. */
-///  context.actorOf(Props(new KafkaStreamingActor(kafka.kafkaParams, ssc, settings, self)), "kafka-stream")
-
   /** The Spark/Cassandra computation actors: For the tutorial we just use 2005 for now. */
   val temperature = context.actorOf(Props(new TemperatureActor(ssc.sparkContext, settings)), "temperature")
   val precipitation = context.actorOf(Props(new PrecipitationActor(ssc, settings)), "precipitation")
   val station = context.actorOf(Props(new WeatherStationActor(ssc.sparkContext, settings)), "weather-station")
 
-/*  override def preStart(): Unit = {
-    super.preStart()
-    cluster.joinSeedNodes(Vector(cluster.selfAddress))
-  }
-
-  *//** When [[OutputStreamInitialized]] is received in the parent actor, [[ClusterAwareNodeGuardian]],
-    * from the [[KafkaStreamingActor]] after it creates and defines the [[KafkaInputDStream]],
-    * the Spark Streaming checkpoint can be set, the [[StreamingContext]] can be started, and the
-    * node guardian actor moves from [[uninitialized]] to [[initialized]]with [[akka.actor.ActorContext.become()]].
-    *
-    * @see [[ClusterAwareNodeGuardian]]
-    *//*
-  override def initialize(): Unit = {
-    super.initialize()
-    ssc.checkpoint(SparkCheckpointDir)
-    ssc.start() // currently can not add more dstreams once started
-
-    context become initialized
-  }
-*/
   /** This node guardian's customer behavior once initialized. */
   override def initialized: Actor.Receive = {
     case e: TemperatureRequest    => temperature forward e
@@ -78,6 +54,7 @@ class WeatherNodeGuardian(ssc: StreamingContext, kafka: EmbeddedKafka, settings:
 
 }
 
+// @see http://www.warski.org/blog/2010/12/di-in-scala-cake-pattern/
 // Implementation
 trait WeatherNodeGuardianComponentImpl extends NodeGuardianComponent { // For expressing dependencies
   // Dependencies
