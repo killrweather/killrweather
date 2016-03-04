@@ -48,11 +48,10 @@ object KillrWeatherBuild extends Build {
     settings = defaultSettings ++ Seq(libraryDependencies ++= Dependencies.client)
   )
 
-  lazy val examplesLibraryDependencies = libraryDependencies
   lazy val examples = Project(
     id = "examples",
     base = file("./killrweather-examples"),
-    settings = defaultSettings ++ Seq(examplesLibraryDependencies ++= Dependencies.examples)
+    settings = defaultSettings ++ Seq(libraryDependencies ++= Dependencies.examples)
   )
 
 }
