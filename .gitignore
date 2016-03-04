@@ -31,3 +31,4 @@ diagrams/*.graffle
 .cache-tests
 .project
 bin/
+tmp/
