@@ -18,66 +18,31 @@
 import sbt._
 import sbt.Keys._
 
-object KillrWeatherBuild extends Build {
+object WeatherBuild extends Build {
   import Settings._
 
-  lazy val root = Project(
-    id = "root",
-    base = file("."),
-    settings = parentSettings,
-    aggregate = Seq(core, app, clients, examples)
-  )
+  resolvers += Resolver.mavenLocal
 
-  lazy val core = Project(
-    id = "core",
-    base = file("./killrweather-core"),
-    settings = defaultSettings ++ Seq(libraryDependencies ++= Dependencies.core)
-  )
-
-  lazy val app = Project(
-    id = "app",
-    base = file("./killrweather-app"),
-    dependencies = Seq(core),
-    settings = defaultSettings ++ Seq(libraryDependencies ++= Dependencies.app)
-  ) configs IntegrationTest
-
-  lazy val clients = Project(
-    id = "clients",
-    base = file("./killrweather-clients"),
-    dependencies = Seq(core),
-    settings = defaultSettings ++ Seq(libraryDependencies ++= Dependencies.client)
-  )
-
-  lazy val examplesLibraryDependencies = libraryDependencies
-  lazy val examples = Project(
-    id = "examples",
-    base = file("./killrweather-examples"),
-    settings = defaultSettings ++ Seq(examplesLibraryDependencies ++= Dependencies.examples)
-  )
-
-  // Weather Specific Projects
-
-/*  lazy val weatherLibraryDependencies = libraryDependencies
-  lazy val weather = Project(
-    id = "weather",
-    base = file("./killrweather-weather"),
-    dependencies = Seq(core),
-    settings = defaultSettings ++ Seq(weatherLibraryDependencies ++= Dependencies.weather)
+  lazy val weather_core = Project(
+    id = "weather_core",
+    base = file("./weather-core"),
+//    dependencies = Seq(core),
+    settings = defaultSettings ++ Seq(libraryDependencies ++= Dependencies.weather)
   )
 
   lazy val weather_app = Project(
     id = "weather_app",
-    base = file("./killrweather-weather_app"),
-    dependencies = Seq(core, app, weather),
-    settings = defaultSettings ++ Seq(weatherLibraryDependencies ++= Dependencies.weather)
+    base = file("./weather-app"),
+    dependencies = Seq(weather_core),
+    settings = defaultSettings ++ Seq(libraryDependencies ++= Dependencies.app)
   ) configs IntegrationTest
 
   lazy val weather_clients = Project(
     id = "weather_clients",
-    base = file("./killrweather-weather_clients"),
-    dependencies = Seq(core, clients, weather),
-    settings = defaultSettings ++ Seq(weatherLibraryDependencies ++= Dependencies.weather)
-  )*/
+    base = file("./weather-clients"),
+    dependencies = Seq(weather_core),
+    settings = defaultSettings ++ Seq(libraryDependencies ++= Dependencies.client)
+  )
 
 }
 
@@ -134,6 +99,8 @@ object Dependencies {
     val kafka             = "org.apache.kafka"    %% "kafka"                              % Kafka kafkaExclusions // ApacheV2
     val kafkaStreaming    = "org.apache.spark"    %% "spark-streaming-kafka"              % Spark sparkExclusions // ApacheV2
     val kafkaReactive 	  = "com.softwaremill.reactivekafka" %% "reactive-kafka-core" 	  % KafkaReactive kafkaExclusions
+	val killrweatherApp	  = "com.datastax.killrweather" %% "app"			  			  % Killrweather
+	val killrweatherClient= "com.datastax.killrweather" %% "clients"		  			  % Killrweather
     val logback           = "ch.qos.logback"      % "logback-classic"                     % Logback
     val pickling          = "org.scala-lang.modules" %% "scala-pickling"                  % Pickling
     val scalazContrib     = "org.typelevel"       %% "scalaz-contrib-210"                 % ScalazContrib   // MIT
@@ -168,17 +135,14 @@ object Dependencies {
 
   val test = Seq(Test.akkaTestKit, Test.scalatest)
 
-  /** Module deps */
-  val client = akka ++ logging ++ scalaz ++ Seq(pickling, sparkCassandraEmb, sigar)
-
   val core = akka ++ logging ++ time
 
-//  val weather = akka ++ logging ++ time
+  /** Module deps */
+  val weather = /*akka ++ */logging ++ time
 
-  val app = connector ++ json ++ scalaz ++ test ++
-    Seq(algebird, bijection, kafka, kafkaReactive, kafkaStreaming, pickling, sparkML, sigar)
+  val app = core ++ connector ++ json ++ scalaz ++ test ++
+    Seq(killrweatherApp, algebird, bijection, kafka, kafkaReactive, kafkaStreaming, pickling, sparkML, sigar)
 
-  val examples = connector ++ time ++ json ++
-    Seq(kafka, kafkaStreaming, sparkML, "org.slf4j" % "slf4j-log4j12" % "1.6.1")
+  val client = core ++ akka ++ logging ++ scalaz ++ Seq(killrweatherClient, pickling, sparkCassandraEmb, sigar)
 }
 
