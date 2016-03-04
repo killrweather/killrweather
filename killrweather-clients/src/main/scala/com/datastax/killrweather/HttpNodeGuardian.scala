@@ -46,7 +46,9 @@ import com.datastax.spark.connector.embedded.KafkaEvent.KafkaMessageEnvelope
  *
  * The ingested data is sent to the kafka actor for processing in the stream.
  */
-class HttpNodeGuardian extends ClusterAwareNodeGuardian with ClientHelper {
+abstract class HttpNodeGuardian extends ClusterAwareNodeGuardian with ClientHelper with HttpNodeGuardianComponent{
+  
+  log.info("UriPath: {}.", uriPath)
 
   cluster.joinSeedNodes(Vector(cluster.selfAddress))
 
@@ -66,7 +68,7 @@ class HttpNodeGuardian extends ClusterAwareNodeGuardian with ClientHelper {
 
     /* As http data is received, publishes to Kafka. */
     context.actorOf(BalancingPool(10).props(
-      Props(new HttpDataFeedActor(router))), "dynamic-data-feed")
+      Props(new HttpDataFeedActor(router, uriPath))), "dynamic-data-feed")
 
     log.info("Starting data ingestion on {}.", cluster.selfAddress)
 
@@ -97,7 +99,7 @@ class KafkaPublisherActor(val producerConfig: ProducerConfig) extends KafkaProdu
 
 /** An Http server receiving requests containing header or entity based data which it sends to Kafka.
   * by delegating to the [[KafkaPublisherActor]]. */
-class HttpDataFeedActor(kafka: ActorRef) extends Actor with ActorLogging with ClientHelper {
+class HttpDataFeedActor(kafka: ActorRef, uriPath:String) extends Actor with ActorLogging with ClientHelper {
 
   import Sources._
   import context.dispatcher
@@ -116,7 +118,7 @@ class HttpDataFeedActor(kafka: ActorRef) extends Actor with ActorLogging with Cl
   )
 
   val requestHandler: HttpRequest => HttpResponse = {
-    case HttpRequest(HttpMethods.POST, Uri.Path("/weather/data"), headers, entity, _) =>
+    case HttpRequest(HttpMethods.POST, Uri.Path(uriPath), headers, entity, _) =>
       HttpSource.unapply(headers,entity).collect { case hs: HeaderSource =>
         hs.extract.foreach({ fs: FileSource =>
           log.info(s"Ingesting {} and publishing {} data points to Kafka topic {}.", fs.name, fs.data.size, KafkaTopic)
@@ -139,3 +141,10 @@ class HttpDataFeedActor(kafka: ActorRef) extends Actor with ActorLogging with Cl
     case e =>
   }
 }
+
+// @see http://www.warski.org/blog/2010/12/di-in-scala-cake-pattern/
+// Interface
+trait HttpNodeGuardianComponent { // For expressing dependencies
+  def uriPath:String // Way to obtain the dependency
+}
+

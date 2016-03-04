@@ -51,7 +51,7 @@ object KafkaDataIngestionApp extends App {
   val system = ActorSystem("KillrWeather", ConfigFactory.parseString("akka.remote.netty.tcp.port = 2551"))
 
   /* The root supervisor and fault tolerance handler of the data ingestion nodes. */
-  val guardian = system.actorOf(Props[HttpNodeGuardian], "node-guardian")
+  val guardian = system.actorOf(Props[WeatherHttpNodeGuardian], "node-guardian")
 
   system.registerOnTermination {
     guardian ! PoisonPill

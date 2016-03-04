@@ -33,9 +33,9 @@ There are many flavors of time series data. Some can be windowed in the stream, 
 If this is your first time running SBT, you will be downloading the internet.
 
     cd killrweather
-    sbt compile
-    # To locally publish the killrweather app & clients libraries, which will be later used by the Weather Project
-    sbt publishLocal
+     # To to compile then locally publish the killrweather app & clients libraries, which will be later used by the Weather Project
+    sbt compile publishLocal
+    
     # For IntelliJ users, this creates Intellij project files, but as of
     # version 14x you should not need this, just import a new sbt project.
     sbt gen-idea
