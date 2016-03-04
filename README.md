@@ -34,6 +34,8 @@ If this is your first time running SBT, you will be downloading the internet.
 
     cd killrweather
     sbt compile
+    # To locally publish the killrweather app & clients libraries, which will be later used by the Weather Project
+    sbt publishLocal
     # For IntelliJ users, this creates Intellij project files, but as of
     # version 14x you should not need this, just import a new sbt project.
     sbt gen-idea

@@ -29,20 +29,20 @@ object KillrWeatherBuild extends Build {
   )
 
   lazy val core = Project(
-    id = "core",
+    id = "killrweather-core",
     base = file("./killrweather-core"),
     settings = defaultSettings ++ Seq(libraryDependencies ++= Dependencies.core)
   )
 
   lazy val app = Project(
-    id = "app",
+    id = "killrweather-app",
     base = file("./killrweather-app"),
     dependencies = Seq(core),
     settings = defaultSettings ++ Seq(libraryDependencies ++= Dependencies.app)
   ) configs IntegrationTest
 
   lazy val clients = Project(
-    id = "clients",
+    id = "killrweather-clients",
     base = file("./killrweather-clients"),
     dependencies = Seq(core),
     settings = defaultSettings ++ Seq(libraryDependencies ++= Dependencies.client)
@@ -54,30 +54,6 @@ object KillrWeatherBuild extends Build {
     base = file("./killrweather-examples"),
     settings = defaultSettings ++ Seq(examplesLibraryDependencies ++= Dependencies.examples)
   )
-
-  // Weather Specific Projects
-
-/*  lazy val weatherLibraryDependencies = libraryDependencies
-  lazy val weather = Project(
-    id = "weather",
-    base = file("./killrweather-weather"),
-    dependencies = Seq(core),
-    settings = defaultSettings ++ Seq(weatherLibraryDependencies ++= Dependencies.weather)
-  )
-
-  lazy val weather_app = Project(
-    id = "weather_app",
-    base = file("./killrweather-weather_app"),
-    dependencies = Seq(core, app, weather),
-    settings = defaultSettings ++ Seq(weatherLibraryDependencies ++= Dependencies.weather)
-  ) configs IntegrationTest
-
-  lazy val weather_clients = Project(
-    id = "weather_clients",
-    base = file("./killrweather-weather_clients"),
-    dependencies = Seq(core, clients, weather),
-    settings = defaultSettings ++ Seq(weatherLibraryDependencies ++= Dependencies.weather)
-  )*/
 
 }
 
@@ -172,8 +148,6 @@ object Dependencies {
   val client = akka ++ logging ++ scalaz ++ Seq(pickling, sparkCassandraEmb, sigar)
 
   val core = akka ++ logging ++ time
-
-//  val weather = akka ++ logging ++ time
 
   val app = connector ++ json ++ scalaz ++ test ++
     Seq(algebird, bijection, kafka, kafkaReactive, kafkaStreaming, pickling, sparkML, sigar)
