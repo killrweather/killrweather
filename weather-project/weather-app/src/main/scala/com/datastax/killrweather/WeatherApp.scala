@@ -22,7 +22,7 @@ import org.apache.spark.streaming.{Milliseconds, StreamingContext}
 import org.apache.spark.SparkConf
 import com.datastax.spark.connector.embedded.EmbeddedKafka
 import scala.concurrent.Future
-import com.datastax.killrweather.Application
+import com.datastax.killrweather._
 
 /** Runnable. Requires running these in cqlsh
   * {{{
