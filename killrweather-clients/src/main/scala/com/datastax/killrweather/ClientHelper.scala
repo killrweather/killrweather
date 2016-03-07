@@ -73,8 +73,6 @@ object Sources {
       val src = file match {
         case f if f.getAbsolutePath endsWith ".gz" =>
           scala.io.Source.fromInputStream(new GZIPInputStream(new BufferedInputStream(new FileInputStream(file))), "utf-8")
-        case f if f.getAbsolutePath endsWith ".zip" =>
-          scala.io.Source.fromInputStream(new ZipInputStream(new BufferedInputStream(new FileInputStream(file))), "utf-8")
         case f =>
           scala.io.Source.fromFile(file, "utf-8")
       }
