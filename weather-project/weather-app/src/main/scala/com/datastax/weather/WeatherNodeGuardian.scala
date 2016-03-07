@@ -34,10 +34,13 @@ import scala.Vector
  * transforms data to [[com.datastax.weather.Weather.RawWeatherData]] (hourly per
  * weather station), and saves the new data to the cassandra raw data table on arrival.
  */
-class WeatherNodeGuardian(ssc: StreamingContext, kafka: EmbeddedKafka, settings: Settings)
-                        extends NodeGuardian(ssc, kafka, settings) with WeatherKafkaStreamingActorComponentImpl {
+class WeatherNodeGuardian(ssc: StreamingContext, kafka: EmbeddedKafka)
+                        extends NodeGuardian(ssc, kafka) 
+                        with WeatherKafkaStreamingActorComponentImpl
+                        with WeatherSettingsComponentImpl{
   import BusinessEvent._
-  import settings._
+  
+  val settings:WeatherSettings = Settings()
 
   /** The Spark/Cassandra computation actors: For the tutorial we just use 2005 for now. */
   val temperature = context.actorOf(Props(new TemperatureActor(ssc.sparkContext, settings)), "temperature")
@@ -60,6 +63,6 @@ trait WeatherNodeGuardianComponentImpl extends NodeGuardianComponent { // For ex
   // Dependencies
   this: NodeGuardianComponent =>
   
-  def nodeGuardian(ssc: StreamingContext, kafka: EmbeddedKafka, settings: Settings): NodeGuardian
-    = new WeatherNodeGuardian(ssc: StreamingContext, kafka: EmbeddedKafka, settings: Settings)
+  override def nodeGuardian(ssc: StreamingContext, kafka: EmbeddedKafka): NodeGuardian
+    = new WeatherNodeGuardian(ssc: StreamingContext, kafka: EmbeddedKafka)
 }

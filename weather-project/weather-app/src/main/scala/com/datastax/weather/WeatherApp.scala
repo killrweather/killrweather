@@ -37,14 +37,12 @@ import com.datastax.killrweather._
   *
   * See: https://github.com/killrweather/killrweather/wiki/2.%20Code%20and%20Data%20Setup#data-setup
   */
-object WeatherApp extends App {
-
-  val settings = new Settings
-  import settings._
+object WeatherApp extends App with WeatherSettingsComponentImpl {
 
   /** Creates the ActorSystem. */
-  val system = ActorSystem(AppName)
+  val system = ActorSystem(Settings().AppName)
 
+  // TODO: Avoid double instantiation of the Settings 
   val killrWeather = WeatherApplication(system)
 
 }
@@ -57,6 +55,9 @@ object WeatherApplication extends ExtensionId[WeatherApplication] with Extension
 
 }
 
-class WeatherApplication(system: ExtendedActorSystem) extends Application(system: ExtendedActorSystem) with WeatherNodeGuardianComponentImpl {
+class WeatherApplication(system: ExtendedActorSystem) 
+          extends Application(system: ExtendedActorSystem) 
+          with WeatherNodeGuardianComponentImpl
+          with WeatherSettingsComponentImpl{
 }
 

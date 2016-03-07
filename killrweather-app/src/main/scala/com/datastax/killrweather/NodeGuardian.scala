@@ -37,12 +37,11 @@ import scala.Vector
  * which class should be referenced by an extension of NodeGuardianComponent
  * (like [[com.datastax.killrweather.WeatherNodeGuardianComponentImpl]]).
  */
-abstract class NodeGuardian(ssc: StreamingContext, kafka: EmbeddedKafka, settings: Settings)
-  extends ClusterAwareNodeGuardian with AggregationActor with KafkaStreamingActorComponent {
-  import settings._
+abstract class NodeGuardian(ssc: StreamingContext, kafka: EmbeddedKafka)
+  extends ClusterAwareNodeGuardian with AggregationActor with KafkaStreamingActorComponent with SettingsComponent {
 
   /** Creates the Kafka stream saving raw data and aggregated data to cassandra. */
-  lazy val kafkaStreamingActor: KafkaStreamingActor = kafkaStreamingActor(kafka.kafkaParams, ssc, settings, self)
+  lazy val kafkaStreamingActor: KafkaStreamingActor = kafkaStreamingActor(kafka.kafkaParams, ssc, self)
   context.actorOf(Props(kafkaStreamingActor), "kafka-stream")
 
   override def preStart(): Unit = {
@@ -59,7 +58,7 @@ abstract class NodeGuardian(ssc: StreamingContext, kafka: EmbeddedKafka, setting
     */
   override def initialize(): Unit = {
     super.initialize()
-    ssc.checkpoint(SparkCheckpointDir)
+    ssc.checkpoint(Settings().SparkCheckpointDir)
     ssc.start() // currently can not add more dstreams once started
 
     context become initialized
@@ -75,6 +74,6 @@ abstract class NodeGuardian(ssc: StreamingContext, kafka: EmbeddedKafka, setting
 // @see http://www.warski.org/blog/2010/12/di-in-scala-cake-pattern/
 // Interface
 trait NodeGuardianComponent { // For expressing dependencies
-  def nodeGuardian(ssc: StreamingContext, kafka: EmbeddedKafka, settings: Settings): NodeGuardian // Way to obtain the dependency
+  def nodeGuardian(ssc: StreamingContext, kafka: EmbeddedKafka): NodeGuardian // Way to obtain the dependency
 }
 

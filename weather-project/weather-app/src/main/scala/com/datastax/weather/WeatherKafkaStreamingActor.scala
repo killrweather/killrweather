@@ -32,16 +32,17 @@ import com.datastax.killrweather.BusinessEvent.{NodeInitialized, OutputStreamIni
   */
 class WeatherKafkaStreamingActor(kafkaParams: Map[String, String],
                           ssc: StreamingContext,
-                          settings: Settings,
                           listener: ActorRef) 
      extends KafkaStreamingActor(kafkaParams,
                           ssc,
-                          settings,
-                          listener) {
+                          listener)
+    with WeatherSettingsComponentImpl{
 
-  import settings._
   import WeatherEvent._
   import Weather._
+  
+  val settings:WeatherSettings = Settings()
+  import settings._
   
   log.debug("kafkaParams: {}.", kafkaParams)
 
@@ -87,13 +88,11 @@ trait WeatherKafkaStreamingActorComponentImpl extends KafkaStreamingActorCompone
   // Dependencies
   this: KafkaStreamingActorComponent =>
   
-  def kafkaStreamingActor(kafkaParams: Map[String, String],
+  override def kafkaStreamingActor(kafkaParams: Map[String, String],
                           ssc: StreamingContext,
-                          settings: Settings,
                           listener: ActorRef): KafkaStreamingActor // Way to obtain the dependency
     = new WeatherKafkaStreamingActor(kafkaParams: Map[String, String],
                           ssc: StreamingContext,
-                          settings: Settings,
                           listener: ActorRef)
 }
 

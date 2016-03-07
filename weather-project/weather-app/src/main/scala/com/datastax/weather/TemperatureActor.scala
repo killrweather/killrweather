@@ -26,7 +26,7 @@ import com.datastax.killrweather._
 /** The TemperatureActor reads the daily temperature rollup data from Cassandra,
   * and for a given weather station, computes temperature statistics by month for a given year.
   */
-class TemperatureActor(sc: SparkContext, settings: Settings)
+class TemperatureActor(sc: SparkContext, settings: WeatherSettings)
   extends AggregationActor with ActorLogging {
 
   import settings.{CassandraKeyspace => keyspace}

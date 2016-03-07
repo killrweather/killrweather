@@ -23,7 +23,7 @@ import org.apache.spark.SparkConf
 import com.datastax.spark.connector.embedded.EmbeddedKafka
 import scala.concurrent.Future
 
-abstract class Application(system: ExtendedActorSystem) extends Extension with NodeGuardianComponent {
+abstract class Application(system: ExtendedActorSystem) extends Extension with NodeGuardianComponent with SettingsComponent {
   import BusinessEvent.GracefulShutdown
 
   import system.dispatcher
@@ -36,7 +36,8 @@ abstract class Application(system: ExtendedActorSystem) extends Extension with N
 
   protected val _isTerminated = new AtomicBoolean(false)
 
-  val settings = new Settings
+  // Provided by the SettingsComponent 
+  val settings = Settings()
   import settings._
 
   implicit private val timeout = system.settings.CreationTimeout
@@ -58,7 +59,7 @@ abstract class Application(system: ExtendedActorSystem) extends Extension with N
 
   /* The root supervisor and traffic controller of the app. All inbound messages go through this actor. */
   // NodeGuardian is provided by the NodeGuardianComponent
-  private val guardian = system.actorOf(Props(nodeGuardian(ssc: StreamingContext, kafka: EmbeddedKafka, settings: Settings)), "node-guardian")
+  private val guardian = system.actorOf(Props(nodeGuardian(ssc: StreamingContext, kafka: EmbeddedKafka)), "node-guardian")
 
   private val cluster = Cluster(system)
 

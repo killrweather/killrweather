@@ -43,7 +43,7 @@ import com.typesafe.config.{Config, ConfigFactory}
  *
  * @param conf Optional config for test
  */
-final class Settings(conf: Option[Config] = None) extends Serializable {
+class Settings(conf: Option[Config] = None) extends Serializable {
 
   val localAddress = InetAddress.getLocalHost.getHostAddress
 
@@ -55,7 +55,7 @@ final class Settings(conf: Option[Config] = None) extends Serializable {
   protected val spark = rootConfig.getConfig("spark")
   protected val cassandra = rootConfig.getConfig("cassandra")
   protected val kafka = ConfigFactory.load.getConfig("kafka")
-  protected val killrweather = rootConfig.getConfig("killrweather")
+//  protected val killrweather = rootConfig.getConfig("killrweather")
 
   val SparkMaster = withFallback[String](Try(spark.getString("master")),
     "spark.master") getOrElse "local[*]"
@@ -66,7 +66,7 @@ final class Settings(conf: Option[Config] = None) extends Serializable {
   val SparkStreamingBatchInterval = withFallback[Int](Try(spark.getInt("streaming.batch.interval")),
     "spark.streaming.batch.interval") getOrElse 1000
 
-  val SparkCheckpointDir = killrweather.getString("spark.checkpoint.dir")
+  val SparkCheckpointDir = spark.getString("checkpoint.dir")
 
   val CassandraHosts = withFallback[String](Try(cassandra.getString("connection.host")),
     "spark.cassandra.connection.host") getOrElse localAddress
@@ -155,16 +155,16 @@ final class Settings(conf: Option[Config] = None) extends Serializable {
   val KafkaPartitioner = kafka.getString("partitioner.fqcn")
   val KafkaBatchSendSize = kafka.getInt("batch.send.size")
 
-  val AppName = killrweather.getString("app-name")
-  val CassandraKeyspace = killrweather.getString("cassandra.keyspace")
-  val CassandraTableRaw = killrweather.getString("cassandra.table.raw")
-  val CassandraTableDailyTemp = killrweather.getString("cassandra.table.daily.temperature")
-  val CassandraTableDailyPrecip = killrweather.getString("cassandra.table.daily.precipitation")
-  val CassandraTableCumulativePrecip = killrweather.getString("cassandra.table.cumulative.precipitation")
-  val CassandraTableSky = killrweather.getString("cassandra.table.sky")
-  val CassandraTableStations = killrweather.getString("cassandra.table.stations")
-  val DataLoadPath = killrweather.getString("data.load.path")
-  val DataFileExtension = killrweather.getString("data.file.extension")
+//  val AppName = killrweather.getString("app-name")
+//  val CassandraKeyspace = killrweather.getString("cassandra.keyspace")
+//  val CassandraTableRaw = killrweather.getString("cassandra.table.raw")
+//  val CassandraTableDailyTemp = killrweather.getString("cassandra.table.daily.temperature")
+//  val CassandraTableDailyPrecip = killrweather.getString("cassandra.table.daily.precipitation")
+//  val CassandraTableCumulativePrecip = killrweather.getString("cassandra.table.cumulative.precipitation")
+//  val CassandraTableSky = killrweather.getString("cassandra.table.sky")
+//  val CassandraTableStations = killrweather.getString("cassandra.table.stations")
+//  val DataLoadPath = killrweather.getString("data.load.path")
+//  val DataFileExtension = killrweather.getString("data.file.extension")
 
   /** Attempts to acquire from environment, then java system properties. */
   def withFallback[T](env: Try[T], key: String): Option[T] = env match {
@@ -172,3 +172,10 @@ final class Settings(conf: Option[Config] = None) extends Serializable {
     case value => value.toOption
   }
 }
+
+// @see http://www.warski.org/blog/2010/12/di-in-scala-cake-pattern/
+// Interface
+trait SettingsComponent { // For expressing dependencies
+  def Settings(conf: Option[Config] = None): Settings = new Settings(conf) // Way to obtain the dependency
+}
+
