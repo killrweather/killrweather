@@ -36,7 +36,7 @@ class WeatherKafkaStreamingActor(kafkaParams: Map[String, String],
      extends KafkaStreamingActor(kafkaParams,
                           ssc,
                           listener)
-    with WeatherSettingsComponentImpl{
+     with WeatherSettingsComponentImpl{
 
   import WeatherEvent._
   import Weather._

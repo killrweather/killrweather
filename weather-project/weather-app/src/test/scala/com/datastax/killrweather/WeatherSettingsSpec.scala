@@ -15,6 +15,8 @@
  */
 package com.datastax.weather
 
+import com.datastax.killrweather._
+
 class SettingsSpec extends AbstractSpec with TestFileHelper {
 
   val settings = new WeatherSettings()
