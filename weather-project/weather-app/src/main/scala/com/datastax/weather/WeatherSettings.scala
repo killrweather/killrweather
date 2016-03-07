@@ -13,7 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.datastax.killrweather
+package com.datastax.weather
 
 import java.net.InetAddress
 
@@ -21,6 +21,9 @@ import scala.util.Try
 import com.datastax.driver.core.ConsistencyLevel
 import com.datastax.spark.connector.cql.{AuthConf, NoAuthConf, PasswordAuthConf}
 import com.typesafe.config.{Config, ConfigFactory}
+
+import com.datastax.killrweather._
+
 
 /**
  * Application settings. First attempts to acquire from the deploy environment.
