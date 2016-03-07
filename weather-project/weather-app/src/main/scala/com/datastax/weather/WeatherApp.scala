@@ -13,7 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.datastax.killrweather
+package com.datastax.weather
 
 import java.util.concurrent.atomic.AtomicBoolean
 import akka.actor._
@@ -22,6 +22,9 @@ import org.apache.spark.streaming.{Milliseconds, StreamingContext}
 import org.apache.spark.SparkConf
 import com.datastax.spark.connector.embedded.EmbeddedKafka
 import scala.concurrent.Future
+
+import com.datastax.killrweather.Application;
+import com.datastax.killrweather.Settings;
 import com.datastax.killrweather._
 
 /** Runnable. Requires running these in cqlsh

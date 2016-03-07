@@ -13,7 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.datastax.killrweather
+package com.datastax.weather
 
 import akka.actor.ActorRef
 import com.datastax.spark.connector._
@@ -23,13 +23,13 @@ import org.apache.spark.{Logging, SparkContext}
 import org.apache.spark.rdd.RDD
 
 /**
- * -Dkillrweather.initialize=true. The default is false,
+ * -Dweather.initialize=true. The default is false,
  * assumes manual creation by running the cql scripts.
  */
-private[killrweather] class Initializer(sc: SparkContext, settings: Settings)
+private[weather] class Initializer(sc: SparkContext, settings: Settings)
   extends Serializable with TestFileHelper with Logging {
 
-  import com.datastax.killrweather.Weather._
+  import com.datastax.weather.Weather._
   import settings._
 
   /** Loads data from /data/load files (because this is for a runnable demo.

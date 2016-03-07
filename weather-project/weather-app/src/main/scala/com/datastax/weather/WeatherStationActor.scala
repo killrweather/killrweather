@@ -13,7 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.datastax.killrweather
+package com.datastax.weather
 
 import akka.pattern.pipe
 import akka.actor.{ActorLogging, Actor, ActorRef}
@@ -21,6 +21,7 @@ import org.apache.spark.SparkContext
 import org.apache.spark.SparkContext._
 import com.datastax.spark.connector._
 import org.joda.time.DateTime
+import com.datastax.killrweather._
 
 /** For a given weather station id, retrieves the full station data. */
 class WeatherStationActor(sc: SparkContext, settings: Settings)

@@ -1,4 +1,4 @@
-package com.datastax.killrweather
+package com.datastax.weather
 
 import java.io.{File => JFile}
 
@@ -16,7 +16,7 @@ abstract class ActorSparkSpec extends AkkaSpec with AbstractSpec {
     .setMaster(settings.SparkMaster)
     .set("spark.cassandra.connection.host", settings.CassandraHosts)
     .set("spark.serializer", "org.apache.spark.serializer.KryoSerializer")
-    .set("spark.kryo.registrator", "com.datastax.killrweather.KillrKryoRegistrator")
+    .set("spark.kryo.registrator", "com.datastax.weather.KillrKryoRegistrator")
     .set("spark.cleaner.ttl", settings.SparkCleanerTtl.toString)
 
   lazy val sc = new SparkContext(conf)

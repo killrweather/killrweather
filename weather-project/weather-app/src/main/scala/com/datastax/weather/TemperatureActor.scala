@@ -13,7 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.datastax.killrweather
+package com.datastax.weather
 
 import akka.actor.{ActorLogging, Actor, ActorRef}
 import akka.pattern.pipe
@@ -21,6 +21,7 @@ import org.apache.spark.SparkContext
 import org.apache.spark.util.StatCounter
 import org.apache.spark.SparkContext._
 import com.datastax.spark.connector._
+import com.datastax.killrweather._
 
 /** The TemperatureActor reads the daily temperature rollup data from Cassandra,
   * and for a given weather station, computes temperature statistics by month for a given year.

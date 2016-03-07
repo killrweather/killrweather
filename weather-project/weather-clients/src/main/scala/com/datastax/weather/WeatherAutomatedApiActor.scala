@@ -13,7 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.datastax.killrweather
+package com.datastax.weather
 
 import com.datastax.killrweather.cluster.ClusterAwareNodeGuardian
 import com.typesafe.config.ConfigFactory
@@ -23,7 +23,10 @@ import akka.cluster.Cluster
 import akka.actor._
 import org.joda.time.{DateTime, DateTimeZone}
 import com.datastax.spark.connector.embedded.Event
-
+import com.datastax.weather.Weather._;
+import com.datastax.weather.WeatherEvent._;
+import com.datastax.killrweather.ApiNodeGuardian;
+import com.datastax.killrweather.AutomatedApiActor;
 import com.datastax.killrweather._
 
 class WeatherAutomatedApiNodeGuardian extends ApiNodeGuardian with WeatherAutomatedApiActorComponentImpl { 
@@ -31,7 +34,7 @@ class WeatherAutomatedApiNodeGuardian extends ApiNodeGuardian with WeatherAutoma
 }
 
 /** For simplicity, these just go through Akka. */
-private[killrweather] class WeatherAutomatedApiActor extends AutomatedApiActor {
+private[weather] class WeatherAutomatedApiActor extends AutomatedApiActor {
 
   import Weather._
   import WeatherEvent._

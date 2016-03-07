@@ -13,7 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.datastax.killrweather
+package com.datastax.weather
 
 import com.datastax.killrweather.cluster.ClusterAwareNodeGuardian
 import com.typesafe.config.ConfigFactory
@@ -23,6 +23,7 @@ import akka.cluster.Cluster
 import akka.actor._
 import org.joda.time.{DateTime, DateTimeZone}
 import com.datastax.spark.connector.embedded.Event
+import com.datastax.killrweather._
 
 /** Automates demo activity every 2 seconds for demos by sending requests to `KillrWeatherApp` instances. */
 object KillrWeatherClientApp extends App with ClientHelper {
