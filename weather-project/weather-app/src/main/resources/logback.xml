@@ -1,4 +1,4 @@
-<configuration>
+<configuration scan="true" scanPeriod="10 seconds" >
     <appender name="STDOUT" class="ch.qos.logback.core.ConsoleAppender">
         <encoder>
             <pattern>[%level] [%date{ISO8601}] [%logger]: %msg%n</pattern>
@@ -7,8 +7,8 @@
     </appender>
 
     <!-- Change to debug to see data pathway logging. -->
-    <logger name="com.datastax.weather" level="INFO" />
-    <logger name="com.datastax.weather.cluster" level="INFO" />
+    <logger name="com.datastax.weather" level="DEBUG" />
+    <logger name="com.datastax.weather.cluster" level="DEBUG" />
     <logger name="akka.cluster" level="INFO" />
     <logger name="akka.cluster.ClusterHeartbeatSender" level="WARN"/>
 
