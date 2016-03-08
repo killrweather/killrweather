@@ -13,7 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.datastax.weather
+package com.datastax.weather.app
 
 import akka.actor.{ActorLogging, Actor, ActorRef}
 import akka.pattern.pipe
@@ -22,6 +22,8 @@ import org.apache.spark.util.StatCounter
 import org.apache.spark.SparkContext._
 import com.datastax.spark.connector._
 import com.datastax.killrweather._
+import com.datastax.weather.Weather._
+import com.datastax.weather.WeatherEvent._
 
 /** The TemperatureActor reads the daily temperature rollup data from Cassandra,
   * and for a given weather station, computes temperature statistics by month for a given year.
@@ -32,8 +34,6 @@ class TemperatureActor(sc: SparkContext, settings: WeatherSettings)
   import settings.{CassandraKeyspace => keyspace}
   import settings.{CassandraTableDailyTemp => dailytable}
   import settings.{CassandraTableRaw => rawtable}
-  import WeatherEvent._
-  import Weather._
 
   def receive: Actor.Receive = {
     case e: GetDailyTemperature        => daily(e.day, sender)

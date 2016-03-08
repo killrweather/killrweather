@@ -13,7 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.datastax.weather
+package com.datastax.weather.app
 
 import com.datastax.killrweather.cluster.ClusterAwareNodeGuardian
 import com.datastax.killrweather._
@@ -31,7 +31,7 @@ import scala.Vector
  *
  * This `NodeGuardian` creates the [[KafkaStreamingActor]] which creates a streaming
  * pipeline from Kafka to Cassandra, via Spark, which streams the raw data from Kafka,
- * transforms data to [[com.datastax.weather.Weather.RawWeatherData]] (hourly per
+ * transforms data to [[com.datastax.weather.app.Weather.RawWeatherData]] (hourly per
  * weather station), and saves the new data to the cassandra raw data table on arrival.
  */
 class WeatherNodeGuardian(ssc: StreamingContext, kafka: EmbeddedKafka)

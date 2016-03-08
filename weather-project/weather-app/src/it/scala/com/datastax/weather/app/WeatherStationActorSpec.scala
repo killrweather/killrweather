@@ -13,9 +13,10 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.datastax.weather
+package com.datastax.weather.app
 
 import org.joda.time.{DateTimeZone, DateTime}
+import com.datastax.killrweather._
 
 import akka.actor._
 
@@ -26,8 +27,8 @@ import akka.actor._
   * See: https://github.com/killrweather/killrweather/wiki/2.%20Code%20and%20Data%20Setup#data-setup
   */
 class WeatherStationActorSpec extends ActorSparkSpec {
-  import WeatherEvent._
-  import Weather._
+  import com.datastax.weather.WeatherEvent._
+  import com.datastax.weather.Weather._
 
   start(clean = false)
 

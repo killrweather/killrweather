@@ -7,8 +7,8 @@
     </appender>
 
     <!-- Change to debug to see data pathway logging. -->
-    <logger name="com.datastax.weather" level="DEBUG" />
-    <logger name="com.datastax.weather.cluster" level="DEBUG" />
+    <logger name="com.datastax.weather.app" level="DEBUG" />
+    <logger name="com.datastax.weather.app.cluster" level="DEBUG" />
     <logger name="akka.cluster" level="INFO" />
     <logger name="akka.cluster.ClusterHeartbeatSender" level="WARN"/>
 

@@ -13,7 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.datastax.weather
+package com.datastax.weather.client
 
 import com.datastax.killrweather.cluster.ClusterAwareNodeGuardian
 import com.typesafe.config.ConfigFactory
@@ -36,8 +36,8 @@ class WeatherAutomatedApiNodeGuardian extends ApiNodeGuardian with WeatherAutoma
 /** For simplicity, these just go through Akka. */
 private[weather] class WeatherAutomatedApiActor extends AutomatedApiActor {
 
-  import Weather._
-  import WeatherEvent._
+  import com.datastax.weather.Weather._
+  import com.datastax.weather.WeatherEvent._
 
   var queried: Set[Day] = Set(Day("725030:14732", 2008, 12, 31)) // just the initial one
 

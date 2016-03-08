@@ -13,16 +13,17 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.datastax.weather
+package com.datastax.weather.app
 
 import scala.concurrent.duration._
 import akka.actor._
 import com.datastax.spark.connector._
+import com.datastax.killrweather._
 
 class TemperatureActorSpec extends ActorSparkSpec {
 
-  import WeatherEvent._
-  import Weather._
+  import com.datastax.weather.WeatherEvent._
+  import com.datastax.weather.Weather._
   import settings._
 
   val temperature = system.actorOf(Props(new TemperatureActor(sc, settings)))

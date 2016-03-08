@@ -13,7 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.datastax.weather
+package com.datastax.weather.app
 
 import java.util.concurrent.atomic.AtomicInteger
 
@@ -24,10 +24,11 @@ import org.apache.spark.streaming.{Milliseconds, StreamingContext}
 import com.datastax.spark.connector.streaming._
 import com.datastax.spark.connector._
 import com.datastax.spark.connector.embedded.{KafkaConsumer, EmbeddedKafka}
+import com.datastax.killrweather._
 
 class NodeGuardianSpec extends ActorSparkSpec {
-  import WeatherEvent._
-  import Weather._
+  import com.datastax.weather.WeatherEvent._
+  import com.datastax.weather.Weather._
   import settings._
 
   // === Tweak as needed ===

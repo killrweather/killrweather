@@ -13,7 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.datastax.weather
+package com.datastax.weather.app
 
 import akka.actor.{ActorLogging, Actor, ActorRef}
 import kafka.serializer.StringDecoder
@@ -24,10 +24,12 @@ import com.datastax.spark.connector.streaming._
 import com.datastax.killrweather.KafkaStreamingActor;
 import com.datastax.killrweather._
 import com.datastax.killrweather.BusinessEvent.{NodeInitialized, OutputStreamInitialized}
+import com.datastax.weather.Weather._
+import com.datastax.weather.WeatherEvent._
 
 /** The KafkaStreamActor creates a streaming pipeline from Kafka to Cassandra via Spark.
   * It creates the Kafka stream which streams the raw data, transforms it, to
-  * a column entry for a specific weather station[[com.datastax.weather.Weather.RawWeatherData]],
+  * a column entry for a specific weather station[[com.datastax.weather.app.Weather.RawWeatherData]],
   * and saves the new data to the cassandra table as it arrives.
   */
 class WeatherKafkaStreamingActor(kafkaParams: Map[String, String],
@@ -37,9 +39,6 @@ class WeatherKafkaStreamingActor(kafkaParams: Map[String, String],
                           ssc,
                           listener)
      with WeatherSettingsComponentImpl{
-
-  import WeatherEvent._
-  import Weather._
   
   val settings:WeatherSettings = Settings()
   import settings._

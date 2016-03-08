@@ -13,17 +13,18 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.datastax.weather
+package com.datastax.weather.app
 
 import scala.concurrent.duration._
 import akka.actor._
 import org.apache.spark.streaming.{Milliseconds, StreamingContext}
 import com.datastax.spark.connector.embedded.EmbeddedKafka
+import com.datastax.killrweather._
 
 class PrecipitationActorSpec extends ActorSparkSpec {
 
-  import WeatherEvent._
-  import Weather._
+  import com.datastax.weather.WeatherEvent._
+  import com.datastax.weather.Weather._
   import settings._
 
   val kafka = new EmbeddedKafka

@@ -13,7 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.datastax.weather
+package com.datastax.weather.app
 
 import akka.pattern.pipe
 import akka.actor.{ActorLogging, Actor, ActorRef}
@@ -22,6 +22,8 @@ import org.apache.spark.SparkContext._
 import com.datastax.spark.connector._
 import org.joda.time.DateTime
 import com.datastax.killrweather._
+import com.datastax.weather.Weather._
+import com.datastax.weather.WeatherEvent._
 
 /** For a given weather station id, retrieves the full station data. */
 class WeatherStationActor(sc: SparkContext, settings: WeatherSettings)
@@ -30,8 +32,6 @@ class WeatherStationActor(sc: SparkContext, settings: WeatherSettings)
   import settings.{CassandraKeyspace => keyspace }
   import settings.{CassandraTableRaw => rawtable}
   import settings.{CassandraTableStations => weatherstations}
-  import WeatherEvent._
-  import Weather._
 
   def receive : Actor.Receive = {
     case GetCurrentWeather(wsid, dt) => current(wsid, dt, sender)

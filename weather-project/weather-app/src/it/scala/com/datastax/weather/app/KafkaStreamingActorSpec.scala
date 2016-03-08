@@ -13,7 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.datastax.weather
+package com.datastax.weather.app
 
 import java.util.concurrent.atomic.AtomicInteger
 
@@ -24,7 +24,7 @@ import com.datastax.spark.connector.embedded.{KafkaConsumer, EmbeddedKafka}
 import com.datastax.spark.connector.streaming._
 
 class KafkaStreamingActorSpec extends ActorSparkSpec {
-  import WeatherEvent._
+  import com.datastax.weather.WeatherEvent._
   import settings._
 
   // === Tweak as needed ===

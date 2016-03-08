@@ -13,7 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.datastax.weather
+package com.datastax.weather.app
 
 import akka.actor.ActorRef
 import com.datastax.spark.connector._
@@ -21,6 +21,7 @@ import com.datastax.spark.connector.cql.CassandraConnector
 import com.datastax.spark.connector.embedded.KafkaEvent.KafkaMessageEnvelope
 import org.apache.spark.{Logging, SparkContext}
 import org.apache.spark.rdd.RDD
+import com.datastax.killrweather._
 
 /**
  * -Dweather.initialize=true. The default is false,
