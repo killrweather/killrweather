@@ -17,14 +17,14 @@ package com.datastax.killrweather
 
 import java.io.{BufferedInputStream, FileInputStream, File => JFile}
 import java.util.zip.GZIPInputStream
+import java.util.zip.ZipInputStream
 
 import scala.util.Try
 import akka.japi.Util.immutableSeq
 import akka.http.scaladsl.model.{ContentTypes, HttpHeader, RequestEntity}
 import com.typesafe.config.ConfigFactory
-import Weather.Day
 
-private[killrweather] trait ClientHelper {
+trait ClientHelper {
   import Sources._
 
   private val config = ConfigFactory.load
@@ -43,7 +43,7 @@ private[killrweather] trait ClientHelper {
     }.toSet
 }
 
-private[killrweather] object Sources {
+object Sources {
   sealed trait HttpSource extends Serializable {
     def header: HttpHeader
     def entity: RequestEntity
@@ -66,13 +66,12 @@ private[killrweather] object Sources {
       HeaderSource(header, entity, header.value.split(","))
   }
   case class FileSource(data: Array[String], name: String) {
-    def days: Seq[Day] = data.map(Day(_)).toSeq
   }
   object FileSource {
     def apply(file: JFile): FileSource = {
       val src = file match {
         case f if f.getAbsolutePath endsWith ".gz" =>
-          scala.io.Source.fromInputStream(new GZIPInputStream(new BufferedInputStream(new FileInputStream(file))), "utf-8")
+          scala.io.Source.fromInputStream(new BufferedInputStream(new GZIPInputStream(new FileInputStream(file))), "utf-8")
         case f =>
           scala.io.Source.fromFile(file, "utf-8")
       }

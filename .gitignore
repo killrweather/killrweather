@@ -23,3 +23,12 @@ test-output
 
 diagrams/*.graffle
 *.suml*
+
+# Eclipse-IDE specific
+.settings/
+.classpath
+.cache-main
+.cache-tests
+.project
+bin/
+tmp/

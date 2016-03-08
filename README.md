@@ -33,7 +33,9 @@ There are many flavors of time series data. Some can be windowed in the stream, 
 If this is your first time running SBT, you will be downloading the internet.
 
     cd killrweather
-    sbt compile
+     # To to compile then locally publish the killrweather app & clients libraries, which will be later used by the Weather Project
+    sbt compile publishLocal
+    
     # For IntelliJ users, this creates Intellij project files, but as of
     # version 14x you should not need this, just import a new sbt project.
     sbt gen-idea
@@ -94,7 +96,11 @@ To change any package log levels and see more activity, simply modify
 #### From Command Line
 1.Start `KillrWeather`
     cd /path/to/killrweather
-    sbt app/run
+    sbt weather-app/run
+    
+    [or, to avoid firewall issue when running on OS X 
+    sbt weather-app/run -Dcassandra.connection.host="localhost"
+    ]
 
 As the `KillrWeather` app initializes, you will see Akka Cluster start, Zookeeper and the Kafka servers start.
 
@@ -104,7 +110,7 @@ this would leverage the health of each node for load balancing as the rest of th
 2.Start the Kafka data feed app
 In a second shell run:
 
-    sbt clients/run
+    sbt weather-clients/run
 
 You should see:
 

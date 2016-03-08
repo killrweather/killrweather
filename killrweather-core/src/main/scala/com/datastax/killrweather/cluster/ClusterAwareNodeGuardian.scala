@@ -1,15 +1,15 @@
 package com.datastax.killrweather.cluster
 
 import java.util.concurrent.TimeoutException
-
 import scala.concurrent.Future
 import scala.concurrent.duration._
 import scala.util.control.NonFatal
 import akka.actor._
 import akka.util.Timeout
-import akka.cluster.{Member, Metric, NodeMetrics, Cluster}
+import akka.cluster.{Member, Cluster}
+import akka.cluster.metrics.{Metric, NodeMetrics, ClusterMetricsChanged}
 import akka.cluster.ClusterEvent._
-import com.datastax.killrweather.WeatherEvent
+import com.datastax.killrweather.BusinessEvent
 
 /**
  * Creates the [[Cluster]] and does any cluster lifecycle handling
@@ -62,7 +62,7 @@ abstract class ClusterAware extends Actor with ActorLogging {
  * `NodeGuardianLike` also handles graceful shutdown of the node and all child actors. */
 abstract class ClusterAwareNodeGuardian extends ClusterAware {
 
-  import WeatherEvent.{NodeInitialized, OutputStreamInitialized}
+  import BusinessEvent.{NodeInitialized, OutputStreamInitialized}
   import SupervisorStrategy._
   import akka.pattern.gracefulStop
   import context.dispatcher

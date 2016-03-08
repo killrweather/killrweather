@@ -61,7 +61,7 @@ object KafkaStreamingJson extends App with Assertions {
     /* this check is here to handle the empty collection error
        after the 3 items in the static sample data set are processed */
       if (rdd.toLocalIterator.nonEmpty) {
-        sqlContext.jsonRDD(rdd).registerTempTable("mytable")
+        sqlContext.read.json(rdd).registerTempTable("mytable")
         sqlContext.sql(
           "SELECT user, commits, month, year FROM mytable WHERE commits >= 5 AND year = 2015")
           .map(MonthlyCommits(_))
