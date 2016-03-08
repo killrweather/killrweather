@@ -66,7 +66,6 @@ object Sources {
       HeaderSource(header, entity, header.value.split(","))
   }
   case class FileSource(data: Array[String], name: String) {
-//    def days: Seq[Day] = data.map(Day(_)).toSeq
   }
   object FileSource {
     def apply(file: JFile): FileSource = {
