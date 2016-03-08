@@ -29,7 +29,7 @@ import com.datastax.killrweather._
 object WeatherClientApp extends App with ClientHelper {
 
   /** Creates the ActorSystem. */
-  val system = ActorSystem("KillrWeather", ConfigFactory.parseString("akka.remote.netty.tcp.port = 2552"))
+  val system = ActorSystem("WeatherCluster", ConfigFactory.parseString("akka.remote.netty.tcp.port = 2552"))
 
   /* The root supervisor and fault tolerance handler of the data ingestion nodes. */
   val guardian = system.actorOf(Props[WeatherAutomatedApiNodeGuardian], "node-guardian")

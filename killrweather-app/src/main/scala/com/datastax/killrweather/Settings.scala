@@ -155,17 +155,6 @@ class Settings(conf: Option[Config] = None) extends Serializable {
   val KafkaPartitioner = kafka.getString("partitioner.fqcn")
   val KafkaBatchSendSize = kafka.getInt("batch.send.size")
 
-//  val AppName = killrweather.getString("app-name")
-//  val CassandraKeyspace = killrweather.getString("cassandra.keyspace")
-//  val CassandraTableRaw = killrweather.getString("cassandra.table.raw")
-//  val CassandraTableDailyTemp = killrweather.getString("cassandra.table.daily.temperature")
-//  val CassandraTableDailyPrecip = killrweather.getString("cassandra.table.daily.precipitation")
-//  val CassandraTableCumulativePrecip = killrweather.getString("cassandra.table.cumulative.precipitation")
-//  val CassandraTableSky = killrweather.getString("cassandra.table.sky")
-//  val CassandraTableStations = killrweather.getString("cassandra.table.stations")
-//  val DataLoadPath = killrweather.getString("data.load.path")
-//  val DataFileExtension = killrweather.getString("data.file.extension")
-
   /** Attempts to acquire from environment, then java system properties. */
   def withFallback[T](env: Try[T], key: String): Option[T] = env match {
     case null  => None

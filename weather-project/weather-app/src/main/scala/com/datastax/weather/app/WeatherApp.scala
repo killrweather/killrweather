@@ -40,7 +40,7 @@ import com.datastax.killrweather._
 object WeatherApp extends App with WeatherSettingsComponentImpl {
 
   /** Creates the ActorSystem. */
-  val system = ActorSystem(Settings().AppName)
+  val system = ActorSystem(Settings().ClusterName)
 
   // TODO: Avoid double instantiation of the Settings 
   val killrWeather = WeatherApplication(system)

@@ -51,6 +51,7 @@ class WeatherSettings(conf: Option[Config] = None) extends Settings(conf) {
   protected val killrweather = rootConfig.getConfig("killrweather")
 
   val AppName = killrweather.getString("app-name")
+  val ClusterName = killrweather.getString("cluster-name")
   val CassandraKeyspace = killrweather.getString("cassandra.keyspace")
   val CassandraTableRaw = killrweather.getString("cassandra.table.raw")
   val CassandraTableDailyTemp = killrweather.getString("cassandra.table.daily.temperature")

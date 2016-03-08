@@ -54,7 +54,7 @@ class WeatherStationActor(sc: SparkContext, settings: WeatherSettings)
     * query invocation. You would probably receive about partitions_number * limit results.
     */
   def weatherStation(wsid: String, requester: ActorRef): Unit =
-    sc.cassandraTable[Weather.WeatherStation](keyspace, weatherstations)
+    sc.cassandraTable[WeatherStation](keyspace, weatherstations)
       .where("id = ?", wsid)
       .collectAsync.map(_.headOption) pipeTo requester
 
