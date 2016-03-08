@@ -72,11 +72,16 @@ abstract class HttpNodeGuardian extends ClusterAwareNodeGuardian with ClientHelp
 
     log.info("Starting data ingestion on {}.", cluster.selfAddress)
 
+    var l = 0l
+    
     /* Handles initial data ingestion in Kafka for running as a demo. */
     for (fs <- initialData; data <- fs.data) {
-      log.info("Sending {} to Kafka", data)
-      router ! KafkaMessageEnvelope[String, String](KafkaTopic, KafkaKey, data)
+      log.debug("Sending {} to Kafka", data)
+      router ! KafkaMessageEnvelope[String, String](KafkaTopic, KafkaKey, data)     
+      l += 1
     }
+    
+    log.info("All {} data rows have been sent to {}.", l, cluster.selfAddress)
   }
 
   def initialized: Actor.Receive = {
