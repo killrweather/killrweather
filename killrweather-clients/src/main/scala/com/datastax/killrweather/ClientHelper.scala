@@ -71,7 +71,7 @@ object Sources {
     def apply(file: JFile): FileSource = {
       val src = file match {
         case f if f.getAbsolutePath endsWith ".gz" =>
-          scala.io.Source.fromInputStream(new GZIPInputStream(new BufferedInputStream(new FileInputStream(file))), "utf-8")
+          scala.io.Source.fromInputStream(new BufferedInputStream(new GZIPInputStream(new FileInputStream(file))), "utf-8")
         case f =>
           scala.io.Source.fromFile(file, "utf-8")
       }
