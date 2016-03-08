@@ -49,6 +49,8 @@ private[weather] class WeatherAutomatedApiActor extends AutomatedApiActor {
     case e: WeatherModel =>
       log.debug("Received {} from {}", e, sender)
     case Event.QueryTask => queries()
+    case e =>
+      log.debug("Received {} from {}", e, sender)
   }
 
   def queries(): Unit = {
