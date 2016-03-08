@@ -26,7 +26,7 @@ import com.datastax.spark.connector.embedded.Event
 import com.datastax.killrweather._
 
 /** Automates demo activity every 2 seconds for demos by sending requests to `KillrWeatherApp` instances. */
-object KillrWeatherClientApp extends App with ClientHelper {
+object WeatherClientApp extends App with ClientHelper {
 
   /** Creates the ActorSystem. */
   val system = ActorSystem("KillrWeather", ConfigFactory.parseString("akka.remote.netty.tcp.port = 2552"))
