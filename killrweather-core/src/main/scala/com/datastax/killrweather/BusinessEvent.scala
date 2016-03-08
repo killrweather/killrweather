@@ -14,29 +14,25 @@
  * limitations under the License.
  */
 
-object Versions {
+package com.datastax.killrweather
 
-  val Akka           = "2.4.2"
-  val Albebird       = "0.12.0"
-  val Bijection      = "0.9.2"
-  val Cassandra      = "3.3"
-  val CassandraDriver = "3.0.0"
-  val JDK            = "1.8"
-  val JodaConvert    = "1.8"
-  val JodaTime       = "2.9.2"
-  val Json4s         = "3.2.11"
-  val Kafka          = "0.8.2.2"
-  val KafkaReactive	 = "0.10.0" // https://github.com/manub/scalatest-embedded-kafka/issues/6
-  val Kryo           = "3.0.0"
-  val Logback        = "1.1.5"
-  val Pickling       = "0.10.1"
-  val Scala          = "2.11.7"
-  val ScalaTest      = "2.2.6"
-  val Scalaz         = "7.2.0"
-  val ScalazContrib  = "0.2"
-  val ScalazStream   = "0.8"
-  val Sigar          = "1.6.4"
-  val Slf4j          = "1.7.16"
-  val Spark          = "1.6.0"
-  val SparkCassandra = "1.6.0-M1"
+import org.joda.time.DateTime
+
+// TODO document the Event API
+object BusinessEvent {
+  /** Base marker trait. */
+  @SerialVersionUID(1L)
+  sealed trait BusinessEvent extends Serializable
+
+  sealed trait LifeCycleEvent extends BusinessEvent
+  case object OutputStreamInitialized extends LifeCycleEvent
+  case object NodeInitialized extends LifeCycleEvent
+  case object Start extends LifeCycleEvent
+  case object DataFeedStarted extends LifeCycleEvent
+  case object Shutdown extends LifeCycleEvent
+  case object TaskCompleted extends LifeCycleEvent
+
+  sealed trait Task extends Serializable
+  case object QueryTask extends Task
+  case object GracefulShutdown extends LifeCycleEvent
 }

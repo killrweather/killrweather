@@ -26,7 +26,7 @@ trait AbstractSpec extends Suite with WordSpecLike with Matchers with BeforeAndA
 
 abstract class AkkaSpec extends TestKit(ActorSystem()) with AbstractSpec with ImplicitSender with DefaultTimeout {
 
-   val settings = new WeatherSettings()
+   val settings = new Settings()
 
    protected val cluster = Cluster(system)
 

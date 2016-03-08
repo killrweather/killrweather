@@ -16,12 +16,11 @@
 package com.datastax.killrweather
 
 import com.datastax.killrweather.cluster.ClusterAwareNodeGuardian
-
 import scala.concurrent.duration._
-import akka.actor.{Actor, Props}
-import org.apache.spark.streaming.kafka.KafkaInputDStream
+import akka.actor.{Actor, Props, ActorRef}
 import org.apache.spark.streaming.StreamingContext
 import com.datastax.spark.connector.embedded._
+import scala.Vector
 
 /** A `NodeGuardian` manages the worker actors at the root of each KillrWeather
  * deployed application, where any special application logic is handled in the
@@ -32,19 +31,18 @@ import com.datastax.spark.connector.embedded._
  * pipeline from Kafka to Cassandra, via Spark, which streams the raw data from Kafka,
  * transforms data to [[com.datastax.killrweather.Weather.RawWeatherData]] (hourly per
  * weather station), and saves the new data to the cassandra raw data table on arrival.
+ * 
+ * All Domain Specific code should be define by a dedicated subclass of NodeGuardian
+ * (like [[com.datastax.killrweather.WeatherNodeGuardian]]), 
+ * which class should be referenced by an extension of NodeGuardianComponent
+ * (like [[com.datastax.killrweather.WeatherNodeGuardianComponentImpl]]).
  */
-class NodeGuardian(ssc: StreamingContext, kafka: EmbeddedKafka, settings: WeatherSettings)
-  extends ClusterAwareNodeGuardian with AggregationActor {
-  import WeatherEvent._
-  import settings._
+abstract class NodeGuardian(ssc: StreamingContext, kafka: EmbeddedKafka)
+  extends ClusterAwareNodeGuardian with AggregationActor with KafkaStreamingActorComponent with SettingsComponent {
 
   /** Creates the Kafka stream saving raw data and aggregated data to cassandra. */
-  context.actorOf(Props(new KafkaStreamingActor(kafka.kafkaParams, ssc, settings, self)), "kafka-stream")
-
-  /** The Spark/Cassandra computation actors: For the tutorial we just use 2005 for now. */
-  val temperature = context.actorOf(Props(new TemperatureActor(ssc.sparkContext, settings)), "temperature")
-  val precipitation = context.actorOf(Props(new PrecipitationActor(ssc, settings)), "precipitation")
-  val station = context.actorOf(Props(new WeatherStationActor(ssc.sparkContext, settings)), "weather-station")
+  lazy val kafkaStreamingActor: KafkaStreamingActor = kafkaStreamingActor(kafka.kafkaParams, ssc, self)
+  context.actorOf(Props(kafkaStreamingActor), "kafka-stream")
 
   override def preStart(): Unit = {
     super.preStart()
@@ -60,18 +58,22 @@ class NodeGuardian(ssc: StreamingContext, kafka: EmbeddedKafka, settings: Weathe
     */
   override def initialize(): Unit = {
     super.initialize()
-    ssc.checkpoint(SparkCheckpointDir)
+    ssc.checkpoint(Settings().SparkCheckpointDir)
     ssc.start() // currently can not add more dstreams once started
 
     context become initialized
   }
 
   /** This node guardian's customer behavior once initialized. */
+  import BusinessEvent._
   def initialized: Actor.Receive = {
-    case e: TemperatureRequest    => temperature forward e
-    case e: PrecipitationRequest  => precipitation forward e
-    case e: WeatherStationRequest => station forward e
     case GracefulShutdown => gracefulShutdown(sender())
   }
-
 }
+
+// @see http://www.warski.org/blog/2010/12/di-in-scala-cake-pattern/
+// Interface
+trait NodeGuardianComponent { // For expressing dependencies
+  def nodeGuardian(ssc: StreamingContext, kafka: EmbeddedKafka): NodeGuardian // Way to obtain the dependency
+}
+

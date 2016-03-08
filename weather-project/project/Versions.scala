@@ -27,6 +27,7 @@ object Versions {
   val Json4s         = "3.2.11"
   val Kafka          = "0.8.2.2"
   val KafkaReactive	 = "0.10.0" // https://github.com/manub/scalatest-embedded-kafka/issues/6
+  val Killrweather	 = "2.0.0-SNAPSHOT"
   val Kryo           = "3.0.0"
   val Logback        = "1.1.5"
   val Pickling       = "0.10.1"
