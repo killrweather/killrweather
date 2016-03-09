@@ -20,8 +20,10 @@ import java.net.InetSocketAddress
 import scala.concurrent.Future
 import scala.concurrent.duration._
 import org.reactivestreams.Publisher
+import org.apache.commons.io.{IOUtils, LineIterator} 
 import akka.stream.{ActorMaterializerSettings, ActorMaterializer}
 import akka.actor._
+import akka.event.LoggingAdapter
 import akka.cluster.Cluster
 import akka.util.Timeout
 import akka.http.scaladsl.Http
@@ -46,7 +48,7 @@ import com.datastax.spark.connector.embedded.KafkaEvent.KafkaMessageEnvelope
  *
  * The ingested data is sent to the kafka actor for processing in the stream.
  */
-abstract class HttpNodeGuardian extends ClusterAwareNodeGuardian with ClientHelper with HttpNodeGuardianComponent{
+abstract class HttpNodeGuardian extends ClusterAwareNodeGuardian with KafkaInterface with ClientHelper with HttpNodeGuardianComponent{
   
   log.info("UriPath: {}.", uriPath)
 
@@ -68,20 +70,12 @@ abstract class HttpNodeGuardian extends ClusterAwareNodeGuardian with ClientHelp
 
     /* As http data is received, publishes to Kafka. */
     context.actorOf(BalancingPool(10).props(
-      Props(new HttpDataFeedActor(router, uriPath))), "dynamic-data-feed")
+      Props(new HttpDataFeedActor(cluster, router, uriPath))), "dynamic-data-feed")
 
-    log.info("Starting data ingestion on {}.", cluster.selfAddress)
-
-    var l = 0l
-    
-    /* Handles initial data ingestion in Kafka for running as a demo. */
-    for (fs <- initialData; data <- fs.data) {
-      log.debug("Sending {} to Kafka", data)
-      router ! KafkaMessageEnvelope[String, String](KafkaTopic, KafkaKey, data)     
-      l += 1
-    }
-    
-    log.info("All {} data rows have been sent to {}.", l, cluster.selfAddress)
+      /* Handles initial data ingestion in Kafka for running as a demo. */
+      for (fs <- initialData) {
+        publishDataToKafka(log, fs, cluster, router, KafkaTopic, KafkaKey)
+      }
   }
 
   def initialized: Actor.Receive = {
@@ -104,7 +98,7 @@ class KafkaPublisherActor(val producerConfig: ProducerConfig) extends KafkaProdu
 
 /** An Http server receiving requests containing header or entity based data which it sends to Kafka.
   * by delegating to the [[KafkaPublisherActor]]. */
-class HttpDataFeedActor(kafka: ActorRef, uriPath:String) extends Actor with ActorLogging with ClientHelper {
+class HttpDataFeedActor(cluster: Cluster, kafka: ActorRef, uriPath:String) extends Actor with KafkaInterface with ActorLogging with ClientHelper {
 
   import Sources._
   import context.dispatcher
@@ -121,13 +115,12 @@ class HttpDataFeedActor(kafka: ActorRef, uriPath:String) extends Actor with Acto
   implicit val materializer = ActorMaterializer(
     ActorMaterializerSettings(system)
   )
-
+  
   val requestHandler: HttpRequest => HttpResponse = {
     case HttpRequest(HttpMethods.POST, Uri.Path(uriPath), headers, entity, _) =>
       HttpSource.unapply(headers,entity).collect { case hs: HeaderSource =>
         hs.extract.foreach({ fs: FileSource =>
-          log.info(s"Ingesting {} and publishing {} data points to Kafka topic {}.", fs.name, fs.data.size, KafkaTopic)
-          kafka ! KafkaMessageEnvelope[String, String](KafkaTopic, KafkaKey, fs.data:_*)
+          publishDataToKafka(log, fs, cluster, kafka, KafkaTopic, KafkaKey)
         })
         HttpResponse(200, entity = HttpEntity(`text/html` withCharset `UTF-8`, s"POST [${hs.sources.mkString}] successful."))
       }.getOrElse(HttpResponse(404, entity = "Unsupported request") )
@@ -144,6 +137,31 @@ class HttpDataFeedActor(kafka: ActorRef, uriPath:String) extends Actor with Acto
 
   def receive : Actor.Receive = {
     case e =>
+  }
+}
+
+trait KafkaInterface {
+  def publishDataToKafka(log: LoggingAdapter, fs: Sources.FileSource, cluster: Cluster, router: ActorRef, KafkaTopic: String, KafkaKey: String) = {
+    log.info("Starting data ingestion on {}.", cluster.selfAddress)
+
+    var l = 0l
+    var gap = 10L
+
+    log.info(s"Ingesting {} and publishing data points to Kafka topic '{}'.", fs.name, KafkaTopic)
+    val lineIterator = fs.data
+    while (lineIterator.hasNext()) {
+      val line: String = lineIterator.next().toString;
+      router ! KafkaMessageEnvelope[String, String](KafkaTopic, KafkaKey, line)
+      l += 1;
+      if ((l % gap) == 0) {
+        log.info("{} data rows from {} have been sent to {}.", l, fs.name, cluster.selfAddress)
+        gap *= 10L
+      }
+    }
+    
+    fs.data.close()
+
+    log.info("All {} data rows from {} have been sent to {}.", l, fs.name, cluster.selfAddress)
   }
 }
 

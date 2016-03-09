@@ -15,9 +15,10 @@
  */
 package com.datastax.killrweather
 
-import java.io.{BufferedInputStream, FileInputStream, File => JFile}
+import java.io.{BufferedReader, BufferedInputStream, FileInputStream, File => JFile}
 import java.util.zip.GZIPInputStream
 import java.util.zip.ZipInputStream
+import org.apache.commons.io.{IOUtils, LineIterator} 
 
 import scala.util.Try
 import akka.japi.Util.immutableSeq
@@ -65,19 +66,21 @@ object Sources {
     def apply(header: HttpHeader, entity: RequestEntity): HeaderSource =
       HeaderSource(header, entity, header.value.split(","))
   }
-  case class FileSource(data: Array[String], name: String) {
+  case class FileSource(data: LineIterator, name: String) {
   }
   object FileSource {
     def apply(file: JFile): FileSource = {
       val src = file match {
         case f if f.getAbsolutePath endsWith ".gz" =>
-          scala.io.Source.fromInputStream(new BufferedInputStream(new GZIPInputStream(new FileInputStream(file))), "utf-8")
+          // @see http://java-performance.info/java-io-bufferedinputstream-and-java-util-zip-gzipinputstream/
+          new BufferedInputStream(new GZIPInputStream(new FileInputStream(file), 65536))
         case f =>
-          scala.io.Source.fromFile(file, "utf-8")
+          new BufferedInputStream(new FileInputStream(file))
       }
-      val read = src.getLines.toList
-      Try(src.close())
-      FileSource(read.toArray, file.getName)
+      
+      val read = IOUtils.lineIterator(src, "utf-8") //.getLines // .toList
+      
+      FileSource(read, file.getName)
     }
   }
 

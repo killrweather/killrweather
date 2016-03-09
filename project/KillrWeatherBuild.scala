@@ -100,6 +100,7 @@ object Dependencies {
     val akkaSlf4j         = "com.typesafe.akka"   %% "akka-slf4j"                         % Akka
     val algebird          = "com.twitter"         %% "algebird-core"                      % Albebird
     val bijection         = "com.twitter"         %% "bijection-core"                     % Bijection
+    val commonsIO         = "org.apache.commons"  % "commons-io"                          % CommonsIO
     val driver            = "com.datastax.cassandra" % "cassandra-driver-core"            % CassandraDriver driverExclusions
     val jodaTime          = "joda-time"           % "joda-time"                           % JodaTime   % "compile;runtime" // ApacheV2
     val jodaConvert       = "org.joda"            % "joda-convert"                        % JodaConvert % "compile;runtime" // ApacheV2
@@ -136,6 +137,8 @@ object Dependencies {
   val json = Seq(json4sCore, json4sJackson, json4sNative)
 
   val logging = Seq(logback, slf4jApi)
+  
+  val io = Seq(commonsIO)
 
   val scalaz = Seq(scalazContrib, scalazContribVal, scalazStream)
 
@@ -144,7 +147,7 @@ object Dependencies {
   val test = Seq(Test.akkaTestKit, Test.scalatest)
 
   /** Module deps */
-  val client = akka ++ logging ++ scalaz ++ Seq(pickling, sparkCassandraEmb, sigar)
+  val client = akka ++ logging ++ scalaz ++ io ++ Seq(pickling, sparkCassandraEmb, sigar)
 
   val core = akka ++ logging ++ time
 

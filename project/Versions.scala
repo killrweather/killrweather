@@ -21,6 +21,7 @@ object Versions {
   val Bijection      = "0.9.2"
   val Cassandra      = "3.3"
   val CassandraDriver = "3.0.0"
+  val CommonsIO      = "1.3.2"
   val JDK            = "1.8"
   val JodaConvert    = "1.8"
   val JodaTime       = "2.9.2"
