@@ -67,6 +67,24 @@ object Sources {
       HeaderSource(header, entity, header.value.split(","))
   }
   case class FileSource(data: LineIterator, name: String) {
+    /**
+     * Return an Array[String] containing all the lines of the file
+     * !! Cannot be called on too large files.
+     * !! Cannot be called twice.
+     */
+	  def toArray:Array[String] = {
+			  import scala.collection.mutable.ArrayBuffer
+			  val buf = ArrayBuffer.empty[String]
+					  try {
+						  while (data.hasNext()) {
+							  val line: String = data.next().toString;
+						  buf += line
+						  }
+					  } finally {
+						  data.close();
+					  }
+			  buf.toArray
+    }
   }
   object FileSource {
     def apply(file: JFile): FileSource = {
@@ -78,7 +96,7 @@ object Sources {
           new BufferedInputStream(new FileInputStream(file))
       }
       
-      val read = IOUtils.lineIterator(src, "utf-8") //.getLines // .toList
+      val read = IOUtils.lineIterator(src, "utf-8")
       
       FileSource(read, file.getName)
     }

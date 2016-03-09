@@ -61,7 +61,7 @@ private[weather] class WeatherAutomatedApiActor extends AutomatedApiActor {
       // run more queries than queried.exists(_.wsid.startsWith(key)) until more wsid data
     }
 
-    val toSample = (source: Sources.FileSource) => source.data.map(Day(_)).toSeq.filterNot(previous).headOption
+    val toSample = (source: Sources.FileSource) => source.toArray.map(Day(_)).toSeq.filterNot(previous).headOption
 
     initialData.flatMap(toSample(_)).headOption map { sample =>
       log.debug("Requesting the current weather for weather station {}", sample.wsid)

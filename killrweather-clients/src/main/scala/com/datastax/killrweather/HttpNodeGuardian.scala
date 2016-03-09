@@ -148,19 +148,21 @@ trait KafkaInterface {
     var gap = 10L
 
     log.info(s"Ingesting {} and publishing data points to Kafka topic '{}'.", fs.name, KafkaTopic)
-    val lineIterator = fs.data
-    while (lineIterator.hasNext()) {
-      val line: String = lineIterator.next().toString;
-      router ! KafkaMessageEnvelope[String, String](KafkaTopic, KafkaKey, line)
-      l += 1;
-      if ((l % gap) == 0) {
-        log.info("{} data rows from {} have been sent to {}.", l, fs.name, cluster.selfAddress)
-        gap *= 10L
+    try {
+      val lineIterator = fs.data
+      while (lineIterator.hasNext()) {
+        val line: String = lineIterator.next().toString;
+        router ! KafkaMessageEnvelope[String, String](KafkaTopic, KafkaKey, line)
+        l += 1;
+        if ((l % gap) == 0) {
+          log.info("{} data rows from {} have been sent to {}.", l, fs.name, cluster.selfAddress)
+          gap *= 10L
+        }
       }
+    } finally {
+      fs.data.close()
     }
     
-    fs.data.close()
-
     log.info("All {} data rows from {} have been sent to {}.", l, fs.name, cluster.selfAddress)
   }
 }
