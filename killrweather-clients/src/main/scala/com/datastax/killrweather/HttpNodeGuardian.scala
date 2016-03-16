@@ -58,7 +58,7 @@ abstract class HttpNodeGuardian extends ClusterAwareNodeGuardian with KafkaInter
   /** The [[KafkaPublisherActor]] as a load-balancing pool router
     * which sends messages to idle or less busy routees to handle work. */
   val router = context.actorOf(BalancingPool(5).props(
-    Props(new KafkaPublisherActor(KafkaHosts, KafkaBatchSendSize))), "kafka-ingestion-router")
+    Props(new KafkaPublisherActor(KafkaHosts, KafkaBatchSendSize))), "kafka-injection-router")
 
   /** Wait for this node's [[akka.cluster.MemberStatus]] to be
     * [[akka.cluster.ClusterEvent.MemberUp]] before starting work, which means
@@ -72,7 +72,7 @@ abstract class HttpNodeGuardian extends ClusterAwareNodeGuardian with KafkaInter
     context.actorOf(BalancingPool(10).props(
       Props(new HttpDataFeedActor(cluster, router, uriPath))), "dynamic-data-feed")
 
-      /* Handles initial data ingestion in Kafka for running as a demo. */
+      /* Handles initial data injection in Kafka for running as a demo. */
       for (fs <- initialData) {
         publishDataToKafka(log, fs, cluster, router, KafkaTopic, KafkaKey)
       }
@@ -142,7 +142,7 @@ class HttpDataFeedActor(cluster: Cluster, kafka: ActorRef, uriPath:String) exten
 
 trait KafkaInterface {
   def publishDataToKafka(log: LoggingAdapter, fs: Sources.FileSource, cluster: Cluster, router: ActorRef, KafkaTopic: String, KafkaKey: String) = {
-    log.info("Starting data ingestion on {}.", cluster.selfAddress)
+    log.info("Starting data injection on {}.", cluster.selfAddress)
 
     var l = 0l
     var gap = 10L
@@ -161,6 +161,7 @@ trait KafkaInterface {
       }
     } finally {
       fs.data.close()
+      cluster.system.terminate()
     }
     
     log.info("All {} data rows from {} have been sent to {}.", l, fs.name, cluster.selfAddress)

@@ -68,9 +68,9 @@ object Sources {
   }
   case class FileSource(data: LineIterator, name: String) {
     /**
-     * Return an Array[String] containing all the lines of the file
-     * !! Cannot be called on too large files.
-     * !! Cannot be called twice.
+     * Return an Array[String] containing all the lines of the file.
+     * !!! Cannot be called on too large files.
+     * !!! Cannot be called twice.
      */
 	  def toArray:Array[String] = {
 			  import scala.collection.mutable.ArrayBuffer
