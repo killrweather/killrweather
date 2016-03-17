@@ -71,13 +71,16 @@ abstract class Application(system: ExtendedActorSystem) extends Extension with N
 
   def isTerminated: Boolean = _isTerminated.get
 
-  private def shutdown(): Unit = if (!isTerminated) {
+  def shutdown(): Unit = if (!isTerminated) {
     import akka.pattern.ask
     if (_isTerminated.compareAndSet(false, true)) {
       log.info("Node {} shutting down", selfAddress)
       cluster leave selfAddress
       kafka.shutdown()
-      ssc.stop(stopSparkContext = true, stopGracefully = true)
+      // Looks like the proper Spark Streaming Shutdown has not being solved
+      // @see http://apache-spark-user-list.1001560.n3.nabble.com/How-to-shut-down-Spark-Streaming-with-Kafka-properly-td7043.html
+      // Therefore, "stopGracefully = false" is needed.
+      ssc.stop(stopSparkContext = true, stopGracefully = false)
 
       (guardian ? GracefulShutdown).mapTo[Future[Boolean]]
         .onComplete { _ =>
