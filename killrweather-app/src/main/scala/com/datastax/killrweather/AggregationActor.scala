@@ -44,7 +44,8 @@ trait AggregationActor extends Actor {
   def timestamp: DateTime = new DateTime(DateTimeZone.UTC)
 
   /** Creates a lazy date stream, where elements are only evaluated when they are needed. */
-  def streamDays(from: DateTime): Stream[DateTime] = from #:: streamDays(from.plusDays(1))
+  //// Generates java.lang.NoSuchMethodError: scala.collection.immutable.$colon$colon.tl$1()Lscala/collection/immutable/List;
+  ////  def streamDays(from: DateTime): Stream[DateTime] = from #:: streamDays(from.plusDays(1))
 
   def isValid(current: DateTime, start: DateTime): Boolean =
     current.getYear == start.getYear && current.isBeforeNow
