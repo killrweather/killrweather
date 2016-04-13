@@ -31,7 +31,7 @@ object Versions {
   val Kryo           = "3.0.0"
   val Logback        = "1.1.5"
   val Pickling       = "0.10.1"
-  val Scala          = "2.11.7"
+  val Scala          = "2.11.8"
   val ScalaTest      = "2.2.6"
   val Scalaz         = "7.2.0"
   val ScalazContrib  = "0.2"
