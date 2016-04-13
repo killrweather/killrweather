@@ -29,20 +29,20 @@ object KillrWeatherBuild extends Build {
   )
 
   lazy val core = Project(
-    id = "core",
+    id = "killrweather-core",
     base = file("./killrweather-core"),
     settings = defaultSettings ++ Seq(libraryDependencies ++= Dependencies.core)
   )
 
   lazy val app = Project(
-    id = "app",
+    id = "killrweather-app",
     base = file("./killrweather-app"),
     dependencies = Seq(core),
     settings = defaultSettings ++ Seq(libraryDependencies ++= Dependencies.app)
   ) configs IntegrationTest
 
   lazy val clients = Project(
-    id = "clients",
+    id = "killrweather-clients",
     base = file("./killrweather-clients"),
     dependencies = Seq(core),
     settings = defaultSettings ++ Seq(libraryDependencies ++= Dependencies.client)
@@ -91,14 +91,16 @@ object Dependencies {
 
   object Compile {
 
-    val akkaStream        = "com.typesafe.akka"   %% "akka-stream-experimental"           % AkkaStreams
-    val akkaHttpCore      = "com.typesafe.akka"   %% "akka-http-core-experimental"        % AkkaStreams
+    val akkaStream        = "com.typesafe.akka"   %% "akka-stream"           			        % Akka
+    val akkaHttpCore      = "com.typesafe.akka"   %% "akka-http-core"        			        % Akka
     val akkaActor         = "com.typesafe.akka"   %% "akka-actor"                         % Akka
     val akkaCluster       = "com.typesafe.akka"   %% "akka-cluster"                       % Akka
+    val akkaClusterMetrics= "com.typesafe.akka"   %% "akka-cluster-metrics"               % Akka
     val akkaRemote        = "com.typesafe.akka"   %% "akka-remote"                        % Akka
     val akkaSlf4j         = "com.typesafe.akka"   %% "akka-slf4j"                         % Akka
     val algebird          = "com.twitter"         %% "algebird-core"                      % Albebird
     val bijection         = "com.twitter"         %% "bijection-core"                     % Bijection
+    val commonsIO         = "org.apache.commons"  % "commons-io"                          % CommonsIO
     val driver            = "com.datastax.cassandra" % "cassandra-driver-core"            % CassandraDriver driverExclusions
     val jodaTime          = "joda-time"           % "joda-time"                           % JodaTime   % "compile;runtime" // ApacheV2
     val jodaConvert       = "org.joda"            % "joda-convert"                        % JodaConvert % "compile;runtime" // ApacheV2
@@ -107,10 +109,11 @@ object Dependencies {
     val json4sNative      = "org.json4s"          %% "json4s-native"                      % Json4s          // ApacheV2
     val kafka             = "org.apache.kafka"    %% "kafka"                              % Kafka kafkaExclusions // ApacheV2
     val kafkaStreaming    = "org.apache.spark"    %% "spark-streaming-kafka"              % Spark sparkExclusions // ApacheV2
+    val kafkaReactive 	  = "com.softwaremill.reactivekafka" %% "reactive-kafka-core" 	  % KafkaReactive kafkaExclusions
     val logback           = "ch.qos.logback"      % "logback-classic"                     % Logback
+    val pickling          = "org.scala-lang.modules" %% "scala-pickling"                  % Pickling
     val scalazContrib     = "org.typelevel"       %% "scalaz-contrib-210"                 % ScalazContrib   // MIT
     val scalazContribVal  = "org.typelevel"       %% "scalaz-contrib-validation"          % ScalazContrib   // MIT
-    val pickling          = "org.scala-lang.modules" %% "scala-pickling"                  % Pickling
     val scalazStream      = "org.scalaz.stream"   %% "scalaz-stream"                      % ScalazStream    // MIT
     val slf4jApi          = "org.slf4j"           % "slf4j-api"                           % Slf4j           // MIT
     val sparkML           = "org.apache.spark"    %% "spark-mllib"                        % Spark sparkExclusions // ApacheV2
@@ -127,13 +130,15 @@ object Dependencies {
 
   import Compile._
 
-  val akka = Seq(akkaStream, akkaHttpCore, akkaActor, akkaCluster, akkaRemote, akkaSlf4j)
+  val akka = Seq(akkaStream, akkaHttpCore, akkaActor, akkaCluster, akkaClusterMetrics, akkaRemote, akkaSlf4j)
 
   val connector = Seq(driver, sparkCassandra, sparkCatalyst, sparkCassandraEmb)
 
   val json = Seq(json4sCore, json4sJackson, json4sNative)
 
   val logging = Seq(logback, slf4jApi)
+  
+  val io = Seq(commonsIO)
 
   val scalaz = Seq(scalazContrib, scalazContribVal, scalazStream)
 
@@ -142,12 +147,12 @@ object Dependencies {
   val test = Seq(Test.akkaTestKit, Test.scalatest)
 
   /** Module deps */
-  val client = akka ++ logging ++ scalaz ++ Seq(pickling, sparkCassandraEmb, sigar)
+  val client = akka ++ logging ++ scalaz ++ io ++ Seq(pickling, sparkCassandraEmb, sigar)
 
   val core = akka ++ logging ++ time
 
   val app = connector ++ json ++ scalaz ++ test ++
-    Seq(algebird, bijection, kafka, kafkaStreaming, pickling, sparkML, sigar)
+    Seq(algebird, bijection, kafka, kafkaReactive, kafkaStreaming, pickling, sparkML, sigar)
 
   val examples = connector ++ time ++ json ++
     Seq(kafka, kafkaStreaming, sparkML, "org.slf4j" % "slf4j-log4j12" % "1.6.1")

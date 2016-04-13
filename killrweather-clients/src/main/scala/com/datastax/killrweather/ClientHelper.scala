@@ -15,16 +15,17 @@
  */
 package com.datastax.killrweather
 
-import java.io.{BufferedInputStream, FileInputStream, File => JFile}
+import java.io.{BufferedReader, BufferedInputStream, FileInputStream, File => JFile}
 import java.util.zip.GZIPInputStream
+import java.util.zip.ZipInputStream
+import org.apache.commons.io.{IOUtils, LineIterator} 
 
 import scala.util.Try
 import akka.japi.Util.immutableSeq
 import akka.http.scaladsl.model.{ContentTypes, HttpHeader, RequestEntity}
 import com.typesafe.config.ConfigFactory
-import Weather.Day
 
-private[killrweather] trait ClientHelper {
+trait ClientHelper {
   import Sources._
 
   private val config = ConfigFactory.load
@@ -43,7 +44,7 @@ private[killrweather] trait ClientHelper {
     }.toSet
 }
 
-private[killrweather] object Sources {
+object Sources {
   sealed trait HttpSource extends Serializable {
     def header: HttpHeader
     def entity: RequestEntity
@@ -65,20 +66,39 @@ private[killrweather] object Sources {
     def apply(header: HttpHeader, entity: RequestEntity): HeaderSource =
       HeaderSource(header, entity, header.value.split(","))
   }
-  case class FileSource(data: Array[String], name: String) {
-    def days: Seq[Day] = data.map(Day(_)).toSeq
+  case class FileSource(data: LineIterator, name: String) {
+    /**
+     * Return an Array[String] containing all the lines of the file.
+     * !!! Cannot be called on too large files.
+     * !!! Cannot be called twice.
+     */
+	  def toArray:Array[String] = {
+			  import scala.collection.mutable.ArrayBuffer
+			  val buf = ArrayBuffer.empty[String]
+					  try {
+						  while (data.hasNext()) {
+							  val line: String = data.next().toString;
+						  buf += line
+						  }
+					  } finally {
+						  data.close();
+					  }
+			  buf.toArray
+    }
   }
   object FileSource {
     def apply(file: JFile): FileSource = {
       val src = file match {
         case f if f.getAbsolutePath endsWith ".gz" =>
-          scala.io.Source.fromInputStream(new GZIPInputStream(new BufferedInputStream(new FileInputStream(file))), "utf-8")
+          // @see http://java-performance.info/java-io-bufferedinputstream-and-java-util-zip-gzipinputstream/
+          new BufferedInputStream(new GZIPInputStream(new FileInputStream(file), 65536))
         case f =>
-          scala.io.Source.fromFile(file, "utf-8")
+          new BufferedInputStream(new FileInputStream(file))
       }
-      val read = src.getLines.toList
-      Try(src.close())
-      FileSource(read.toArray, file.getName)
+      
+      val read = IOUtils.lineIterator(src, "utf-8")
+      
+      FileSource(read, file.getName)
     }
   }
 
