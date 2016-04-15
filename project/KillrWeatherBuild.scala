@@ -69,6 +69,7 @@ object Dependencies {
 
     def embeddedExclusions: ModuleID =
       module.log4jExclude.excludeAll(ExclusionRule("org.apache.spark"))
+     .excludeAll(ExclusionRule("org.slf4j"))
      .excludeAll(ExclusionRule("com.typesafe"))
      .excludeAll(ExclusionRule("org.apache.cassandra"))
      .excludeAll(ExclusionRule("com.datastax.cassandra"))
