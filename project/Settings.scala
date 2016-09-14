@@ -61,6 +61,10 @@ object Settings extends Build {
     Tests.Argument(TestFrameworks.ScalaTest, "-oDF")
   )
 
+  val dashboardTestOptionSettings = Seq(
+    Tests.Argument(TestFrameworks.ScalaTest, "-h", "killrweather-dashboard/target/test-reports")
+  )
+
   lazy val testSettings = tests ++ Seq(
     parallelExecution in Test := false,
     parallelExecution in IntegrationTest := false,
@@ -71,6 +75,10 @@ object Settings extends Build {
     fork in IntegrationTest := true,
     (compile in IntegrationTest) <<= (compile in Test, compile in IntegrationTest) map { (_, c) => c },
     managedClasspath in IntegrationTest <<= Classpaths.concat(managedClasspath in IntegrationTest, exportedProducts in Test)
+  )
+
+  lazy val dashboardTestSettings = testSettings ++ Seq(
+    testOptions in Test ++= dashboardTestOptionSettings
   )
 
   lazy val sigarSettings = Seq(

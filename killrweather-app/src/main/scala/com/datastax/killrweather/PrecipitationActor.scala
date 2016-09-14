@@ -30,8 +30,9 @@ class PrecipitationActor(ssc: StreamingContext, settings: WeatherSettings)
   import settings.{CassandraTableDailyPrecip => dailytable}
 
   def receive : Actor.Receive = {
-    case GetPrecipitation(wsid, year)        => cumulative(wsid, year, sender)
-    case GetTopKPrecipitation(wsid, year, k) => topK(wsid, year, k, sender)
+    case GetPrecipitation(wsid, year)               => cumulative(wsid, year, sender)
+    case GetTopKPrecipitationForYear(wsid, year, k) => topK(wsid, year, k, sender)
+    case GetTopKPrecipitation(wsid, k)              => topK(wsid, k, sender)
   }
 
   /** Computes and sends the annual aggregation to the `requester` actor.
@@ -43,9 +44,9 @@ class PrecipitationActor(ssc: StreamingContext, settings: WeatherSettings)
       .collectAsync()
       .map(AnnualPrecipitation(_, wsid, year)) pipeTo requester
 
-  /** Returns the 10 highest temps for any station in the `year`. */
+  /** Returns the K highest temps for any station in the `year`. */
   def topK(wsid: String, year: Int, k: Int, requester: ActorRef): Unit = {
-    val toTopK = (aggregate: Seq[Double]) => TopKPrecipitation(wsid, year,
+    val toTopK = (aggregate: Seq[Double]) => TopKPrecipitationForYear(wsid, year,
       ssc.sparkContext.parallelize(aggregate).top(k).toSeq)
 
     ssc.cassandraTable[Double](keyspace, dailytable)
@@ -53,5 +54,12 @@ class PrecipitationActor(ssc: StreamingContext, settings: WeatherSettings)
       .where("wsid = ? AND year = ?", wsid, year)
       .collectAsync().map(toTopK) pipeTo requester
   }
+
+  /** Returns the K latest precipitation stats for the given station. */
+  def topK(wsid: String, k: Int, requester: ActorRef): Unit =
+    ssc.cassandraTable[DailyPrecipitation](keyspace, dailytable)
+      .where("wsid = ?", wsid)
+      .limit(k)
+      .collectAsync()  pipeTo requester
 }
 
