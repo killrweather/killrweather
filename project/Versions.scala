@@ -16,29 +16,29 @@
 
 object Versions {
 
-  val AngularJs      = "1.3.14"
-  val Akka           = "2.3.9"
-  val AkkaStreams    = "1.0-RC3"
+  val AngularJs      = "1.3.17"
+  val Akka           = "2.4.10"
+  val AkkaStreams    = "2.0.4"
   val Albebird       = "0.8.1"
   val Bijection      = "0.7.0"
 
   val Cassandra      = "2.1.3"
-  val CassandraDriver = "2.1.5"
+  val CassandraDriver = "3.1.0"
 
   val Bootstrap      = "3.0.0"
 
   val C3             = "0.4.9"
   val DateTimePicker = "0.3.8"
 
-  val JDK            = "1.7"
+  val JDK            = "1.8"
   val JodaConvert    = "1.7"
   val JodaTime       = "2.4"
   val Json4s         = "3.2.10"
-  val Kafka          = "0.8.2.1"
+  val Kafka          = "0.10.0.1"
   val Kryo           = "3.0.0"
   val Logback        = "1.0.13"
 
-  val Scala          = "2.10.5"// waiting for spark-streaming-kafka to be supported in scala 2.11
+  val Scala          = "2.11.8"// waiting for spark-streaming-kafka to be supported in scala 2.11
   val Pickling       = "0.10.1"
   val ScalaTest      = "2.2.2"
 
@@ -46,17 +46,17 @@ object Versions {
   val Mockito        = "1.10.19"
   val Pegdown        = "1.4.2"
 
-  val ScalaBinary    = "2.10"
+  val ScalaBinary    = "2.11"
 
-  val Scalaz         = "7.1.0"
-  val ScalazContrib  = "0.1.5"
-  val ScalazStream   = "0.1"
+  val Scalaz         = "7.2.6"
+  val ScalazContrib  = "0.2"
+  val ScalazStream   = "0.8.4"
   val Sigar          = "1.6.4"
   val Slf4j          = "1.6.1"
 
-  val Spark          = "1.3.1"
-  val SparkCassandra = "1.3.0-M1"
+  val Spark          = "1.6.2"
+  val SparkCassandra = "1.6.2"
 
   val ScalaTestPlay  = "1.1.0"
-  val WebJars        = "2.3.0-2"
+  val WebJars        = "2.5.0-3"
 }
