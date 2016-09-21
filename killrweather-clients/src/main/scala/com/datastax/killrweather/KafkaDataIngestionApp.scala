@@ -20,7 +20,7 @@ import java.net.InetSocketAddress
 import scala.concurrent.Future
 import scala.concurrent.duration._
 import org.reactivestreams.Publisher
-import akka.stream.{ActorFlowMaterializerSettings, ActorFlowMaterializer}
+import akka.stream.{ActorMaterializerSettings, ActorMaterializer}
 import akka.actor._
 import akka.cluster.Cluster
 import akka.util.Timeout
@@ -130,8 +130,8 @@ class HttpDataFeedActor(kafka: ActorRef) extends Actor with ActorLogging with Cl
 
   implicit val askTimeout: Timeout = 500.millis
 
-  implicit val materializer = ActorFlowMaterializer(
-    ActorFlowMaterializerSettings(system)
+  implicit val materializer = ActorMaterializer(
+    ActorMaterializerSettings(system)
   )
 
   val requestHandler: HttpRequest => HttpResponse = {
@@ -141,7 +141,7 @@ class HttpDataFeedActor(kafka: ActorRef) extends Actor with ActorLogging with Cl
           log.info(s"Ingesting {} and publishing {} data points to Kafka topic {}.", fs.name, fs.data.size, KafkaTopic)
           kafka ! KafkaMessageEnvelope[String, String](KafkaTopic, KafkaKey, fs.data:_*)
         })
-        HttpResponse(200, entity = HttpEntity(MediaTypes.`text/html`, s"POST [${hs.sources.mkString}] successful."))
+        HttpResponse(200, entity = HttpEntity(s"POST [${hs.sources.mkString}] successful."))
       }.getOrElse(HttpResponse(404, entity = "Unsupported request") )
     case _: HttpRequest =>
       HttpResponse(400, entity = "Unsupported request")

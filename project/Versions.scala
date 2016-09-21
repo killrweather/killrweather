@@ -18,7 +18,7 @@ object Versions {
 
   val AngularJs      = "1.3.17"
   val Akka           = "2.4.10"
-  val AkkaStreams    = "2.0.4"
+  val AkkaStreams    = "0.11"
   val Albebird       = "0.8.1"
   val Bijection      = "0.7.0"
 

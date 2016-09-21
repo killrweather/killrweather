@@ -98,8 +98,11 @@ object Dependencies {
 
   object Compile {
 
-    val akkaStream        = "com.typesafe.akka"   %% "akka-stream-experimental"           % AkkaStreams
-    val akkaHttpCore      = "com.typesafe.akka"   %% "akka-http-core-experimental"        % AkkaStreams
+
+    //val akkaStream        = "com.typesafe.akka"   %% "akka-stream-experimental"           % AkkaStreams
+    //val akkaHttpCore      = "com.typesafe.akka"   %% "akka-http-core-experimental"        % AkkaStreams
+    val akkaStream        = "com.typesafe.akka"   %% "akka-stream"                        % Akka
+    val akkaHttpCore      = "com.typesafe.akka"   %% "akka-http-core"                     % Akka
     val akkaActor         = "com.typesafe.akka"   %% "akka-actor"                         % Akka
     val akkaCluster       = "com.typesafe.akka"   %% "akka-cluster"                       % Akka
     val akkaRemote        = "com.typesafe.akka"   %% "akka-remote"                        % Akka
