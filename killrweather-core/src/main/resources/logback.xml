@@ -25,7 +25,7 @@
     <logger name="org.apache.spark.storage.BlockManager" level="ERROR" />
     <logger name="org.apache.hadoop" level="ERROR" />
 
-    <root level="info">
+    <root level="debug">
         <appender-ref ref="STDOUT"/>
     </root>
 </configuration>

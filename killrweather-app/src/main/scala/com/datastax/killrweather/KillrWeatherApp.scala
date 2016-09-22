@@ -20,8 +20,9 @@ import java.util.concurrent.atomic.AtomicBoolean
 import akka.actor._
 import akka.cluster.Cluster
 import org.apache.spark.streaming.{Milliseconds, StreamingContext}
-import org.apache.spark.SparkConf
+import org.apache.spark.{SparkConf, SparkContext}
 import com.datastax.spark.connector.embedded.EmbeddedKafka
+import kafka.common.TopicExistsException
 
 import scala.concurrent.Future
 
@@ -77,7 +78,11 @@ class KillrWeather(system: ExtendedActorSystem) extends Extension {
   private val kafka = new EmbeddedKafka
 
   /** Creates the raw data topic. */
-  kafka.createTopic(KafkaTopicRaw)
+  try {
+    kafka.createTopic(KafkaTopicRaw)
+  } catch {
+    case e:RuntimeException => println("Topic killrweather.raw already exists")
+  }
 
   /** Configures Spark. */
   protected val conf = new SparkConf().setAppName(getClass.getSimpleName)
@@ -86,10 +91,10 @@ class KillrWeather(system: ExtendedActorSystem) extends Extension {
     .set("spark.cleaner.ttl", SparkCleanerTtl.toString)
 
   /** Creates the Spark Streaming context. */
-  protected val ssc = new StreamingContext(conf, Milliseconds(SparkStreamingBatchInterval))
+  protected val sc = new SparkContext(conf)
 
   /* The root supervisor and traffic controller of the app. All inbound messages go through this actor. */
-  private val guardian = system.actorOf(Props(new NodeGuardian(ssc, kafka, settings)), "node-guardian")
+  private val guardian = system.actorOf(Props(new NodeGuardian(sc, kafka, settings)), "node-guardian")
 
   private val cluster = Cluster(system)
 
@@ -107,7 +112,7 @@ class KillrWeather(system: ExtendedActorSystem) extends Extension {
       log.info("Node {} shutting down", selfAddress)
       cluster leave selfAddress
       kafka.shutdown()
-      ssc.stop(stopSparkContext = true, stopGracefully = true)
+      sc.stop()
 
       (guardian ? GracefulShutdown).mapTo[Future[Boolean]]
         .onComplete { _ =>

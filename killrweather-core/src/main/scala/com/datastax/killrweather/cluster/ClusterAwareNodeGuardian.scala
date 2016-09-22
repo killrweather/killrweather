@@ -35,7 +35,7 @@ abstract class ClusterAware extends Actor with ActorLogging {
       log.info("Member is Removed: {} after {}", member.address, previousStatus)
     case ClusterMetricsChanged(forNode) =>
       forNode collectFirst { case m if m.address == cluster.selfAddress =>
-        log.debug("{}", filter(m.metrics))
+        //log.debug("{}", filter(m.metrics))
       }
     case _: MemberEvent =>
   }

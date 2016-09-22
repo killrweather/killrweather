@@ -94,14 +94,37 @@ To change any package log levels and see more activity, simply modify
 #### From Command Line
 1.Start `KillrWeather`
     cd /path/to/killrweather
+
     sbt app/run
+
+If you see Cassandra connection errors manually specify the cassandra host using:
+
+sbt -Dcassandra.connection.host=localhost app/run
 
 As the `KillrWeather` app initializes, you will see Akka Cluster start, Zookeeper and the Kafka servers start.
 
 For all three apps in load-time you see the Akka Cluster node join and start metrics collection. In deployment with multiple nodes of each app
 this would leverage the health of each node for load balancing as the rest of the cluster nodes join the cluster:
 
-2.Start the Kafka data feed app
+The Kafka topic can be monitored using:
+
+bin/kafka-topics.sh --list --zookeeper localhost:2181
+bin/kafka-console-consumer.sh --zookeeper localhost:2181 --topic killrweather_raw --from-beginning
+
+2. Spark Streaming has been separated out into a separate module so that it could be run outside of the Akka Actor System.
+
+Note - because app/run above starts spark stand-alone the following will generate an error that is harmless and can be ignored such as the following:
+WARN  2016-09-21 21:51:17,688 org.apache.spark.util.Utils: Service 'SparkUI' could not bind on port 4040. Attempting port 4041.
+
+This allows it to be run as a stand-alone spark job or using DataStax Analytics.  To run with DataStax Analytics use:
+
+dse spark-submit --packages org.apache.spark:spark-streaming-kafka_2.10:1.6.1 --conf=spark.cores.max=1  --class com.datastax.killrweather.WeatherStreaming --properties-file=conf/application.conf target/scala-2.10/streaming_2.10-1.0.1-SNAPSHOT.jar
+
+On a production server run with nohup and additional executor memory, i.e.:
+nohup dse spark-submit --packages org.apache.spark:spark-streaming-kafka_2.10:1.6.1  --conf=spark.executor.memory=8g --class powertrain.StreamVehicleData  --properties-file=application.conf streaming-vehicle-app_2.10-1.0-SNAPSHOT.jar 2>&1 1> streaming.log &
+
+3.Start the Kafka data feed app
+
 In a second shell run:
 
     sbt clients/run
@@ -125,9 +148,13 @@ streaming from Spark to Cassandra from the `KillrWeatherApp`.
 
 Unfortunately the precips are mostly 0 in the samples (To Do).
 
-3.Open a third shell and again enter this but select `KillrWeatherClientApp`:
+4.Open a third shell and again enter this but select `KillrWeatherClientApp`:
 
     sbt clients/run
+
+If this is being run in a remote deployment scenario the main app ip needs to be set for the akka cluster.  Currently it is hard coded to the local host in:
+killrweather-clients/src/main/resources/reference.conf
+
 This api client runs queries against the raw and the aggregated data from the kafka stream.
 It sends requests (for varying locations and dates/times) and for some, triggers further aggregations
 in compute time which are also saved to Cassandra:

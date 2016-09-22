@@ -24,3 +24,4 @@ test-output
 diagrams/*.graffle
 *.suml*
 *.swp
+*.iml
