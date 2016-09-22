@@ -23,7 +23,7 @@ object Versions {
   val Bijection      = "0.7.0"
 
   val Cassandra      = "2.1.3"
-  val CassandraDriver = "3.1.0"
+  val CassandraDriver = "3.0.2"
 
   val Bootstrap      = "3.0.0"
 
@@ -54,8 +54,8 @@ object Versions {
   val Sigar          = "1.6.4"
   val Slf4j          = "1.6.1"
 
-  val Spark          = "1.6.2"
-  val SparkCassandra = "1.6.2"
+  val Spark          = "1.6.0"
+  val SparkCassandra = "1.6.0"
 
   val ScalaTestPlay  = "1.1.0"
   val WebJars        = "2.4.0-2"
