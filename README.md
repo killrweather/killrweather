@@ -148,9 +148,13 @@ streaming from Spark to Cassandra from the `KillrWeatherApp`.
 
 Unfortunately the precips are mostly 0 in the samples (To Do).
 
-3.Open a third shell and again enter this but select `KillrWeatherClientApp`:
+4.Open a third shell and again enter this but select `KillrWeatherClientApp`:
 
     sbt clients/run
+
+If this is being run in a remote deployment scenario the main app ip needs to be set for the akka cluster.  Currently it is hard coded to the local host in:
+killrweather-clients/src/main/resources/reference.conf
+
 This api client runs queries against the raw and the aggregated data from the kafka stream.
 It sends requests (for varying locations and dates/times) and for some, triggers further aggregations
 in compute time which are also saved to Cassandra:
