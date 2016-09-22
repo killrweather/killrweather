@@ -27,7 +27,7 @@ abstract class ClusterAware extends Actor with ActorLogging {
 
   override def postStop(): Unit = cluster.unsubscribe(self)
 
-  def receive : Actor.Receive = {
+  def clusterReceive : Actor.Receive = {
     case MemberUp(member) => watch(member)
     case UnreachableMember(member) =>
       log.info("Member detected as unreachable: {}", member)
@@ -39,6 +39,11 @@ abstract class ClusterAware extends Actor with ActorLogging {
       }
     case _: MemberEvent =>
   }
+
+  /** Must be implemented by an Actor. */
+  def initialized: Actor.Receive
+
+  override def receive = clusterReceive orElse initialized
 
   /** Initiated when node receives a [[akka.cluster.ClusterEvent.MemberUp]]. */
   private def watch(member: Member): Unit = {
@@ -87,23 +92,6 @@ abstract class ClusterAwareNodeGuardian extends ClusterAware {
     log.info("Node {} shutting down.", cluster.selfAddress)
   }
 
-  /** On startup, actor is in an [[uninitialized]] state. */
-  override def receive = uninitialized orElse initialized orElse super.receive
-
-  /** When [[OutputStreamInitialized]] is received the actor moves from
-    * [[uninitialized]] to an `initialized` state with [[ActorContext.become()]].
-    */
-  def uninitialized: Actor.Receive = {
-    case OutputStreamInitialized => initialize()
-  }
-
-  def initialize(): Unit = {
-    log.info(s"Node is transitioning from 'uninitialized' to 'initialized'")
-    context.system.eventStream.publish(NodeInitialized)
-  }
-
-  /** Must be implemented by an Actor. */
-  def initialized: Actor.Receive
 
   protected def gracefulShutdown(listener: ActorRef): Unit = {
     implicit val timeout = Timeout(5.seconds)

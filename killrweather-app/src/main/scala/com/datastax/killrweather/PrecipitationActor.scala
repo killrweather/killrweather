@@ -15,14 +15,14 @@
  */
 package com.datastax.killrweather
 
-import akka.actor.{ActorLogging, Actor, ActorRef}
+import akka.actor.{Actor, ActorLogging, ActorRef}
 import akka.pattern.pipe
-import org.apache.spark.SparkContext._
-import org.apache.spark.streaming.StreamingContext
-import com.datastax.spark.connector.streaming._
+import org.apache.spark.SparkContext
+
+import com.datastax.spark.connector._
 
 /** For a given weather station, calculates annual cumulative precip - or year to date. */
-class PrecipitationActor(ssc: StreamingContext, settings: WeatherSettings)
+class PrecipitationActor(sc: SparkContext, settings: WeatherSettings)
   extends AggregationActor with ActorLogging {
   import Weather._
   import WeatherEvent._
@@ -38,7 +38,7 @@ class PrecipitationActor(ssc: StreamingContext, settings: WeatherSettings)
   /** Computes and sends the annual aggregation to the `requester` actor.
     * Precipitation values are 1 hour deltas from the previous. */
   def cumulative(wsid: String, year: Int, requester: ActorRef): Unit =
-    ssc.cassandraTable[Double](keyspace, dailytable)
+  sc.cassandraTable[Double](keyspace, dailytable)
       .select("precipitation")
       .where("wsid = ? AND year = ?", wsid, year)
       .collectAsync()
@@ -47,9 +47,9 @@ class PrecipitationActor(ssc: StreamingContext, settings: WeatherSettings)
   /** Returns the K highest temps for any station in the `year`. */
   def topK(wsid: String, year: Int, k: Int, requester: ActorRef): Unit = {
     val toTopK = (aggregate: Seq[Double]) => TopKPrecipitationForYear(wsid, year,
-      ssc.sparkContext.parallelize(aggregate).top(k).toSeq)
+      sc.parallelize(aggregate).top(k).toSeq)
 
-    ssc.cassandraTable[Double](keyspace, dailytable)
+    sc.cassandraTable[Double](keyspace, dailytable)
       .select("precipitation")
       .where("wsid = ? AND year = ?", wsid, year)
       .collectAsync().map(toTopK) pipeTo requester
@@ -57,7 +57,7 @@ class PrecipitationActor(ssc: StreamingContext, settings: WeatherSettings)
 
   /** Returns the K latest precipitation stats for the given station. */
   def topK(wsid: String, k: Int, requester: ActorRef): Unit =
-    ssc.cassandraTable[DailyPrecipitation](keyspace, dailytable)
+    sc.cassandraTable[DailyPrecipitation](keyspace, dailytable)
       .where("wsid = ?", wsid)
       .limit(k)
       .collectAsync()  pipeTo requester

@@ -67,6 +67,7 @@ final class ApiNodeGuardian extends ClusterAwareNodeGuardian with ClientHelper {
   def initialized: Actor.Receive = {
     case e =>
   }
+
 }
 
 /** For simplicity, these just go through Akka. */

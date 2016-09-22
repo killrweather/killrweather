@@ -26,7 +26,7 @@ object KillrWeatherBuild extends Build {
     id = "root",
     base = file("."),
     settings = parentSettings,
-    aggregate = Seq(core, app, clients, examples, dashboard)
+    aggregate = Seq(core, app, clients, examples, dashboard, streaming)
   )
 
   lazy val core = Project(
@@ -61,6 +61,13 @@ object KillrWeatherBuild extends Build {
     base = file("./killrweather-dashboard"),
     settings = dashboardTestSettings ++ Seq(libraryDependencies ++= Dependencies.dashboard)
   ).enablePlugins(PlayScala) configs IntegrationTest
+
+  lazy val streaming = Project(
+      id = "streaming",
+      base = file("./killrweather-streaming"),
+      dependencies = Seq(core),
+      settings = defaultSettings ++ Seq(libraryDependencies ++= Dependencies.streaming)
+    )
 }
 
 /** To use the connector, the only dependency required is:
@@ -99,10 +106,10 @@ object Dependencies {
   object Compile {
 
 
-    //val akkaStream        = "com.typesafe.akka"   %% "akka-stream-experimental"           % AkkaStreams
-    //val akkaHttpCore      = "com.typesafe.akka"   %% "akka-http-core-experimental"        % AkkaStreams
-    val akkaStream        = "com.typesafe.akka"   %% "akka-stream"                        % Akka
-    val akkaHttpCore      = "com.typesafe.akka"   %% "akka-http-core"                     % Akka
+    val akkaStream        = "com.typesafe.akka"   %% "akka-stream-experimental"           % AkkaStreams
+    val akkaHttpCore      = "com.typesafe.akka"   %% "akka-http-core-experimental"        % AkkaStreams
+    //val akkaStream        = "com.typesafe.akka"   %% "akka-stream"                        % Akka
+    //val akkaHttpCore      = "com.typesafe.akka"   %% "akka-http-core"                     % Akka
     val akkaActor         = "com.typesafe.akka"   %% "akka-actor"                         % Akka
     val akkaCluster       = "com.typesafe.akka"   %% "akka-cluster"                       % Akka
     val akkaRemote        = "com.typesafe.akka"   %% "akka-remote"                        % Akka
@@ -178,5 +185,8 @@ object Dependencies {
 
   val examples = connector ++ time ++ json ++
     Seq(kafka, kafkaStreaming, sparkML, "org.slf4j" % "slf4j-log4j12" % "1.6.1")
+
+  val streaming = connector ++ json ++ scalaz ++
+    Seq(algebird, bijection, kafka, kafkaStreaming, pickling, sparkML, sigar)
 }
 
