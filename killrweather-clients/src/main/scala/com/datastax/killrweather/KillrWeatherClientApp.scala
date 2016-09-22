@@ -54,7 +54,10 @@ final class ApiNodeGuardian extends ClusterAwareNodeGuardian with ClientHelper {
   }
 */
   Cluster(context.system).registerOnMemberUp {
+
+    log.debug("registerOnMemberUp")
     task = Some(context.system.scheduler.schedule(Duration.Zero, 2.seconds) {
+      log.debug("Event.QueryTask")
       api ! Event.QueryTask
     })
   }
@@ -67,7 +70,6 @@ final class ApiNodeGuardian extends ClusterAwareNodeGuardian with ClientHelper {
   def initialized: Actor.Receive = {
     case e =>
   }
-
 }
 
 /** For simplicity, these just go through Akka. */

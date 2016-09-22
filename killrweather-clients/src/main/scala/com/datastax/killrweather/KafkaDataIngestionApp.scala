@@ -46,7 +46,7 @@ import com.datastax.spark.connector.embedded.KafkaEvent.KafkaMessageEnvelope
 object KafkaDataIngestionApp extends App {
 
   /** Creates the ActorSystem. */
-  val system = ActorSystem("KillrWeather", ConfigFactory.parseString("akka.remote.netty.tcp.port = 2551"))
+  val system = ActorSystem("KillrWeather", ConfigFactory.parseString("akka.remote.netty.tcp.port = 2553"))
 
   /* The root supervisor and fault tolerance handler of the data ingestion nodes. */
   val guardian = system.actorOf(Props[HttpNodeGuardian], "node-guardian")

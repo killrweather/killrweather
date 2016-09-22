@@ -94,7 +94,12 @@ To change any package log levels and see more activity, simply modify
 #### From Command Line
 1.Start `KillrWeather`
     cd /path/to/killrweather
+
     sbt app/run
+
+If you see Cassandra connection errors manually specify the cassandra host using:
+
+sbt -Dcassandra.connection.host=localhost app/run
 
 As the `KillrWeather` app initializes, you will see Akka Cluster start, Zookeeper and the Kafka servers start.
 
