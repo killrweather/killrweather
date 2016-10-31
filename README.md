@@ -49,7 +49,6 @@ If this is your first time running SBT, you will be downloading the internet.
 3.Run the setup cql scripts to create the schema and populate the weather stations table.
 On the command line start a cqlsh shell:
 
-
     cd /path/to/killrweather/data
     path/to/apache-cassandra-{version}/bin/cqlsh
 
@@ -59,10 +58,12 @@ On the command line start a cqlsh shell:
 2. Chose to run the Cassandra automatically during start-up
 
 3. Run the setup cql scripts to create the schema and populate the weather stations table.
-On the command line start a cqlsh shell:
+On the command line start a `cqlsh` shell:
 
-
-    cd c:/path/to/killrweather c:/pat/to/cassandara/bin/cqlsh
+```
+    cd c:/path/to/killrweather
+    c:/pat/to/cassandara/bin/cqlsh
+```
 
 ### In CQL Shell:
 You should see:
