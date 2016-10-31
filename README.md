@@ -93,6 +93,7 @@ To change any package log levels and see more activity, simply modify
 
 #### From Command Line
 1.Start `KillrWeather`
+
     cd /path/to/killrweather
     sbt app/run
 
