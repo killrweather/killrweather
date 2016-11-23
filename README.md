@@ -30,7 +30,7 @@ There are many flavors of time series data. Some can be windowed in the stream, 
 
 
 ### Build the code 
-If this is your first time running SBT, you will be downloading the internet.
+If this is your first time running SBT, you will be downloading from the Internet.
 
     cd killrweather
     sbt compile
@@ -59,10 +59,11 @@ On the command line start a cqlsh shell:
 2. Chose to run the Cassandra automatically during start-up
 
 3. Run the setup cql scripts to create the schema and populate the weather stations table.
+
 On the command line start a cqlsh shell:
 
-
-    cd c:/path/to/killrweather c:/pat/to/cassandara/bin/cqlsh
+    cd c:/path/to/killrweather
+    c:/path/to/cassandara/bin/cqlsh
 
 ### In CQL Shell:
 You should see:
@@ -93,6 +94,7 @@ To change any package log levels and see more activity, simply modify
 
 #### From Command Line
 1.Start `KillrWeather`
+
     cd /path/to/killrweather
     sbt app/run
 
