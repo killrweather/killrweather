@@ -61,6 +61,6 @@ object GitHubEvents {
   case class MonthlyCommits(user: String, commits: Int, month: Int, year: Int) extends Commits
   object MonthlyCommits {
     def apply(r: Row): MonthlyCommits = MonthlyCommits(
-      r.getString(0), r.getInt(1), r.getInt(2), r.getInt(3))
+      r.getString(0), r.getLong(1).toInt, r.getLong(2).toInt, r.getLong(3).toInt)
   }
 }
