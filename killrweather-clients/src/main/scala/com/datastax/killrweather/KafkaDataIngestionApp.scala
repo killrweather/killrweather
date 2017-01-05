@@ -87,7 +87,7 @@ final class HttpNodeGuardian extends ClusterAwareNodeGuardian with ClientHelper 
   cluster registerOnMemberUp {
 
     /* As http data is received, publishes to Kafka. */
-    context.actorOf(BalancingPool(10).props(
+    context.actorOf(BalancingPool(1).props(
       Props(new HttpDataFeedActor(router))), "dynamic-data-feed")
 
     log.info("Starting data ingestion on {}.", cluster.selfAddress)
@@ -147,12 +147,14 @@ class HttpDataFeedActor(kafka: ActorRef) extends Actor with ActorLogging with Cl
       HttpResponse(400, entity = "Unsupported request")
   }
 
+  log.info(s"Listening for HTTP requests on {}.", HttpHost + ":" + HttpPort)
+
   Http(system)
     .bind(interface = HttpHost, port = HttpPort)
-    .map { case connection  =>
+    .to(Sink.foreach { connection =>
       log.info("Accepted new connection from " + connection.remoteAddress)
       connection.handleWithSyncHandler(requestHandler)
-    }
+    }).run()
 
   def receive : Actor.Receive = {
     case e =>
