@@ -1,0 +1,56 @@
+<h1>{{ station.weatherStation.name }} ({{ station.weatherStation.id }})</h1>
+<section ng-controller="WeatherStationViewCtrl as panel">
+    <row>
+        <ul class="nav nav-pills">
+            <li ng-class="{ active: panel.isSelected(0) }"><a href ng-click="panel.selectTab(0)">Weather Data</a>
+            </li>
+            <li ng-class="{ active: panel.isSelected(1) }"><a href ng-click="panel.selectTab(1)">Load Generation</a>
+            </li>
+        </ul>
+    </row>
+    <row>
+        <div class="panel" ng-show="panel.isSelected(0)">
+            <h2>Daily precipitation</h2>
+            <c3chart bindto-id="chart" chart-data="datapoints" chart-columns="datacolumns" chart-x="datax">
+                <chart-axis>
+                    <chart-axis-x axis-id="date" axis-type="timeseries">
+                        <chart-axis-x-tick tick-format="%Y-%m-%d"/>
+                    </chart-axis-x>
+                </chart-axis>
+            </c3chart>
+        </div>
+
+        <div class="panel" ng-show="panel.isSelected(1)" ng-controller="LoadGenerationCtrl">
+            <row>
+                <form name="loadForm" ng-submit="loadForm.$valid && sendLoad()" role="form" novalidate>
+                    <div class="form-group">
+                        <label for="startDate">Start Date</label>
+                        <datetimepicker ng-required="true" minView="day" data-ng-model="loadSpec.startDate" id="startDate"/>
+                    </div>
+                    <div class="form-group">
+                        <label for="endDate">End Date</label>
+                        <datetimepicker ng-required="true" minView="day" data-ng-model="loadSpec.endDate" id="endDate"/>
+                    </div>
+                    <div class="form-group">
+                        <label for="interval">Interval</label>
+                        <input required class="form-control" id="interval" type="number" min=100 max=5000 ng-model="loadSpec.duration" name="text"/>
+                        <p class="help-block">Interval between generated weather events (in milliseconds, min 100, max 5000)</p>
+                    </div>
+                    <input class="btn btn-default" type="submit" value="Submit Load"/>
+                    <p class="help-block">Ready to send? {{ loadForm.$valid }}</p>
+                </form>
+            </row>
+            <row>
+                <div ng-show="submissionSuccess" class="alert alert-block alert-success">
+                    <h4 class="alert-heading">Success!</h4>
+                    Load generation request submitted
+                </div>
+                <div ng-show="submissionFailure" class="alert alert-block alert-danger">
+                    <h4 class="alert-heading">Failure!</h4>
+                    Failed to submit load generation
+                </div>
+            </row>
+        </div>
+    </row>
+</section>
+

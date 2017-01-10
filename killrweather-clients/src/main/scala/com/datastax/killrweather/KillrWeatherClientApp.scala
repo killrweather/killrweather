@@ -111,7 +111,7 @@ private[killrweather] class AutomatedApiActor extends Actor with ActorLogging wi
       guardian ! GetPrecipitation(sample.wsid, sample.year)
 
       log.debug("Requesting top-k Precipitation for weather station {}", sample.wsid)
-      guardian ! GetTopKPrecipitation(sample.wsid, sample.year, k = 10)
+      guardian ! GetTopKPrecipitationForYear(sample.wsid, sample.year, k = 10)
 
       log.debug("Requesting the daily temperature aggregate for weather station {}", sample.wsid)
       guardian ! GetDailyTemperature(sample)

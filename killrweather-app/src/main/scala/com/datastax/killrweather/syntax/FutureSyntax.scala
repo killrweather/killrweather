@@ -3,14 +3,14 @@ package com.datastax.killrweather.syntax
 package object future {
   import scala.concurrent._
   import scalaz._
-  import scalaz.contrib.std.scalaFuture._
+  import scala.annotation.unchecked.uncheckedVariance
 
-  type FutureT[+A] = EitherT[Future, Throwable, A]
+  type FutureT[+A] = EitherT[Future, Throwable, A @uncheckedVariance]
 
   /** Avoid the need to handle Future error/timeout via callbacks by transforming the value into an EitherT, i.e.,
     * EitherT[Future, Throwable, A] === Future[Throwable \/ A]. */
   implicit class ScalaFutureOps[A](future: Future[A])(implicit context: ExecutionContext) {
-    def eitherT: EitherT[Future, Throwable, A] =
+    def eitherT: EitherT[Future, Throwable, A ] =
       EitherT.eitherT(
         future
           .map(\/.right)
